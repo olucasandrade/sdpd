@@ -1,0 +1,193 @@
+{
+  "id": "case-07",
+  "number": 7,
+  "title": "O Dilema do Viajante do Tempo",
+  "subtitle": "Timestamps de evidências desafiam as leis da física",
+  "brief": {
+    "narrative": "Algo estranho está acontecendo no sistema de evidências forenses de Distributia. Uma amostra de sangue coletada às 22:15 tem um timestamp de análise laboratorial de 22:10 — cinco minutos antes de ser coletada. O advogado de defesa argumenta que a evidência foi fabricada porque 'não se pode analisar algo antes de ele existir.' Mas a equipe de perícia jura que seguiu o procedimento. O verdadeiro problema? Os servidores de coleta de evidências e de análise laboratorial têm relógios com 8 minutos de diferença. A sincronização NTP falhou há três dias e ninguém percebeu. Agora centenas de registros de evidência têm timestamps impossíveis, e casos estão em risco de serem anulados.",
+    "symptoms": [
+      "Timestamps de análise de evidência aparecem antes dos timestamps de coleta",
+      "O relógio do servidor de laboratório forense está 8 minutos atrás do servidor de coleta",
+      "A sincronização NTP vem falhando silenciosamente há 3 dias",
+      "Advogados de defesa estão contestando a integridade das evidências com base em inconsistências de timestamps"
+    ],
+    "objective": "Entender como a diferença de relógio entre servidores corrompe a ordenação de eventos e determinar como estabelecer uma ordenação confiável em um sistema distribuído."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "collection-server",
+        "type": "server",
+        "label": "Evidence Collection",
+        "status": "degraded",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Servidor de Coleta de Evidências",
+          "logs": [
+            "[22:15:00] INFO: Evidence #E-9934 (blood sample) collected by Officer Tanaka",
+            "[22:15:00] INFO: Timestamp assigned: 22:15:00 (local clock)",
+            "[22:15:01] INFO: Sent to Forensic Lab for analysis",
+            "[22:15:02] WARN: NTP sync status: FAILED (last sync 3 days ago)",
+            "[22:15:02] INFO: Local clock source: hardware RTC (drifting)"
+          ],
+          "data": {
+            "Server Clock": "22:15:00",
+            "Actual UTC Time": "22:12:00",
+            "Clock Drift": "+3 minutes ahead of UTC",
+            "NTP Status": "FAILED — last sync 72 hours ago",
+            "NTP Server": "ntp.distributia.gov (unreachable)",
+            "Evidence #E-9934 Timestamp": "22:15:00 (local)"
+          },
+          "status": "Relógio está 3 minutos ADIANTADO em relação ao UTC. Sincronização NTP quebrada há 3 dias."
+        }
+      },
+      {
+        "id": "lab-server",
+        "type": "server",
+        "label": "Forensic Lab Server",
+        "status": "degraded",
+        "position": { "x": 550, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Servidor de Análise do Laboratório Forense",
+          "logs": [
+            "[22:07:01] INFO: Received Evidence #E-9934 for analysis",
+            "[22:10:00] INFO: Analysis complete for Evidence #E-9934",
+            "[22:10:00] INFO: Timestamp assigned: 22:10:00 (local clock)",
+            "[22:10:01] WARN: NTP sync status: FAILED (last sync 3 days ago)"
+          ],
+          "data": {
+            "Server Clock": "22:10:00",
+            "Actual UTC Time": "22:15:00",
+            "Clock Drift": "-5 minutes behind UTC",
+            "NTP Status": "FAILED — last sync 72 hours ago",
+            "Evidence #E-9934 Analysis Timestamp": "22:10:00 (local)",
+            "Total Clock Skew vs Collection Server": "8 minutes"
+          },
+          "status": "Relógio está 5 minutos ATRASADO em relação ao UTC. Diferença total de 8 minutos em relação ao servidor de Coleta."
+        }
+      },
+      {
+        "id": "evidence-db",
+        "type": "database",
+        "label": "Evidence Database",
+        "status": "degraded",
+        "position": { "x": 325, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados Central de Evidências",
+          "logs": [
+            "[22:15:01] INFO: INSERT Evidence #E-9934 — collected at 22:15:00",
+            "[22:15:05] INFO: UPDATE Evidence #E-9934 — analysis complete at 22:10:00",
+            "[22:15:05] WARN: TEMPORAL ANOMALY — analysis (22:10:00) before collection (22:15:00)",
+            "[22:15:05] WARN: 147 records with temporal anomalies in the last 72 hours"
+          ],
+          "data": {
+            "Evidence #E-9934 Collected": "22:15:00",
+            "Evidence #E-9934 Analyzed": "22:10:00",
+            "Time Paradox": "Analysis appears 5 minutes BEFORE collection",
+            "Records With Anomalies": "147 (last 72 hours)",
+            "Cases Potentially Affected": "23"
+          },
+          "status": "Anomalias temporais detectadas em registros de evidência devido à diferença de relógio entre servidores de origem."
+        }
+      },
+      {
+        "id": "ntp-server",
+        "type": "server",
+        "label": "NTP Server",
+        "status": "failed",
+        "position": { "x": 325, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Servidor de Tempo NTP (ntp.distributia.gov)",
+          "logs": [
+            "[3 days ago] INFO: Serving time to 12 clients",
+            "[3 days ago] ERROR: Network interface failure",
+            "[3 days ago] FATAL: NTP service unreachable",
+            "[3 days ago] WARN: No alerting configured for NTP outage"
+          ],
+          "data": {
+            "Status": "OFFLINE",
+            "Downtime": "72 hours",
+            "Clients Affected": "12 servers",
+            "Alert Sent": "NONE — no monitoring configured"
+          },
+          "status": "Servidor NTP offline há 72 horas. Nenhum alerta configurado para este serviço crítico."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-collect-db", "source": "collection-server", "target": "evidence-db", "label": "timestamps", "animated": true, "style": "normal" },
+      { "id": "e-lab-db", "source": "lab-server", "target": "evidence-db", "label": "timestamps", "animated": true, "style": "normal" },
+      { "id": "e-ntp-collect", "source": "ntp-server", "target": "collection-server", "label": "time sync", "animated": false, "style": "broken" },
+      { "id": "e-ntp-lab", "source": "ntp-server", "target": "lab-server", "label": "time sync", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz dos timestamps impossíveis nas evidências?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "A evidência foi de fato fabricada — os timestamps comprovam isso",
+          "correct": false,
+          "feedback": "Os timestamps não comprovam fabricação — comprovam diferença de relógio. O servidor de Coleta está 3 minutos adiantado em relação ao UTC enquanto o servidor do Laboratório está 5 minutos atrasado, criando uma diferença total de 8 minutos. Eventos que realmente aconteceram na ordem correta parecem invertidos porque cada servidor registrou os eventos com seu próprio relógio local desajustado."
+        },
+        {
+          "id": "rc-2",
+          "text": "Diferença de relógio entre servidores — o serviço NTP falhou, fazendo os relógios dos servidores se distanciarem, tornando timestamps de servidores diferentes não comparáveis",
+          "correct": true,
+          "feedback": "Correto! Em sistemas distribuídos, cada máquina tem seu próprio relógio físico, e esses relógios derivam em velocidades diferentes. O NTP normalmente os mantém sincronizados em milissegundos, mas quando o NTP falhou, os relógios se distanciaram em 8 minutos no total. É por isso que usar timestamps de relógio de parede para ordenar eventos entre máquinas diferentes é fundamentalmente não confiável — relógios físicos não são perfeitamente sincronizados e nunca podem ser."
+        },
+        {
+          "id": "rc-3",
+          "text": "O banco de dados está inserindo registros na ordem errada devido a um bug",
+          "correct": false,
+          "feedback": "O banco de dados está registrando corretamente os timestamps que recebe. O problema está nos servidores de origem — os timestamps em si estão errados porque os relógios dos servidores estão dessincronizados. O banco de dados não tem como saber que os timestamps estão incorretos."
+        },
+        {
+          "id": "rc-4",
+          "text": "A latência de rede está fazendo os eventos chegarem ao banco de dados na ordem errada",
+          "correct": false,
+          "feedback": "A latência de rede pode fazer eventos chegarem fora de ordem, mas esse não é o problema aqui. Os timestamps em si estão errados — mesmo que os eventos chegassem na ordem correta, os timestamps ainda mostrariam a análise antes da coleta porque o relógio do servidor do Laboratório está atrasado."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor forma de estabelecer ordenação confiável de eventos entre servidores?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Consertar o servidor NTP e garantir que todos os relógios estejam perfeitamente sincronizados",
+          "correct": false,
+          "feedback": "Consertar o NTP é necessário mas não suficiente. Mesmo com NTP, os relógios podem derivar entre intervalos de sincronização, e a precisão do NTP é tipicamente de 1-10ms no melhor caso. Para requisitos críticos de ordenação, você não pode confiar apenas na sincronização de relógio físico. Você precisa também de um mecanismo de ordenação lógica."
+        },
+        {
+          "id": "fix-2",
+          "text": "Usar relógios lógicos (como timestamps de Lamport ou relógios vetoriais) para rastrear a ordenação causal de eventos entre servidores",
+          "correct": true,
+          "feedback": "Correto! Relógios lógicos não dependem de tempo físico. Um timestamp de Lamport é um contador que incrementa a cada evento e é passado entre servidores com cada mensagem. Se o evento A precede causalmente o evento B, então o timestamp lógico de A é garantidamente menor que o de B. Relógios vetoriais estendem isso para rastrear causalidade por nó. Combinados com NTP para tempo de relógio de parede aproximado, relógios lógicos oferecem ordenação causal confiável independente de diferença de relógio."
+        },
+        {
+          "id": "fix-3",
+          "text": "Ter todos os eventos registrados por um único servidor de tempo central",
+          "correct": false,
+          "feedback": "Um servidor central de timestamp cria um ponto único de falha e um gargalo de desempenho — cada evento em todo o sistema precisa esperar resposta deste único servidor. Também adiciona latência de rede a cada operação. Relógios lógicos alcançam ordenação confiável sem nenhuma coordenação central."
+        },
+        {
+          "id": "fix-4",
+          "text": "Adicionar um atraso de buffer antes de registrar timestamps para compensar a diferença de relógio",
+          "correct": false,
+          "feedback": "Um buffer arbitrário não resolve o problema — você precisaria saber a diferença exata antecipadamente, que varia ao longo do tempo. E adiciona latência desnecessária a cada operação. Relógios lógicos resolvem a ordenação sem adicionar atrasos ou exigir conhecimento da diferença de relógio."
+        }
+      ]
+    }
+  },
+  "conceptId": "clock-synchronization",
+  "badge": {
+    "name": "Guardião do Tempo",
+    "icon": "⏰"
+  }
+}

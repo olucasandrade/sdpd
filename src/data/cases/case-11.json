@@ -1,0 +1,218 @@
+{
+  "id": "case-11",
+  "number": 11,
+  "title": "The Hot Partition",
+  "subtitle": "One shard drowns while the others sit idle",
+  "brief": {
+    "narrative": "Distributia PD's crime reporting system uses database sharding to distribute records across four database shards. Records are partitioned by the first letter of the suspect's last name: A-F goes to Shard 1, G-L to Shard 2, M-R to Shard 3, and S-Z to Shard 4. It seemed like a fair split — until celebrity crime wave season hit. A scandal involving the wealthy Sterling family, pop star Simone Silva, tech mogul Sam Stratton, and socialite Sophie St. James has generated 50,000 crime reports in a week. Every single one lands on Shard 4 (S-Z). That shard is at 100% capacity while the other three sit at 15% utilization. Response times for any S-Z name lookup are now 45 seconds. The system is effectively broken for a quarter of the alphabet.",
+    "symptoms": [
+      "Shard 4 (S-Z) at 100% CPU and storage, response time 45 seconds",
+      "Shards 1-3 sitting at 10-15% utilization with sub-50ms response times",
+      "All celebrity crime reports happen to involve suspects with S-surnames",
+      "Officers cannot file or look up any S-Z reports"
+    ],
+    "objective": "Identify how the sharding strategy created a hot partition and determine a better data distribution approach."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "shard-1",
+        "type": "database",
+        "label": "Shard 1 (A-F)",
+        "status": "healthy",
+        "position": { "x": 80, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Database Shard 1 (A-F)",
+          "logs": [
+            "[09:00:00] INFO: Normal operations",
+            "[09:15:00] INFO: Query rate: 12/sec, response time: 30ms"
+          ],
+          "data": {
+            "Range": "A-F surnames",
+            "Records": "180,000",
+            "CPU": "12%",
+            "Storage": "15%",
+            "Response Time": "30ms",
+            "Status": "IDLE — significantly underutilized"
+          },
+          "status": "Healthy and underutilized. Minimal load from A-F surname range."
+        }
+      },
+      {
+        "id": "shard-2",
+        "type": "database",
+        "label": "Shard 2 (G-L)",
+        "status": "healthy",
+        "position": { "x": 280, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Database Shard 2 (G-L)",
+          "logs": [
+            "[09:00:00] INFO: Normal operations",
+            "[09:15:00] INFO: Query rate: 15/sec, response time: 35ms"
+          ],
+          "data": {
+            "Range": "G-L surnames",
+            "Records": "195,000",
+            "CPU": "14%",
+            "Storage": "16%",
+            "Response Time": "35ms",
+            "Status": "IDLE — significantly underutilized"
+          },
+          "status": "Healthy and underutilized."
+        }
+      },
+      {
+        "id": "shard-3",
+        "type": "database",
+        "label": "Shard 3 (M-R)",
+        "status": "healthy",
+        "position": { "x": 480, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Database Shard 3 (M-R)",
+          "logs": [
+            "[09:00:00] INFO: Normal operations",
+            "[09:15:00] INFO: Query rate: 18/sec, response time: 40ms"
+          ],
+          "data": {
+            "Range": "M-R surnames",
+            "Records": "210,000",
+            "CPU": "15%",
+            "Storage": "17%",
+            "Response Time": "40ms",
+            "Status": "IDLE — significantly underutilized"
+          },
+          "status": "Healthy and underutilized."
+        }
+      },
+      {
+        "id": "shard-4",
+        "type": "database",
+        "label": "Shard 4 (S-Z)",
+        "status": "failed",
+        "position": { "x": 680, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Database Shard 4 (S-Z) — HOT PARTITION",
+          "logs": [
+            "[09:00:00] WARN: Record count growing rapidly — celebrity crime wave",
+            "[09:05:00] WARN: CPU: 78%, climbing fast",
+            "[09:10:00] ERROR: CPU: 95%, response time: 12,000ms",
+            "[09:12:00] ERROR: Storage: 98% — approaching disk full",
+            "[09:14:00] ERROR: CPU: 100%, connection pool exhausted",
+            "[09:15:00] ERROR: Response time: 45,000ms — effectively unresponsive",
+            "[09:15:01] ERROR: 50,000 celebrity crime reports all on this shard"
+          ],
+          "data": {
+            "Range": "S-Z surnames",
+            "Records": "460,000 (2.5x other shards)",
+            "Celebrity Reports (this week)": "50,000",
+            "CPU": "100%",
+            "Storage": "98%",
+            "Response Time": "45,000ms",
+            "Connection Pool": "500/500 (EXHAUSTED)",
+            "Status": "HOT PARTITION — overwhelmed"
+          },
+          "status": "Hot partition. All celebrity crime reports (S-surnames) concentrated on this shard."
+        }
+      },
+      {
+        "id": "router",
+        "type": "server",
+        "label": "Shard Router",
+        "status": "healthy",
+        "position": { "x": 380, "y": 280 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Database Shard Router",
+          "logs": [
+            "[09:00:00] INFO: Routing by first letter of suspect surname",
+            "[09:10:00] WARN: 89% of traffic routed to Shard 4 (S-Z)",
+            "[09:12:00] WARN: Shards 1-3 receiving 3-5% traffic each",
+            "[09:14:00] ERROR: Shard 4 responses timing out — cannot reroute (fixed partitioning)"
+          ],
+          "data": {
+            "Routing Strategy": "First letter of surname → shard",
+            "Traffic Distribution": "Shard 1: 3%, Shard 2: 4%, Shard 3: 4%, Shard 4: 89%",
+            "Can Rebalance": "NO — fixed range partitioning",
+            "Rerouting Available": "NO — data is physically on Shard 4"
+          },
+          "status": "Router is working correctly per its rules, but the rules create a hot partition. Cannot rebalance."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-router-s1", "source": "router", "target": "shard-1", "label": "3% traffic", "animated": true, "style": "normal" },
+      { "id": "e-router-s2", "source": "router", "target": "shard-2", "label": "4% traffic", "animated": true, "style": "normal" },
+      { "id": "e-router-s3", "source": "router", "target": "shard-3", "label": "4% traffic", "animated": true, "style": "normal" },
+      { "id": "e-router-s4", "source": "router", "target": "shard-4", "label": "89% traffic", "animated": true, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of Shard 4's overload?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "Shard 4's hardware is weaker than the other shards",
+          "correct": false,
+          "feedback": "All shards have identical hardware. The problem is that Shard 4 receives disproportionate traffic because the partitioning strategy (first letter of surname) doesn't distribute data evenly. When a trending event involves suspects whose names cluster in one range (S-Z), that shard becomes a hot partition."
+        },
+        {
+          "id": "rc-2",
+          "text": "The key-range partitioning strategy creates a hot partition because data access patterns are not uniformly distributed across alphabet ranges",
+          "correct": true,
+          "feedback": "Correct! Key-range partitioning (A-F, G-L, M-R, S-Z) assumes data and access patterns are evenly distributed across the alphabet. But real-world data is not uniform — surname distributions vary by culture, and trending events can concentrate traffic on specific key ranges. When the celebrity crime wave hit S-surnames, Shard 4 became a 'hot partition' receiving 89% of all traffic while the others sat idle. This is the fundamental risk of range-based partitioning."
+        },
+        {
+          "id": "rc-3",
+          "text": "There are too many celebrity crime reports — the system wasn't designed for this volume",
+          "correct": false,
+          "feedback": "The total volume (50,000 reports) is manageable — spread across all four shards, each would handle only 12,500 extra records, well within capacity. The problem is concentration, not volume. All 50,000 reports end up on ONE shard because of the partitioning strategy."
+        },
+        {
+          "id": "rc-4",
+          "text": "The shard router has a bug that sends too much traffic to Shard 4",
+          "correct": false,
+          "feedback": "The router is working exactly as designed — it correctly routes S-Z surnames to Shard 4. The bug is in the partitioning strategy itself, not the router's implementation. A correctly implemented bad strategy is still a bad strategy."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best partitioning strategy to prevent hot partitions?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Use hash-based partitioning — hash the record key and distribute based on the hash value, ensuring even distribution regardless of data patterns",
+          "correct": true,
+          "feedback": "Correct! Hash-based partitioning applies a hash function (like MD5 or SHA-256) to the partition key, then assigns records to shards based on the hash value. Because hash functions distribute outputs uniformly, even if all suspects have S-surnames, their hash values will be evenly spread across all shards. 'Sterling' might hash to Shard 2, 'Silva' to Shard 1, etc. The trade-off is that you lose the ability to do efficient range queries (like 'all surnames starting with S'), but you gain even distribution. Consistent hashing further improves this by making it easy to add/remove shards."
+        },
+        {
+          "id": "fix-2",
+          "text": "Add more shards to the S-Z range to split the load",
+          "correct": false,
+          "feedback": "Splitting S-Z into more sub-ranges (S-T, U-V, W-Z) helps temporarily but doesn't solve the fundamental problem. A future celebrity crime wave could concentrate on any sub-range. Hash-based partitioning distributes data evenly regardless of the key values."
+        },
+        {
+          "id": "fix-3",
+          "text": "Rebalance the ranges so each shard has equal records (e.g., move S to Shard 3)",
+          "correct": false,
+          "feedback": "Rebalancing based on current data helps now but requires constant manual adjustment as data patterns change. Tomorrow's trending topic might overload the newly rebalanced ranges. Hash-based partitioning provides automatic even distribution without manual intervention."
+        },
+        {
+          "id": "fix-4",
+          "text": "Use round-robin distribution — assign each new record to the next shard in sequence",
+          "correct": false,
+          "feedback": "Round-robin distributes writes evenly but makes lookups impossible without querying all shards (you don't know which shard holds a given record). Hash-based partitioning distributes evenly AND allows direct lookups — compute the hash to know exactly which shard to query."
+        }
+      ]
+    }
+  },
+  "conceptId": "data-partitioning",
+  "badge": {
+    "name": "Shard Surgeon",
+    "icon": "🔪"
+  }
+}

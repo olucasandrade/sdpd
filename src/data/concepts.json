@@ -1,0 +1,563 @@
+[
+  {
+    "id": "replication-basics",
+    "title": "Replication & Redundancy",
+    "summary": "Keep copies of data on multiple machines so the system survives individual failures.",
+    "explanation": [
+      "A single point of failure (SPOF) is any component whose failure brings down the entire system. If your only database server crashes, every client loses access.",
+      "Replication solves this by maintaining identical copies of data on multiple servers. If one fails, others can continue serving requests.",
+      "The simplest form is leader-follower replication: one server (the leader) handles writes, and one or more followers maintain copies. If the leader fails, a follower can be promoted.",
+      "Redundancy is the general principle: never depend on just one of anything critical. Apply it to databases, networks, power supplies — any single point of failure."
+    ],
+    "keyTerms": [
+      { "term": "Single Point of Failure (SPOF)", "definition": "A component that, if it fails, causes the entire system to stop working." },
+      { "term": "Replication", "definition": "Maintaining copies of data on multiple machines for redundancy and availability." },
+      { "term": "Failover", "definition": "The process of automatically switching to a backup system when the primary fails." },
+      { "term": "Replica", "definition": "A server that maintains a copy of data from another server." }
+    ]
+  },
+  {
+    "id": "leader-follower-replication",
+    "title": "Leader-Follower Replication",
+    "summary": "One server handles writes; followers replicate and serve reads — but may lag behind.",
+    "explanation": [
+      "In leader-follower replication, one server (the leader) accepts all write operations. One or more followers receive a stream of changes from the leader and apply them to their own copies.",
+      "Followers can serve read queries, which distributes the load. But there's a catch: replication takes time. A follower might be seconds, minutes, or even hours behind the leader.",
+      "This delay is called replication lag. If a client reads from a lagging follower, they might see stale (outdated) data — data that has already been updated on the leader.",
+      "For critical reads where freshness matters, applications can route those queries directly to the leader. This pattern is called 'read-your-writes' or 'read-from-leader' consistency."
+    ],
+    "keyTerms": [
+      { "term": "Leader (Primary/Master)", "definition": "The server that accepts write operations and sends changes to followers." },
+      { "term": "Follower (Replica/Slave)", "definition": "A server that receives and applies changes from the leader, serving read queries." },
+      { "term": "Replication Lag", "definition": "The delay between a write on the leader and when it appears on a follower." },
+      { "term": "Stale Read", "definition": "Reading outdated data from a follower that hasn't caught up with the leader." }
+    ]
+  },
+  {
+    "id": "sync-vs-async-replication",
+    "title": "Synchronous vs Asynchronous Replication",
+    "summary": "Sync replication guarantees durability but is slower; async is fast but risks data loss.",
+    "explanation": [
+      "With asynchronous replication, the leader acknowledges a write immediately after storing it locally, without waiting for any follower to confirm. This is fast, but if the leader crashes before replicating, that data is lost.",
+      "With synchronous replication, the leader waits for at least one follower to confirm it received the data before acknowledging the write to the client. This is slower, but guarantees the data exists on multiple machines.",
+      "Most systems use a hybrid approach: one follower is synchronous (guaranteed up-to-date), while others are asynchronous (for performance). This is called 'semi-synchronous' replication.",
+      "The trade-off is fundamental in distributed systems: durability vs. performance. For critical data (financial transactions, evidence), synchronous replication is worth the latency cost."
+    ],
+    "keyTerms": [
+      { "term": "Asynchronous Replication", "definition": "Leader acknowledges writes without waiting for follower confirmation. Fast but risks data loss." },
+      { "term": "Synchronous Replication", "definition": "Leader waits for follower confirmation before acknowledging. Slower but guarantees durability." },
+      { "term": "Durability", "definition": "The guarantee that once data is acknowledged, it won't be lost — even if servers crash." },
+      { "term": "Semi-Synchronous", "definition": "Hybrid approach where one follower is synchronous and others are asynchronous." }
+    ]
+  },
+  {
+    "id": "network-partitions",
+    "title": "Network Partitions & Split Brain",
+    "summary": "When network failures split a cluster, nodes may diverge — leading to conflicting data.",
+    "explanation": [
+      "A network partition occurs when nodes in a distributed system can't communicate with each other, even though each node is still running. The cluster splits into isolated groups.",
+      "Split brain is the dangerous consequence: if both sides of a partition think they're the leader, they'll both accept writes independently, creating conflicting data that's very hard to reconcile.",
+      "To prevent split brain, systems use quorum-based approaches: a node can only act as leader if it can communicate with a majority (quorum) of nodes. A partition minority cannot elect a new leader.",
+      "The CAP theorem tells us that during a network partition, a system must choose between consistency (reject operations) and availability (serve potentially stale data). You can't have both."
+    ],
+    "keyTerms": [
+      { "term": "Network Partition", "definition": "A failure where some nodes cannot communicate with others, splitting the cluster." },
+      { "term": "Split Brain", "definition": "A dangerous state where both sides of a partition think they are the leader." },
+      { "term": "Quorum", "definition": "The minimum number of nodes that must agree for an operation to proceed (usually majority)." },
+      { "term": "Fencing", "definition": "A mechanism to ensure only one node acts as leader, typically by revoking the old leader's access." }
+    ]
+  },
+  {
+    "id": "leader-election",
+    "title": "Leader Election",
+    "summary": "Algorithms that let distributed nodes agree on a single leader without a central coordinator.",
+    "explanation": [
+      "In many distributed systems, one node needs to act as the leader — coordinating writes, making decisions, or managing resources. But who decides which node leads?",
+      "Leader election algorithms (like Raft, Paxos, or ZAB) solve this. Nodes vote, and a candidate needs a majority to become leader. This prevents split brain.",
+      "Elections happen when the current leader fails or becomes unreachable. A timeout triggers candidates to request votes from peers.",
+      "Key requirements: exactly one leader at a time, fast detection of leader failure, and graceful handover. Consensus protocols make this reliable even with failures."
+    ],
+    "keyTerms": [
+      { "term": "Leader Election", "definition": "The process by which nodes choose a single leader from among themselves." },
+      { "term": "Consensus", "definition": "Agreement among distributed nodes on a single value or decision." },
+      { "term": "Term/Epoch", "definition": "A logical clock that increments with each new leader, preventing stale leaders from acting." },
+      { "term": "Heartbeat", "definition": "Periodic messages sent by the leader to prove it's still alive." }
+    ]
+  },
+  {
+    "id": "multi-leader-replication",
+    "title": "Multi-Leader Replication",
+    "summary": "Multiple nodes accept writes simultaneously — great for availability, tricky for conflicts.",
+    "explanation": [
+      "In multi-leader (multi-master) replication, more than one node can accept write operations. This improves availability and reduces latency for geographically distributed systems.",
+      "The catch: if two leaders independently modify the same data, you get a write conflict. Unlike single-leader where writes are ordered, multi-leader creates concurrent, conflicting writes.",
+      "Conflict resolution strategies include: last-writer-wins (LWW), merge the values, or let the application resolve it. Each has trade-offs.",
+      "Multi-leader is common in multi-datacenter setups and collaborative editing (like Google Docs). Use it when availability and latency matter more than strict consistency."
+    ],
+    "keyTerms": [
+      { "term": "Write Conflict", "definition": "Two leaders independently modify the same data, creating incompatible versions." },
+      { "term": "Last Writer Wins (LWW)", "definition": "Conflict resolution where the most recent write (by timestamp) is kept." },
+      { "term": "Conflict Resolution", "definition": "The strategy for deciding which version of conflicting data to keep." },
+      { "term": "CRDTs", "definition": "Conflict-free Replicated Data Types — data structures that can be merged automatically." }
+    ]
+  },
+  {
+    "id": "clock-synchronization",
+    "title": "Clock Synchronization",
+    "summary": "Physical clocks drift apart; logical clocks provide ordering without relying on wall-clock time.",
+    "explanation": [
+      "Every computer has a physical clock, but they drift. Two servers might disagree on the current time by milliseconds or even seconds. NTP helps but can't guarantee perfect sync.",
+      "This is dangerous when you use timestamps to order events. If Server A's clock is ahead, its events appear to happen 'after' Server B's — even if they actually happened first.",
+      "Logical clocks (Lamport clocks, vector clocks) solve this by tracking causal ordering rather than physical time. They tell you which events happened-before others.",
+      "For distributed systems, prefer logical ordering over physical timestamps. If you must use physical time, use synchronized clocks with bounded error (like Google's TrueTime)."
+    ],
+    "keyTerms": [
+      { "term": "Clock Skew", "definition": "The difference in time readings between two clocks at the same moment." },
+      { "term": "NTP", "definition": "Network Time Protocol — synchronizes clocks over a network, but with limited precision." },
+      { "term": "Lamport Clock", "definition": "A logical clock that provides a total order of events based on causality." },
+      { "term": "Happens-Before", "definition": "A partial ordering where event A happens-before B if A could have influenced B." }
+    ]
+  },
+  {
+    "id": "byzantine-faults",
+    "title": "Byzantine Fault Tolerance",
+    "summary": "Handling nodes that don't just fail — they lie, sending different data to different peers.",
+    "explanation": [
+      "Most fault tolerance assumes crash failures — nodes either work correctly or stop entirely. Byzantine faults are worse: a node might send conflicting information to different peers.",
+      "Named after the Byzantine Generals Problem: generals must agree on a battle plan, but some might be traitors sending contradictory messages.",
+      "Byzantine fault tolerance (BFT) requires at least 3f+1 nodes to tolerate f faulty nodes. This means you need 4 nodes to handle 1 Byzantine failure.",
+      "BFT is crucial in adversarial environments (blockchain, financial systems) but expensive in normal distributed systems. Most internal systems only handle crash faults."
+    ],
+    "keyTerms": [
+      { "term": "Byzantine Fault", "definition": "A failure where a node sends different, potentially contradictory data to different peers." },
+      { "term": "Crash Fault", "definition": "A simpler failure model where nodes either work correctly or completely stop." },
+      { "term": "3f+1 Rule", "definition": "The minimum number of nodes needed to tolerate f Byzantine failures." },
+      { "term": "Digital Signatures", "definition": "Cryptographic proof that a message came from a specific node and wasn't tampered with." }
+    ]
+  },
+  {
+    "id": "load-balancing",
+    "title": "Load Balancing",
+    "summary": "Distribute incoming requests across multiple servers to prevent any single server from being overwhelmed.",
+    "explanation": [
+      "A load balancer sits between clients and servers, distributing incoming requests across a pool of backend servers. This prevents any single server from becoming a bottleneck.",
+      "Common algorithms: round-robin (rotate through servers), least-connections (send to the least busy), weighted (prefer more powerful servers), and hash-based (consistent routing).",
+      "Without load balancing, a single gateway becomes a single point of failure. Multiple load balancers with health checks ensure both distribution and availability.",
+      "Layer 4 (TCP) load balancers route based on connection info; Layer 7 (HTTP) balancers can make smarter decisions based on request content, headers, or URLs."
+    ],
+    "keyTerms": [
+      { "term": "Load Balancer", "definition": "A component that distributes traffic across multiple backend servers." },
+      { "term": "Health Check", "definition": "Periodic probes to verify backend servers are healthy and can handle requests." },
+      { "term": "Round Robin", "definition": "A simple algorithm that cycles through servers in order." },
+      { "term": "Least Connections", "definition": "Routes new requests to the server with the fewest active connections." }
+    ]
+  },
+  {
+    "id": "cache-stampede",
+    "title": "Cache Stampede (Thundering Herd)",
+    "summary": "When a popular cache entry expires, many requests simultaneously hit the database.",
+    "explanation": [
+      "A cache stampede occurs when a frequently accessed cache entry expires and many concurrent requests all find it missing simultaneously. They all query the database at once.",
+      "This creates a massive spike in database load — potentially crashing it. The irony: the cache that was protecting the database now causes its failure.",
+      "Solutions include: cache locking (only one request rebuilds, others wait), early expiration (refresh before actual expiry), and stale-while-revalidate (serve stale data while updating).",
+      "Prevention is better than cure: stagger expiration times with random jitter, use background refresh for hot keys, and implement request coalescing."
+    ],
+    "keyTerms": [
+      { "term": "Cache Stampede", "definition": "Many requests simultaneously overwhelming the database when a popular cache entry expires." },
+      { "term": "Request Coalescing", "definition": "Combining duplicate concurrent requests into a single database query." },
+      { "term": "Cache Lock", "definition": "A lock ensuring only one request rebuilds a cache entry while others wait." },
+      { "term": "Jitter", "definition": "Adding random variation to expiration times to prevent simultaneous expirations." }
+    ]
+  },
+  {
+    "id": "data-partitioning",
+    "title": "Data Partitioning (Sharding)",
+    "summary": "Split data across multiple machines by a key — but choose the partition key wisely.",
+    "explanation": [
+      "When a single database can't handle all the data or traffic, sharding splits it across multiple machines. Each shard holds a subset of the data.",
+      "The partition key determines which shard holds which data. A bad key creates hot spots — one shard gets much more traffic than others.",
+      "Good partition keys distribute data evenly. Hash-based partitioning (hash the key, mod by shard count) gives even distribution but loses range query ability.",
+      "Resharding (changing the number of shards) is painful. Consistent hashing minimizes data movement when adding/removing shards."
+    ],
+    "keyTerms": [
+      { "term": "Shard", "definition": "A partition of data stored on a separate machine in a distributed database." },
+      { "term": "Partition Key", "definition": "The field used to determine which shard stores a particular piece of data." },
+      { "term": "Hot Spot", "definition": "A shard that receives disproportionately more traffic than others." },
+      { "term": "Consistent Hashing", "definition": "A technique that minimizes data redistribution when shards are added or removed." }
+    ]
+  },
+  {
+    "id": "horizontal-scaling",
+    "title": "Horizontal vs Vertical Scaling",
+    "summary": "Scale up (bigger machine) has limits; scale out (more machines) is how distributed systems grow.",
+    "explanation": [
+      "Vertical scaling (scale up) means adding more CPU, RAM, or disk to a single machine. It's simple but has hard limits — you can't buy an infinitely powerful server.",
+      "Horizontal scaling (scale out) means adding more machines. It's theoretically unlimited but requires your application to work across multiple servers.",
+      "Horizontally scaled systems need load balancing, data partitioning, and distributed coordination — significantly more complex than a single server.",
+      "The modern approach: design for horizontal scaling from the start. Stateless services, external data stores, and containerization make it practical."
+    ],
+    "keyTerms": [
+      { "term": "Vertical Scaling", "definition": "Adding more resources (CPU, RAM) to a single machine. Limited by hardware maximums." },
+      { "term": "Horizontal Scaling", "definition": "Adding more machines to distribute the workload. Theoretically unlimited." },
+      { "term": "Stateless Service", "definition": "A service that stores no session data locally, making any instance interchangeable." },
+      { "term": "Elasticity", "definition": "The ability to automatically scale resources up or down based on demand." }
+    ]
+  },
+  {
+    "id": "stateless-services",
+    "title": "Stateless Services",
+    "summary": "Services that store no local state are easy to scale, replace, and load-balance.",
+    "explanation": [
+      "A stateless service doesn't store any session or user data locally. Every request contains all the information needed to process it.",
+      "This makes scaling trivial: any instance can handle any request. If one crashes, others seamlessly take over with no data loss.",
+      "Sticky sessions (routing a user to the same server) defeat this purpose. If that server dies, the user loses their session.",
+      "Store state externally: in a database, Redis, or a session store. The service instances become interchangeable workers."
+    ],
+    "keyTerms": [
+      { "term": "Stateless", "definition": "A service that stores no user or session data locally between requests." },
+      { "term": "Sticky Sessions", "definition": "Routing a user always to the same server, creating a dependency on that server." },
+      { "term": "Session Store", "definition": "An external service (like Redis) that stores session data accessible by any instance." },
+      { "term": "Shared Nothing", "definition": "An architecture where each node is independent and shares no state with others." }
+    ]
+  },
+  {
+    "id": "cache-invalidation",
+    "title": "Cache Invalidation",
+    "summary": "The hardest problem in CS: knowing when cached data is stale and needs refreshing.",
+    "explanation": [
+      "Caching improves performance by storing frequently accessed data closer to the consumer. But when the source data changes, the cache becomes stale.",
+      "Cache invalidation strategies: write-through (update cache on every write), write-behind (async cache update), and TTL-based (expire after time).",
+      "The hardest cases involve multiple caches at different layers (application, CDN, browser) — invalidating all of them consistently is very difficult.",
+      "As Phil Karlton said: 'There are only two hard things in Computer Science: cache invalidation and naming things.'"
+    ],
+    "keyTerms": [
+      { "term": "Cache Invalidation", "definition": "The process of removing or updating stale entries in a cache." },
+      { "term": "Write-Through", "definition": "Writing to both the cache and database simultaneously on every update." },
+      { "term": "TTL (Time To Live)", "definition": "The duration a cache entry is considered valid before it expires." },
+      { "term": "Cache-Aside", "definition": "Application checks cache first; on miss, reads from DB and populates cache." }
+    ]
+  },
+  {
+    "id": "cache-expiry-strategies",
+    "title": "Cache Expiry Strategies",
+    "summary": "How and when cache entries expire determines your system's behavior under load.",
+    "explanation": [
+      "Fixed TTL gives every cache entry the same lifetime. Simple, but if many entries are created at the same time, they all expire together — causing a stampede.",
+      "Jittered TTL adds random variation to expiry times. This spreads expirations over time, preventing synchronized mass expiry.",
+      "Sliding window TTL resets the timer on each access, keeping popular entries cached longer while rarely-used ones expire.",
+      "Background refresh proactively updates entries before they expire, ensuring the cache always has fresh data and clients never see a cache miss."
+    ],
+    "keyTerms": [
+      { "term": "Fixed TTL", "definition": "A set expiration time for all cache entries, simple but prone to stampedes." },
+      { "term": "Jittered TTL", "definition": "Adding random time to TTL values to prevent synchronized expiration." },
+      { "term": "Sliding Window", "definition": "TTL resets on each access, keeping frequently used entries cached longer." },
+      { "term": "Background Refresh", "definition": "Proactively refreshing cache entries before they expire." }
+    ]
+  },
+  {
+    "id": "cache-locking",
+    "title": "Cache Locking & Request Coalescing",
+    "summary": "Prevent duplicate work by ensuring only one request rebuilds an expired cache entry.",
+    "explanation": [
+      "When a cache entry expires, the first request should acquire a lock, rebuild the entry, and release the lock. Other requests wait for the rebuild.",
+      "Without locking, N concurrent requests all miss the cache and all independently query the database — doing N times the work for the same result.",
+      "Request coalescing groups identical in-flight requests. Only one actually executes; the result is shared with all waiting requesters.",
+      "Probabilistic early expiration refreshes entries before they actually expire, based on a probability that increases as expiry approaches."
+    ],
+    "keyTerms": [
+      { "term": "Cache Lock", "definition": "A mutex ensuring only one process rebuilds an expired cache entry at a time." },
+      { "term": "Request Coalescing", "definition": "Merging identical concurrent requests into a single execution." },
+      { "term": "Probabilistic Early Expiration", "definition": "Randomly refreshing entries before TTL, with increasing probability near expiry." },
+      { "term": "Singleflight", "definition": "A pattern where duplicate function calls are suppressed, sharing one result." }
+    ]
+  },
+  {
+    "id": "cdn-caching",
+    "title": "CDN & Edge Caching",
+    "summary": "Cache content at the network edge, close to users — but beware stale content propagation.",
+    "explanation": [
+      "Content Delivery Networks (CDNs) cache content at edge locations worldwide. Users get served from the nearest edge, reducing latency dramatically.",
+      "CDN caching follows HTTP cache headers (Cache-Control, ETag, Last-Modified). Getting these headers wrong means serving stale content globally.",
+      "Purging CDN caches is not instant — it can take minutes to propagate across all edge locations. During this window, different users see different versions.",
+      "Strategies: use versioned URLs (file-v2.js) for instant updates, set short TTLs for dynamic content, and use cache tags for targeted purging."
+    ],
+    "keyTerms": [
+      { "term": "CDN", "definition": "A network of edge servers that cache and serve content close to users." },
+      { "term": "Cache-Control", "definition": "HTTP header that specifies caching behavior (max-age, no-cache, etc.)." },
+      { "term": "Cache Purge", "definition": "Explicitly removing content from CDN caches before TTL expiry." },
+      { "term": "Edge Location", "definition": "A CDN server geographically close to end users." }
+    ]
+  },
+  {
+    "id": "message-durability",
+    "title": "Message Durability",
+    "summary": "Messages stored only in memory are lost on crash; persistent queues survive failures.",
+    "explanation": [
+      "An in-memory message queue is fast but volatile. If the broker crashes, all queued messages are permanently lost.",
+      "Durable message queues write messages to disk before acknowledging receipt. This survives crashes at the cost of write latency.",
+      "Most production systems (Kafka, RabbitMQ with persistence) use a write-ahead log: messages are appended to disk sequentially, which is fast even for spinning disks.",
+      "The choice depends on your tolerance for data loss. Transient notifications can use in-memory queues; financial transactions need durable storage."
+    ],
+    "keyTerms": [
+      { "term": "Durable Queue", "definition": "A message queue that persists messages to disk, surviving broker crashes." },
+      { "term": "Write-Ahead Log", "definition": "A sequential, append-only log written to disk before processing." },
+      { "term": "At-Least-Once Delivery", "definition": "Guarantee that a message is delivered at least once (may be duplicated)." },
+      { "term": "Acknowledgment", "definition": "Confirmation from the consumer that a message has been processed." }
+    ]
+  },
+  {
+    "id": "idempotency",
+    "title": "Idempotency",
+    "summary": "Design operations so that executing them multiple times produces the same result as once.",
+    "explanation": [
+      "In distributed systems, messages can be delivered more than once (retries, network issues). If processing a message twice causes duplicate side effects, you have a problem.",
+      "An idempotent operation produces the same result regardless of how many times it's executed. 'Set balance to $100' is idempotent; 'Add $100 to balance' is not.",
+      "Implement idempotency with unique request IDs: store the ID of each processed request and skip duplicates. This is the idempotency key pattern.",
+      "Most message queues provide at-least-once delivery (not exactly-once). Idempotent consumers make at-least-once effectively equivalent to exactly-once."
+    ],
+    "keyTerms": [
+      { "term": "Idempotency", "definition": "The property where executing an operation multiple times has the same effect as once." },
+      { "term": "Idempotency Key", "definition": "A unique identifier for each request, used to detect and skip duplicates." },
+      { "term": "Exactly-Once Semantics", "definition": "The guarantee that a message is processed exactly once — very hard to achieve." },
+      { "term": "Deduplication", "definition": "The process of identifying and removing duplicate messages or requests." }
+    ]
+  },
+  {
+    "id": "backpressure",
+    "title": "Backpressure",
+    "summary": "When a system is overwhelmed, it needs to push back on producers rather than dropping data.",
+    "explanation": [
+      "Backpressure occurs when a downstream system can't keep up with the rate of incoming data. Without management, queues grow unbounded until memory is exhausted.",
+      "Strategies include: bounded queues (reject when full), rate limiting producers, scaling consumers, and flow control signals.",
+      "A well-designed system propagates backpressure upstream: if the database is slow, the queue should slow down, which should slow down the API, which should slow down clients.",
+      "Unbounded queues are dangerous — they mask problems by absorbing all incoming data until the system crashes from memory exhaustion."
+    ],
+    "keyTerms": [
+      { "term": "Backpressure", "definition": "A mechanism for overwhelmed systems to signal upstream to slow down." },
+      { "term": "Bounded Queue", "definition": "A queue with a maximum size that rejects or blocks when full." },
+      { "term": "Flow Control", "definition": "Regulating the rate of data transmission between components." },
+      { "term": "Dead Letter Queue", "definition": "A queue for messages that couldn't be processed after multiple attempts." }
+    ]
+  },
+  {
+    "id": "message-ordering",
+    "title": "Message Ordering",
+    "summary": "Maintaining the order of messages is hard when multiple consumers process them in parallel.",
+    "explanation": [
+      "When a single consumer processes messages sequentially, order is preserved. But for throughput, you want multiple consumers processing in parallel.",
+      "Parallel consumers may process messages out of order: Consumer A gets message 1 but is slow; Consumer B gets message 2 and finishes first.",
+      "Solutions: partition messages by a key (same key always goes to same consumer), use sequence numbers for reordering, or design operations to be order-independent.",
+      "Kafka solves this with partitions: messages within a partition are ordered, and each partition has one consumer. You get parallelism across partitions while maintaining order within them."
+    ],
+    "keyTerms": [
+      { "term": "FIFO", "definition": "First In, First Out — messages are processed in the order they arrive." },
+      { "term": "Partition", "definition": "A subset of a message stream, maintaining order within itself." },
+      { "term": "Sequence Number", "definition": "A monotonically increasing number assigned to each message for ordering." },
+      { "term": "Causal Ordering", "definition": "Ensuring causally related messages are processed in the correct order." }
+    ]
+  },
+  {
+    "id": "sharding",
+    "title": "Database Sharding",
+    "summary": "Splitting a database across machines by a key. Powerful for scale, painful to manage.",
+    "explanation": [
+      "Sharding distributes rows across multiple database servers. Each shard is an independent database holding a subset of the total data.",
+      "When a shard goes down, only its data is unavailable — but that data is completely inaccessible until the shard recovers.",
+      "Each shard should also be replicated for fault tolerance. A shard without replicas is itself a single point of failure.",
+      "Cross-shard queries (joins across shards) are expensive and complex. Design your shard key to minimize cross-shard operations."
+    ],
+    "keyTerms": [
+      { "term": "Shard", "definition": "An independent database partition holding a subset of total data." },
+      { "term": "Shard Key", "definition": "The field determining which shard stores each record." },
+      { "term": "Cross-Shard Query", "definition": "A query that needs data from multiple shards, requiring coordination." },
+      { "term": "Resharding", "definition": "The process of splitting or merging shards, usually disruptive." }
+    ]
+  },
+  {
+    "id": "cap-theorem",
+    "title": "The CAP Theorem",
+    "summary": "During a partition, choose consistency (all nodes see the same data) or availability (all nodes respond).",
+    "explanation": [
+      "The CAP theorem states: a distributed system can provide at most two of three guarantees: Consistency, Availability, and Partition tolerance.",
+      "Since network partitions are inevitable in distributed systems, the real choice is between CP (consistent but sometimes unavailable) and AP (available but sometimes inconsistent).",
+      "CP systems (like ZooKeeper) refuse requests during partitions to maintain consistency. AP systems (like Cassandra) serve requests but may return stale data.",
+      "In practice, most systems are tunable: you can choose consistency for some operations and availability for others. It's not all-or-nothing."
+    ],
+    "keyTerms": [
+      { "term": "Consistency", "definition": "All nodes see the same data at the same time." },
+      { "term": "Availability", "definition": "Every request receives a response (success or failure)." },
+      { "term": "Partition Tolerance", "definition": "The system continues operating despite network communication failures." },
+      { "term": "Eventual Consistency", "definition": "All replicas will converge to the same state, given enough time without updates." }
+    ]
+  },
+  {
+    "id": "data-integrity",
+    "title": "Data Integrity & Checksums",
+    "summary": "Verify data hasn't been corrupted in transit or storage using checksums and hashes.",
+    "explanation": [
+      "Data can be corrupted at any point: in transit over the network, during storage on disk, or during processing by software bugs.",
+      "Checksums (CRC32, MD5, SHA-256) create a fingerprint of data. If the data changes, the checksum won't match — detecting corruption.",
+      "End-to-end checksums are essential: verify data at every step of the pipeline, not just at the boundaries. A passing network checksum doesn't mean the application didn't corrupt it.",
+      "Immutable data stores and append-only logs make corruption easier to detect and recover from, since original data is never overwritten."
+    ],
+    "keyTerms": [
+      { "term": "Checksum", "definition": "A fixed-size value computed from data, used to detect corruption or tampering." },
+      { "term": "End-to-End Integrity", "definition": "Verifying data integrity at each step from producer to consumer." },
+      { "term": "Hash Function", "definition": "A function that maps data to a fixed-size fingerprint." },
+      { "term": "Bit Rot", "definition": "Gradual data corruption on storage media over time." }
+    ]
+  },
+  {
+    "id": "write-amplification",
+    "title": "Write Amplification",
+    "summary": "A single logical write can cause many physical writes in storage engines, impacting performance.",
+    "explanation": [
+      "Write amplification occurs when one application-level write results in multiple physical writes to storage. LSM-trees and B-trees both suffer from this in different ways.",
+      "LSM-trees write to a memtable first (fast), then flush to sorted files. Compaction merges these files, rewriting data multiple times — high write amplification.",
+      "B-trees write directly to pages on disk. A small update may require rewriting an entire page plus write-ahead logging — moderate write amplification.",
+      "Reducing write amplification: tune compaction strategies, use appropriate page sizes, batch writes, and choose the right storage engine for your workload."
+    ],
+    "keyTerms": [
+      { "term": "Write Amplification", "definition": "The ratio of physical writes to logical writes in a storage engine." },
+      { "term": "LSM-Tree", "definition": "Log-Structured Merge-tree — optimized for writes, uses compaction." },
+      { "term": "Compaction", "definition": "The process of merging and rewriting storage files to reclaim space and improve reads." },
+      { "term": "Write-Ahead Log (WAL)", "definition": "A sequential log written before modifying the actual data structure." }
+    ]
+  },
+  {
+    "id": "cascading-timeouts",
+    "title": "Cascading Timeouts",
+    "summary": "One slow service causes timeout chains that make the entire system appear down.",
+    "explanation": [
+      "When Service A calls Service B which calls Service C, a slow C causes B to wait, which causes A to wait. All three appear slow or down.",
+      "Long timeout values make this worse: A waits for B for 30 seconds, B waits for C for 30 seconds — A's client waits up to 60 seconds.",
+      "Timeouts should decrease deeper in the call chain. If A has a 5-second timeout, B should timeout at 3 seconds, and C at 1 second.",
+      "Circuit breakers, bulkheads, and async communication patterns prevent one slow service from bringing down the entire system."
+    ],
+    "keyTerms": [
+      { "term": "Cascading Failure", "definition": "A failure in one component triggering failures in dependent components." },
+      { "term": "Timeout Budget", "definition": "Allocating decreasing timeouts through the call chain." },
+      { "term": "Bulkhead", "definition": "Isolating components so a failure in one doesn't affect others." },
+      { "term": "Fail Fast", "definition": "Returning an error immediately rather than waiting for a slow dependency." }
+    ]
+  },
+  {
+    "id": "retry-strategies",
+    "title": "Retry Strategies",
+    "summary": "Retrying failed requests can help — or amplify the problem if done naively.",
+    "explanation": [
+      "Retries help with transient failures (network blips, brief unavailability). But retrying aggressively against a struggling service adds load and makes it worse.",
+      "Exponential backoff increases the delay between retries: 1s, 2s, 4s, 8s. This gives the failing service time to recover.",
+      "Add jitter to prevent synchronized retries from many clients (retry storms). Without jitter, all clients retry at exactly the same intervals.",
+      "Set a maximum retry count and implement circuit breakers to stop retrying entirely when a service is clearly down."
+    ],
+    "keyTerms": [
+      { "term": "Exponential Backoff", "definition": "Doubling the wait time between each retry attempt." },
+      { "term": "Retry Storm", "definition": "Many clients retrying simultaneously, overwhelming the recovering service." },
+      { "term": "Jitter", "definition": "Random variation added to retry timing to desynchronize clients." },
+      { "term": "Max Retries", "definition": "A limit on retry attempts to prevent infinite loops." }
+    ]
+  },
+  {
+    "id": "circuit-breakers",
+    "title": "Circuit Breakers",
+    "summary": "Stop calling a failing service to let it recover, instead of piling on more requests.",
+    "explanation": [
+      "A circuit breaker monitors calls to a service. After a threshold of failures, it 'opens' — immediately failing subsequent requests without actually calling the service.",
+      "This has three states: Closed (normal, requests pass through), Open (tripped, requests fail immediately), and Half-Open (testing if the service has recovered).",
+      "Without circuit breakers, a failing service gets overwhelmed by retries and normal traffic, preventing recovery. The breaker gives it breathing room.",
+      "Combine with fallbacks: when the circuit is open, return cached data, a default response, or a degraded experience instead of an error."
+    ],
+    "keyTerms": [
+      { "term": "Circuit Breaker", "definition": "A pattern that stops calling a failing service after a threshold of failures." },
+      { "term": "Closed State", "definition": "Normal operation — requests pass through to the service." },
+      { "term": "Open State", "definition": "Tripped — requests fail immediately without calling the service." },
+      { "term": "Half-Open State", "definition": "Testing — a limited number of requests are sent to check if the service recovered." }
+    ]
+  },
+  {
+    "id": "service-discovery",
+    "title": "Service Discovery",
+    "summary": "Services need to find each other dynamically — hardcoded addresses break when things change.",
+    "explanation": [
+      "In a dynamic environment (cloud, containers), services start and stop constantly. Hardcoded IP addresses and ports break when services move.",
+      "Service discovery provides a registry where services register themselves and look up others. DNS, Consul, etcd, and Kubernetes Services are common implementations.",
+      "Client-side discovery: the client queries the registry and picks a service instance. Server-side discovery: a load balancer queries the registry on behalf of clients.",
+      "Health checks ensure the registry only contains healthy instances. Stale entries (pointing to dead instances) cause failures."
+    ],
+    "keyTerms": [
+      { "term": "Service Registry", "definition": "A database of available service instances and their network locations." },
+      { "term": "Service Discovery", "definition": "The mechanism by which services find and communicate with each other." },
+      { "term": "DNS-Based Discovery", "definition": "Using DNS records to resolve service names to IP addresses." },
+      { "term": "Sidecar Proxy", "definition": "A proxy running alongside each service that handles discovery and routing." }
+    ]
+  },
+  {
+    "id": "distributed-deadlocks",
+    "title": "Distributed Deadlocks",
+    "summary": "Two services each hold a resource the other needs, causing both to wait forever.",
+    "explanation": [
+      "A deadlock occurs when two or more processes each hold a resource and wait for a resource held by another. Neither can proceed.",
+      "In distributed systems, deadlocks are harder to detect because the lock holders are on different machines. There's no single view of all locks.",
+      "Prevention strategies: always acquire locks in a consistent order, use timeouts on lock acquisition, and implement wait-for graph analysis.",
+      "Lock timeouts are the simplest solution: if you can't acquire a lock within N seconds, release your locks and retry. This breaks the deadlock at the cost of some wasted work."
+    ],
+    "keyTerms": [
+      { "term": "Deadlock", "definition": "A state where two or more processes are blocked forever, each waiting for the other." },
+      { "term": "Wait-For Graph", "definition": "A directed graph of which process is waiting for which, used to detect cycles (deadlocks)." },
+      { "term": "Lock Ordering", "definition": "Always acquiring locks in a predefined global order to prevent circular waits." },
+      { "term": "Lock Timeout", "definition": "Releasing locks and retrying if acquisition takes too long." }
+    ]
+  },
+  {
+    "id": "isolation-levels",
+    "title": "Transaction Isolation Levels",
+    "summary": "Control how much transactions can see each other's uncommitted changes.",
+    "explanation": [
+      "Isolation levels define what a transaction can see when other transactions are modifying data concurrently. Higher isolation prevents more anomalies but reduces concurrency.",
+      "Read Uncommitted: see everything, even uncommitted changes (dirty reads). Read Committed: only see committed data. Repeatable Read: see a consistent snapshot. Serializable: full isolation.",
+      "Phantom reads occur when a transaction re-executes a query and finds new rows that another transaction inserted. Only Serializable prevents this.",
+      "Most databases default to Read Committed. Use higher levels only when needed, as they reduce throughput through more aggressive locking."
+    ],
+    "keyTerms": [
+      { "term": "Dirty Read", "definition": "Reading data that has been modified by another transaction but not yet committed." },
+      { "term": "Phantom Read", "definition": "A query returns different rows because another transaction inserted or deleted rows." },
+      { "term": "Serializable", "definition": "The highest isolation level — transactions behave as if executed one at a time." },
+      { "term": "Snapshot Isolation", "definition": "Each transaction sees a consistent snapshot of the database at its start time." }
+    ]
+  },
+  {
+    "id": "sagas",
+    "title": "Saga Pattern",
+    "summary": "Coordinate multi-step distributed transactions with compensating actions instead of rollbacks.",
+    "explanation": [
+      "Traditional database transactions use ACID properties and rollback on failure. But in distributed systems, a single transaction spanning multiple services is impractical.",
+      "The Saga pattern breaks a distributed transaction into a sequence of local transactions. Each step has a compensating action that undoes its effect if a later step fails.",
+      "Two orchestration styles: choreography (each service triggers the next) and orchestration (a central coordinator manages the sequence).",
+      "Sagas provide eventual consistency, not immediate consistency. The system may be in an intermediate state between steps, which your application must handle."
+    ],
+    "keyTerms": [
+      { "term": "Saga", "definition": "A sequence of local transactions with compensating actions for failure handling." },
+      { "term": "Compensating Action", "definition": "An operation that undoes the effect of a previous step in the saga." },
+      { "term": "Choreography", "definition": "Each service in the saga triggers the next step via events." },
+      { "term": "Orchestrator", "definition": "A central coordinator that manages the saga's step sequence." }
+    ]
+  },
+  {
+    "id": "rate-limiting",
+    "title": "Rate Limiting",
+    "summary": "Control how many requests a client can make to protect your system from overload.",
+    "explanation": [
+      "Rate limiting restricts the number of requests a client can make within a time window. It protects services from abuse, traffic spikes, and cascading failures.",
+      "Common algorithms: fixed window (N requests per minute), sliding window (smoother), token bucket (allows bursts), and leaky bucket (constant rate).",
+      "Implement rate limiting at the API gateway level to protect all downstream services. Return HTTP 429 (Too Many Requests) with retry-after headers.",
+      "Different limits for different clients: authenticated users get higher limits, free tier gets lower limits, and internal services may have separate limits entirely."
+    ],
+    "keyTerms": [
+      { "term": "Rate Limit", "definition": "A maximum number of requests allowed within a time period." },
+      { "term": "Token Bucket", "definition": "An algorithm where tokens accumulate over time and each request consumes one." },
+      { "term": "HTTP 429", "definition": "The 'Too Many Requests' status code indicating rate limiting." },
+      { "term": "Throttling", "definition": "Slowing down or rejecting requests that exceed the allowed rate." }
+    ]
+  }
+]

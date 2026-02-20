@@ -1,0 +1,189 @@
+{
+  "id": "case-25",
+  "number": 25,
+  "title": "O Cofre Sobrecarregado",
+  "subtitle": "Registro de evidências com escrita intensiva causa amplificação massiva de armazenamento",
+  "brief": {
+    "narrative": "O novo sistema de registro de evidências em tempo real de Distributia era para ser uma revolução — cada frame de câmera corporal, cada leitura de sensor, cada transmissão de rádio registrada em um mecanismo de armazenamento baseado em LSM-tree para escritas rápidas. Funcionou bem durante o primeiro mês. Agora o armazenamento está enchendo 10x mais rápido que o esperado, o I/O de disco está nas alturas, e o sistema está gastando mais tempo reorganizando dados do que efetivamente escrevendo novas evidências. O processo de compaction em segundo plano está consumindo 90% da largura de banda de disco, e novas escritas estão começando a travar. O Chefe Partition autorizou 50 TB de armazenamento, mas já está 80% cheio após apenas um mês de dados que deveria ocupar apenas 5 TB.",
+    "symptoms": [
+      "Armazenamento está consumindo 10x mais espaço em disco do que o tamanho lógico dos dados",
+      "Processos de compaction em segundo plano estão usando 90% da largura de banda de I/O de disco",
+      "Novas escritas de evidências estão travando devido à contenção de I/O de disco",
+      "O mecanismo de armazenamento LSM-tree tem mais de 200 níveis não ordenados aguardando compaction"
+    ],
+    "objective": "Entender por que a carga de trabalho com escrita intensiva está causando amplificação massiva de armazenamento e recomendar estratégias de ajuste."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "bodycam-ingest",
+        "type": "client",
+        "label": "Body Camera Ingest",
+        "status": "healthy",
+        "position": { "x": 80, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Ingestão de Câmeras Corporais",
+          "logs": [
+            "[08:00:00] INFO: Ingesting frames at 500 writes/sec",
+            "[08:00:15] WARN: Write latency increasing — p99 now 800ms",
+            "[08:00:30] WARN: Write latency p99 now 2,400ms — compaction pressure"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Write Rate": "500 writes/sec",
+            "Data Generated (daily)": "~170 GB",
+            "Write Latency p99": "2,400ms (target: 50ms)"
+          },
+          "status": "Produzindo dados na taxa esperada, mas latência de escrita está disparando devido a backpressure do mecanismo de armazenamento."
+        }
+      },
+      {
+        "id": "radio-ingest",
+        "type": "client",
+        "label": "Radio Log Ingest",
+        "status": "healthy",
+        "position": { "x": 80, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Ingestão de Logs de Rádio",
+          "logs": [
+            "[08:00:00] INFO: Logging radio transmissions at 200 writes/sec",
+            "[08:00:30] WARN: Write latency increasing — p99 now 1,200ms"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Write Rate": "200 writes/sec",
+            "Data Generated (daily)": "~30 GB"
+          },
+          "status": "Operando normalmente, mas experimentando picos de latência de escrita pelo armazenamento compartilhado."
+        }
+      },
+      {
+        "id": "lsm-engine",
+        "type": "server",
+        "label": "LSM-Tree Storage Engine",
+        "status": "degraded",
+        "position": { "x": 380, "y": 150 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Mecanismo de Armazenamento LSM-Tree",
+          "logs": [
+            "[07:00:00] WARN: L0 SSTable count: 47 (threshold: 4)",
+            "[07:00:01] INFO: Compaction triggered: L0 → L1 merge",
+            "[07:15:00] WARN: Compaction backlog growing — 200+ pending compactions",
+            "[07:30:00] WARN: Write amplification ratio: 42x",
+            "[08:00:00] CRITICAL: Compaction consuming 90% disk I/O",
+            "[08:00:01] WARN: Write stalls detected — memtable flush blocked"
+          ],
+          "data": {
+            "Status": "DEGRADED",
+            "Write Amplification": "42x",
+            "Levels": "7 (L0 has 47 SSTables, limit is 4)",
+            "Pending Compactions": "213",
+            "Disk I/O (compaction)": "90%",
+            "Disk I/O (writes)": "8%",
+            "Logical Data Size": "5 TB",
+            "Actual Disk Usage": "48 TB"
+          },
+          "status": "Write amplification severa. Cada byte escrito resulta em 42 bytes de I/O real em disco devido a merges repetidos de compaction entre níveis."
+        }
+      },
+      {
+        "id": "disk-storage",
+        "type": "database",
+        "label": "Evidence Disk Array",
+        "status": "degraded",
+        "position": { "x": 620, "y": 150 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Array de Discos de Evidências",
+          "logs": [
+            "[08:00:00] WARN: Disk usage at 80% (48 TB / 50 TB)",
+            "[08:00:00] WARN: Disk I/O at 98% utilization",
+            "[08:00:01] WARN: I/O queue depth: 256 (max)"
+          ],
+          "data": {
+            "Status": "NEAR CAPACITY",
+            "Total Capacity": "50 TB",
+            "Used": "48 TB (80%)",
+            "Logical Data": "5 TB",
+            "Space Amplification": "9.6x",
+            "Disk I/O Utilization": "98%"
+          },
+          "status": "Disco quase cheio. 48 TB usados para 5 TB de dados lógicos devido a write amplification e space amplification do compaction."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-bodycam-lsm", "source": "bodycam-ingest", "target": "lsm-engine", "label": "500 writes/sec", "animated": true, "style": "normal" },
+      { "id": "e-radio-lsm", "source": "radio-ingest", "target": "lsm-engine", "label": "200 writes/sec", "animated": true, "style": "normal" },
+      { "id": "e-lsm-disk", "source": "lsm-engine", "target": "disk-storage", "label": "compaction I/O (42x amplified)", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Por que o sistema de armazenamento está usando 48 TB para apenas 5 TB de dados reais de evidências?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "Os serviços de ingestão estão escrevendo dados duplicados",
+          "correct": false,
+          "feedback": "Os serviços de ingestão estão escrevendo nas taxas esperadas. A sobrecarga de 10x no armazenamento é causada pelo processo interno de compaction do mecanismo de armazenamento, não por escritas duplicadas da aplicação."
+        },
+        {
+          "id": "rc-2",
+          "text": "O processo de compaction da LSM-tree reescreve dados muitas vezes entre níveis, causando write amplification massiva — cada byte lógico gera 42 bytes de I/O real em disco",
+          "correct": true,
+          "feedback": "Correto! LSM-trees lidam com escritas primeiro armazenando em memória (memtable), depois despejando em arquivos ordenados (SSTables) no disco. O compaction faz merge desses arquivos entre níveis para manter a ordem, mas cada merge reescreve os dados. Com write amplification de 42x, o I/O de disco e o uso de espaço do sistema explodem. Este é o tradeoff fundamental das LSM-trees: escritas iniciais rápidas, mas compaction em segundo plano custoso."
+        },
+        {
+          "id": "rc-3",
+          "text": "O array de discos tem um problema de hardware reportando capacidade incorreta",
+          "correct": false,
+          "feedback": "As métricas do disco estão corretas. Os 48 TB são dados reais no disco — resultado do compaction reescrevendo dados múltiplas vezes entre os níveis da LSM."
+        },
+        {
+          "id": "rc-4",
+          "text": "Os arquivos de evidência não estão sendo comprimidos antes do armazenamento",
+          "correct": false,
+          "feedback": "Compressão ajuda a reduzir espaço, mas não resolve o problema central de write amplification. Mesmo dados comprimidos são reescritos 42x durante o compaction."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor correção para reduzir a write amplification neste sistema de armazenamento LSM-tree?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Mudar para um mecanismo de armazenamento baseado em B-tree que modifica dados no local",
+          "correct": false,
+          "feedback": "B-trees têm menor write amplification, mas throughput de escrita muito pior para inserções sequenciais. Para uma carga de trabalho com escrita intensiva de 700 escritas/seg, uma LSM-tree é a escolha certa — ela só precisa de ajuste."
+        },
+        {
+          "id": "fix-2",
+          "text": "Ajustar o compaction da LSM: aumentar o tamanho da memtable, usar leveled compaction com size-tiered no L0, e limitar compactions concorrentes para reduzir contenção de I/O",
+          "correct": true,
+          "feedback": "Correto! Ajustar a LSM-tree reduz a write amplification: memtables maiores significam menos flushes, leveled compaction controla a space amplification, e limitar compactions concorrentes previne fome de I/O para escritas. Estes são os ajustes padrão para gerenciar write amplification em sistemas LSM-tree como RocksDB e Cassandra."
+        },
+        {
+          "id": "fix-3",
+          "text": "Desabilitar o compaction completamente para eliminar a write amplification",
+          "correct": false,
+          "feedback": "Sem compaction, o número de SSTables cresce sem limites, e a performance de leitura colapsa (você teria que verificar centenas de arquivos por consulta). Compaction é essencial — só precisa ser ajustado, não desabilitado."
+        },
+        {
+          "id": "fix-4",
+          "text": "Adicionar 10x mais armazenamento em disco para acomodar a amplificação",
+          "correct": false,
+          "feedback": "Mais armazenamento é um paliativo. Write amplification também consome largura de banda de I/O de disco, causando as travadas de escrita. Você precisa reduzir o fator de amplificação em si, não apenas adicionar mais disco."
+        }
+      ]
+    }
+  },
+  "conceptId": "write-amplification",
+  "badge": {
+    "name": "Otimizador de Escritas",
+    "icon": "✍️"
+  }
+}

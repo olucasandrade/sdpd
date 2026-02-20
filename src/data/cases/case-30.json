@@ -1,0 +1,197 @@
+{
+  "id": "case-30",
+  "number": 30,
+  "title": "The Deadlock District",
+  "subtitle": "Two services locked in an eternal standoff",
+  "brief": {
+    "narrative": "It's shift change at Distributia PD, and the system has frozen solid. The Weapon Registry Service and the Officer Duty Service are both completely unresponsive — no errors, no crashes, just silence. Investigation reveals a deadly embrace: at 18:00:01, the Weapon Registry acquired a lock on Officer #347's weapon assignment record and then tried to lock the officer's duty status to verify they're on shift. At the exact same moment, the Officer Duty Service acquired a lock on Officer #347's duty status and then tried to lock the weapon assignment record to update the officer's equipment list. Each service holds the lock the other needs, and neither will release its lock until it gets the other. They're deadlocked — frozen in an infinite wait, holding the entire shift change hostage. Captain Gridlock has 200 officers waiting to check in their weapons and go home, and 200 more waiting to arm up and start patrol. Nobody can do either.",
+    "symptoms": [
+      "Weapon Registry Service and Officer Duty Service both completely unresponsive (no errors, no timeouts)",
+      "Both services show 100% thread utilization but 0% CPU — threads are blocked, not working",
+      "Shift change process frozen — officers cannot check in or check out weapons",
+      "Thread dumps show both services waiting to acquire locks held by the other"
+    ],
+    "objective": "Identify the distributed deadlock between two services and determine the correct strategy to prevent and resolve deadlocks in distributed systems."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "weapon-registry",
+        "type": "server",
+        "label": "Weapon Registry",
+        "status": "failed",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Weapon Registry Service",
+          "logs": [
+            "[18:00:01] INFO: Processing weapon return for Officer #347",
+            "[18:00:01] INFO: LOCK ACQUIRED — weapon_assignment_347",
+            "[18:00:01] INFO: Requesting lock on duty_status_347 to verify shift status...",
+            "[18:00:01] WARN: Waiting for lock on duty_status_347 — held by Officer Duty Service",
+            "[18:00:31] WARN: Still waiting for lock on duty_status_347 — 30s elapsed",
+            "[18:02:01] WARN: Still waiting for lock on duty_status_347 — 120s elapsed"
+          ],
+          "data": {
+            "Status": "DEADLOCKED",
+            "Lock Held": "weapon_assignment_347",
+            "Lock Waiting For": "duty_status_347",
+            "Lock Timeout": "NONE (waits indefinitely)",
+            "Blocked Threads": "50/50",
+            "CPU Usage": "0.1% (threads sleeping, not working)"
+          },
+          "status": "Holding weapon lock, waiting indefinitely for duty status lock held by Officer Duty Service."
+        }
+      },
+      {
+        "id": "officer-duty",
+        "type": "server",
+        "label": "Officer Duty Service",
+        "status": "failed",
+        "position": { "x": 550, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Officer Duty Service",
+          "logs": [
+            "[18:00:01] INFO: Processing shift change for Officer #347",
+            "[18:00:01] INFO: LOCK ACQUIRED — duty_status_347",
+            "[18:00:01] INFO: Requesting lock on weapon_assignment_347 to update equipment list...",
+            "[18:00:01] WARN: Waiting for lock on weapon_assignment_347 — held by Weapon Registry",
+            "[18:00:31] WARN: Still waiting for lock on weapon_assignment_347 — 30s elapsed",
+            "[18:02:01] WARN: Still waiting for lock on weapon_assignment_347 — 120s elapsed"
+          ],
+          "data": {
+            "Status": "DEADLOCKED",
+            "Lock Held": "duty_status_347",
+            "Lock Waiting For": "weapon_assignment_347",
+            "Lock Timeout": "NONE (waits indefinitely)",
+            "Blocked Threads": "50/50",
+            "CPU Usage": "0.2% (threads sleeping, not working)"
+          },
+          "status": "Holding duty status lock, waiting indefinitely for weapon lock held by Weapon Registry."
+        }
+      },
+      {
+        "id": "shift-terminal",
+        "type": "client",
+        "label": "Shift Change Terminal",
+        "status": "failed",
+        "position": { "x": 325, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Shift Change Terminal",
+          "logs": [
+            "[18:00:05] INFO: Officer #348 requesting weapon check-in — sending to Weapon Registry",
+            "[18:00:35] WARN: No response from Weapon Registry — 30s timeout",
+            "[18:01:00] INFO: Officer #349 requesting shift start — sending to Officer Duty Service",
+            "[18:01:30] WARN: No response from Officer Duty Service — 30s timeout",
+            "[18:02:00] ERROR: Both services unresponsive — shift change blocked"
+          ],
+          "data": {
+            "Officers Waiting (Off-Duty)": "200 (cannot return weapons)",
+            "Officers Waiting (On-Duty)": "200 (cannot receive weapons)",
+            "Services Responding": "0 of 2",
+            "Shift Change Status": "COMPLETELY BLOCKED"
+          },
+          "status": "400 officers stuck at shift change. Both required services are deadlocked."
+        }
+      },
+      {
+        "id": "lock-manager",
+        "type": "database",
+        "label": "Distributed Lock Store",
+        "status": "degraded",
+        "position": { "x": 325, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Redis Lock Store",
+          "logs": [
+            "[18:00:01] INFO: Lock granted — weapon_assignment_347 → Weapon Registry (no TTL)",
+            "[18:00:01] INFO: Lock granted — duty_status_347 → Officer Duty Service (no TTL)",
+            "[18:00:01] INFO: Lock request — duty_status_347 → Weapon Registry (QUEUED — already held)",
+            "[18:00:01] INFO: Lock request — weapon_assignment_347 → Officer Duty Service (QUEUED — already held)",
+            "[18:05:00] WARN: 2 locks held for >5 minutes with no release"
+          ],
+          "data": {
+            "Active Locks": "2 (both stuck)",
+            "Lock TTL": "NONE — locks never expire",
+            "Deadlock Detection": "NOT IMPLEMENTED",
+            "Lock Order Enforcement": "NONE"
+          },
+          "status": "Two locks held indefinitely. No TTL, no deadlock detection, no lock ordering."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-weapon-lock", "source": "weapon-registry", "target": "lock-manager", "label": "holds weapon lock, wants duty lock", "animated": false, "style": "slow" },
+      { "id": "e-duty-lock", "source": "officer-duty", "target": "lock-manager", "label": "holds duty lock, wants weapon lock", "animated": false, "style": "slow" },
+      { "id": "e-terminal-weapon", "source": "shift-terminal", "target": "weapon-registry", "label": "no response", "animated": false, "style": "broken" },
+      { "id": "e-terminal-duty", "source": "shift-terminal", "target": "officer-duty", "label": "no response", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of both services being completely frozen?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The distributed lock store (Redis) has a bug that prevents locks from being released",
+          "correct": false,
+          "feedback": "Redis is working correctly — it granted the locks as requested and is faithfully waiting for release commands. The lock store is just doing what it was told. The problem is the order in which the services acquire locks: they each grab one lock and then try to grab the other, creating a circular wait."
+        },
+        {
+          "id": "rc-2",
+          "text": "A distributed deadlock — two services each hold a lock the other needs, with no timeout or ordering to break the cycle",
+          "correct": true,
+          "feedback": "Correct! This is a classic deadlock with all four Coffman conditions met: mutual exclusion (locks are exclusive), hold and wait (each service holds one lock while waiting for another), no preemption (locks can't be forcibly taken), and circular wait (A waits for B, B waits for A). The lack of lock timeouts means neither service will ever give up, and the lack of a consistent lock ordering means the circular dependency can form."
+        },
+        {
+          "id": "rc-3",
+          "text": "The services crashed but their locks weren't released because there's no TTL",
+          "correct": false,
+          "feedback": "The services didn't crash — they're still running with 100% thread utilization. They're alive but blocked, which is actually worse than a crash (a crash would at least be detected by health checks). The threads are sleeping, waiting for locks they'll never get."
+        },
+        {
+          "id": "rc-4",
+          "text": "The shift change process sends too many concurrent requests, overwhelming the lock store",
+          "correct": false,
+          "feedback": "The lock store is not overwhelmed — it has only 2 active locks. The issue isn't volume, it's the ordering of lock acquisition. Even a single pair of requests can cause a deadlock if two services acquire locks in opposite orders."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best approach to prevent distributed deadlocks?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Add more threads to both services so some threads remain available even when others are blocked",
+          "correct": false,
+          "feedback": "More threads just means more threads that can participate in deadlocks. The deadlocked threads will never release — adding more just delays the point where all threads are consumed. You need to prevent or break the deadlock itself."
+        },
+        {
+          "id": "fix-2",
+          "text": "Enforce a global lock ordering — all services must acquire locks in the same consistent order, and add lock timeouts (TTL) as a safety net",
+          "correct": true,
+          "feedback": "Correct! Consistent lock ordering breaks the circular wait condition. If all services always acquire the duty lock before the weapon lock (or vice versa), two services can never end up each holding what the other needs. Lock timeouts (TTL) add a safety net — if a deadlock somehow occurs, the locks expire and free the services. Together, these prevent deadlocks and limit their impact if one slips through."
+        },
+        {
+          "id": "fix-3",
+          "text": "Remove distributed locking entirely and use optimistic concurrency with version numbers",
+          "correct": false,
+          "feedback": "Optimistic concurrency works well for low-contention scenarios, but weapon assignments during shift change have high contention — 400 officers simultaneously. You'd see constant conflicts and retries. The better approach is to keep locking but enforce ordering and add timeouts."
+        },
+        {
+          "id": "fix-4",
+          "text": "Merge Weapon Registry and Officer Duty into a single service so locks are local, not distributed",
+          "correct": false,
+          "feedback": "While consolidation eliminates the distributed aspect, local deadlocks can still occur within a single service. Plus, merging services violates the single-responsibility principle and creates a larger blast radius. The correct fix — lock ordering and timeouts — works for both local and distributed deadlocks."
+        }
+      ]
+    }
+  },
+  "conceptId": "distributed-deadlocks",
+  "badge": {
+    "name": "Lock Smith",
+    "icon": "🔐"
+  }
+}

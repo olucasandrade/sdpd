@@ -1,0 +1,180 @@
+{
+  "id": "case-01",
+  "number": 1,
+  "title": "O Ponto Único de Falha",
+  "subtitle": "Registros criminais ficam inacessíveis em todas as delegacias",
+  "brief": {
+    "narrative": "São 2 da manhã e a central está inundada de chamados. Todas as delegacias de Distributia reportam o mesmo problema: os policiais não conseguem consultar registros criminais. Sem antecedentes, sem mandados, sem casos pendentes. O Banco de Dados Central de Registros Criminais — o único — acabou de sair do ar. Um policial parou um suspeito com 3 mandados pendentes e teve que liberá-lo porque o sistema não mostrava nada. O Chefe Partition quer respostas, Detetive.",
+    "symptoms": [
+      "Todas as 3 delegacias reportam perda total de acesso aos registros criminais",
+      "O servidor central do banco de dados apresenta alerta de falha de hardware",
+      "Nenhum sistema de backup está respondendo",
+      "Policiais em campo não conseguem verificar mandados ou antecedentes"
+    ],
+    "objective": "Identificar por que a falha de um único servidor derrubou todo o sistema de registros e recomendar uma solução para evitar que isso aconteça novamente."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "db-central",
+        "type": "database",
+        "label": "Central Records DB",
+        "status": "failed",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados Central de Registros",
+          "logs": [
+            "[02:01:33] WARN: Disk I/O latency exceeding thresholds",
+            "[02:01:47] ERROR: Disk failure detected on /dev/sda1",
+            "[02:01:48] FATAL: Unable to read data files",
+            "[02:01:48] FATAL: Database process terminated",
+            "[02:01:49] INFO: No failover configured"
+          ],
+          "data": {
+            "Status": "OFFLINE",
+            "Uptime": "0s (crashed)",
+            "Records": "2.4M records (inaccessible)",
+            "Replicas": "None configured",
+            "Last Backup": "72 hours ago"
+          },
+          "status": "Falha de hardware — disco danificado. Nenhuma replicação ou failover configurado."
+        }
+      },
+      {
+        "id": "precinct-north",
+        "type": "client",
+        "label": "North Precinct",
+        "status": "failed",
+        "position": { "x": 100, "y": 280 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal da Delegacia Norte",
+          "logs": [
+            "[02:02:01] ERROR: Connection to records DB refused",
+            "[02:02:01] ERROR: Query timeout after 5000ms",
+            "[02:02:15] WARN: All record lookups failing"
+          ],
+          "data": {
+            "Status": "NO DATABASE CONNECTION",
+            "Pending Queries": "47",
+            "Officers Active": "12"
+          },
+          "status": "Não consegue conectar ao banco de dados central. Nenhum fallback disponível."
+        }
+      },
+      {
+        "id": "precinct-south",
+        "type": "client",
+        "label": "South Precinct",
+        "status": "failed",
+        "position": { "x": 350, "y": 280 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal da Delegacia Sul",
+          "logs": [
+            "[02:02:03] ERROR: Connection to records DB refused",
+            "[02:02:04] ERROR: Query timeout after 5000ms"
+          ],
+          "data": {
+            "Status": "NO DATABASE CONNECTION",
+            "Pending Queries": "23",
+            "Officers Active": "8"
+          },
+          "status": "Não consegue conectar ao banco de dados central. Nenhum fallback disponível."
+        }
+      },
+      {
+        "id": "precinct-east",
+        "type": "client",
+        "label": "East Precinct",
+        "status": "failed",
+        "position": { "x": 600, "y": 280 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal da Delegacia Leste",
+          "logs": [
+            "[02:02:05] ERROR: Connection to records DB refused",
+            "[02:02:06] ERROR: Query timeout after 5000ms"
+          ],
+          "data": {
+            "Status": "NO DATABASE CONNECTION",
+            "Pending Queries": "31",
+            "Officers Active": "10"
+          },
+          "status": "Não consegue conectar ao banco de dados central. Nenhum fallback disponível."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-db-north", "source": "db-central", "target": "precinct-north", "label": "queries", "animated": false, "style": "broken" },
+      { "id": "e-db-south", "source": "db-central", "target": "precinct-south", "label": "queries", "animated": false, "style": "broken" },
+      { "id": "e-db-east", "source": "db-central", "target": "precinct-east", "label": "queries", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz da indisponibilidade em todo o sistema?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "Uma partição de rede está impedindo as delegacias de acessar o banco de dados",
+          "correct": false,
+          "feedback": "Não é isso. Os logs do banco de dados mostram uma falha de disco (hardware), não um problema de rede. Todas as delegacias sofrem o mesmo problema porque todas dependem do mesmo servidor único."
+        },
+        {
+          "id": "rc-2",
+          "text": "O servidor único de banco de dados é um ponto único de falha — quando ele caiu, não havia réplica para atender as requisições",
+          "correct": true,
+          "feedback": "Correto! Todo o sistema depende de um único servidor de banco de dados sem réplicas. Quando o disco desse servidor falhou, todas as delegacias perderam o acesso. Este é o clássico problema de Ponto Único de Falha (SPOF)."
+        },
+        {
+          "id": "rc-3",
+          "text": "O banco de dados ficou sem espaço de armazenamento devido ao excesso de registros",
+          "correct": false,
+          "feedback": "Os logs mostram uma falha física de disco (crash de hardware), não um problema de capacidade de armazenamento. Mas mesmo que fosse um problema de espaço, a verdadeira questão arquitetural é que existe apenas um servidor."
+        },
+        {
+          "id": "rc-4",
+          "text": "Consultas simultâneas demais das delegacias sobrecarregaram o banco de dados",
+          "correct": false,
+          "feedback": "Os logs mostram uma falha de hardware no disco, não sobrecarga de desempenho. As consultas estão falhando porque o servidor está fora do ar, não porque está sobrecarregado."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor solução para evitar que isso aconteça novamente?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Adicionar replicação de banco de dados — manter pelo menos uma réplica que possa assumir caso o primário falhe",
+          "correct": true,
+          "feedback": "Correto! A replicação de banco de dados cria cópias dos dados em servidores separados. Se o primário (líder) falhar, uma réplica (seguidor) pode ser promovida para atender as requisições. Isso elimina o ponto único de falha."
+        },
+        {
+          "id": "fix-2",
+          "text": "Aumentar a frequência de backup de 72 horas para 1 hora",
+          "correct": false,
+          "feedback": "Backups mais frequentes ajudam na recuperação de dados, mas não resolvem o problema de disponibilidade. Restaurar um backup leva tempo — você precisa de uma réplica ativa que possa assumir imediatamente."
+        },
+        {
+          "id": "fix-3",
+          "text": "Dar a cada delegacia sua própria cópia completa do banco de dados que funcione offline",
+          "correct": false,
+          "feedback": "Embora isso elimine o ponto único de falha, manter cópias independentes completas em cada delegacia cria um pesadelo de consistência de dados. Como manter todas as cópias sincronizadas? Replicação com configuração líder-seguidor é a abordagem padrão."
+        },
+        {
+          "id": "fix-4",
+          "text": "Instalar um disco melhor com redundância RAID no servidor atual",
+          "correct": false,
+          "feedback": "RAID protege contra falha de disco em uma máquina, mas não ajuda se o servidor inteiro cair (energia, placa-mãe, etc.). Redundância real requer máquinas separadas — é isso que a replicação oferece."
+        }
+      ]
+    }
+  },
+  "conceptId": "replication-basics",
+  "badge": {
+    "name": "Novato em Redundância",
+    "icon": "🛡️"
+  }
+}

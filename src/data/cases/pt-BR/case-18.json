@@ -1,0 +1,184 @@
+{
+  "id": "case-18",
+  "number": 18,
+  "title": "O Despacho Perdido",
+  "subtitle": "Queda do servidor faz todas as chamadas de despacho pendentes desaparecerem da fila",
+  "brief": {
+    "narrative": "O sistema de despacho da DP de Distributia usa uma fila de mensagens para gerenciar as atribuições de patrulha. Quando uma chamada de emergência chega, ela é colocada na fila, e as unidades de patrulha disponíveis pegam as atribuições do outro lado. Estava funcionando perfeitamente — até o servidor da fila cair às 3h da manhã durante uma sexta-feira movimentada. Quando voltou ao ar 4 minutos depois, a fila estava vazia. Vinte e três chamadas de despacho que estavam aguardando na fila — incluindo dois relatos de assalto à mão armada de alta prioridade — simplesmente desapareceram. A fila estava operando inteiramente em memória, sem persistência. Essas chamadas nunca foram despachadas. O Chefe Partition precisa saber por que mensagens críticas de despacho podem simplesmente desaparecer, Detetive.",
+    "symptoms": [
+      "23 mensagens de despacho pendentes perdidas durante queda de 4 minutos do servidor",
+      "Servidor da fila reiniciou com a fila vazia — sem recuperação das mensagens pendentes",
+      "Duas chamadas de alta prioridade de assalto à mão armada estavam entre os despachos perdidos",
+      "Fila configurada apenas com armazenamento em memória — sem persistência em disco"
+    ],
+    "objective": "Identificar por que a fila de mensagens perdeu todas as mensagens pendentes durante a queda e recomendar uma estratégia de durabilidade."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "dispatch-intake",
+        "type": "server",
+        "label": "911 Dispatch Intake",
+        "status": "healthy",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Sistema de Recebimento de Chamadas de Emergência",
+          "logs": [
+            "[03:00:01] INFO: Dispatch call #D-4471 queued (armed robbery)",
+            "[03:00:15] INFO: Dispatch call #D-4472 queued (armed robbery)",
+            "[03:01:00] INFO: 21 additional calls queued between 03:00-03:04",
+            "[03:04:10] WARN: Queue server connection lost — calls buffering locally"
+          ],
+          "data": {
+            "Calls Sent to Queue": "23 (between 03:00-03:04)",
+            "Acknowledgments Received": "23 (queue accepted them)",
+            "Status": "HEALTHY"
+          },
+          "status": "Sistema de recebimento funcionando. Todas as 23 chamadas foram aceitas pela fila."
+        }
+      },
+      {
+        "id": "message-queue",
+        "type": "server",
+        "label": "Message Queue",
+        "status": "failed",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Fila de Mensagens de Despacho",
+          "logs": [
+            "[03:00:00] INFO: 23 messages in queue (in-memory)",
+            "[03:04:05] FATAL: Process crashed — out of memory",
+            "[03:04:06] INFO: All in-memory data lost",
+            "[03:08:10] INFO: Server restarted — queue is EMPTY",
+            "[03:08:11] WARN: No persistence layer — cannot recover messages"
+          ],
+          "data": {
+            "Storage": "In-memory ONLY",
+            "Persistence": "DISABLED",
+            "Messages Before Crash": "23",
+            "Messages After Restart": "0",
+            "Write-Ahead Log": "Not configured",
+            "Disk Backup": "None"
+          },
+          "status": "Falhou. Todas as 23 mensagens na fila foram permanentemente perdidas — sem persistência configurada."
+        }
+      },
+      {
+        "id": "patrol-units",
+        "type": "client",
+        "label": "Patrol Units",
+        "status": "degraded",
+        "position": { "x": 600, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Frota de Unidades de Patrulha",
+          "logs": [
+            "[03:04:10] WARN: No new dispatches received",
+            "[03:08:15] INFO: Queue reconnected — but no pending assignments",
+            "[03:08:20] WARN: 23 calls never dispatched to any unit"
+          ],
+          "data": {
+            "Available Units": "12",
+            "Dispatches Received (03:00-03:08)": "0",
+            "Expected Dispatches": "23",
+            "Status": "IDLE (waiting for assignments that were lost)"
+          },
+          "status": "Unidades de patrulha nunca receberam as 23 chamadas de despacho perdidas."
+        }
+      },
+      {
+        "id": "callers",
+        "type": "client",
+        "label": "911 Callers",
+        "status": "failed",
+        "position": { "x": 350, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Pessoas que Ligaram para Emergência",
+          "logs": [
+            "[03:15:00] WARN: Caller #D-4471 called back — no officers arrived",
+            "[03:18:00] WARN: Caller #D-4472 called back — armed robbery still in progress"
+          ],
+          "data": {
+            "Affected Callers": "23",
+            "High Priority Lost": "2 (armed robbery)",
+            "Avg Wait Before Callback": "15 minutes"
+          },
+          "status": "Pessoas aguardando resposta de despachos que nunca foram enviados."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-intake-queue", "source": "dispatch-intake", "target": "message-queue", "label": "enqueue calls", "animated": true, "style": "normal" },
+      { "id": "e-queue-patrol", "source": "message-queue", "target": "patrol-units", "label": "dispatch (lost)", "animated": false, "style": "broken" },
+      { "id": "e-callers-intake", "source": "callers", "target": "dispatch-intake", "label": "911 calls", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz da perda das 23 mensagens de despacho?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O sistema de recebimento de chamadas falhou ao enviar as mensagens para a fila corretamente",
+          "correct": false,
+          "feedback": "O sistema de recebimento enviou com sucesso todas as 23 mensagens e recebeu confirmações da fila. As mensagens foram aceitas e armazenadas — só que foram armazenadas apenas em memória volátil."
+        },
+        {
+          "id": "rc-2",
+          "text": "A fila de mensagens armazenava dados apenas em memória, sem persistência — quando ela caiu, todas as mensagens pendentes foram permanentemente perdidas",
+          "correct": true,
+          "feedback": "Correto! A fila não tinha nenhum mecanismo de durabilidade — sem write-ahead log, sem persistência em disco, sem replicação. Filas apenas em memória são rápidas, mas voláteis. Quando o processo caiu, a RAM foi limpa e todas as 23 mensagens desapareceram. A durabilidade de mensagens requer persistir as mensagens em disco antes de confirmá-las."
+        },
+        {
+          "id": "rc-3",
+          "text": "As unidades de patrulha consumiram as mensagens, mas falharam ao processá-las",
+          "correct": false,
+          "feedback": "As unidades de patrulha nunca receberam as mensagens. As mensagens estavam na fila aguardando para serem consumidas quando o servidor caiu. As mensagens foram perdidas antes da entrega, não depois."
+        },
+        {
+          "id": "rc-4",
+          "text": "O processo de recuperação do servidor da fila tem um bug que limpa a fila ao reiniciar",
+          "correct": false,
+          "feedback": "Não há bug — a fila genuinamente não tem nada para recuperar. Com armazenamento apenas em memória, não há dados em disco para restaurar. A fila vazia após o reinício é o comportamento esperado (mesmo que infeliz)."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor correção para evitar perda de mensagens durante quedas do servidor da fila?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Habilitar persistência de mensagens — gravar mensagens em disco (write-ahead log) antes de confirmá-las para que sobrevivam a quedas do servidor",
+          "correct": true,
+          "feedback": "Correto! Filas de mensagens duráveis persistem as mensagens em disco antes de confirmar o recebimento. Um write-ahead log (WAL) garante que, mesmo se o servidor cair, as mensagens possam ser recuperadas do disco ao reiniciar. Isso troca um pouco de latência de escrita por entrega garantida — um requisito crítico para sistemas como despacho de emergência."
+        },
+        {
+          "id": "fix-2",
+          "text": "Adicionar um segundo servidor de fila em memória como backup",
+          "correct": false,
+          "feedback": "Um segundo servidor em memória ajuda com disponibilidade, mas ambos os servidores ainda perdem dados ao cair. Se o primário cair antes de replicar para o backup, as mensagens ainda são perdidas. Durabilidade real requer persistência em disco, não apenas mais memória."
+        },
+        {
+          "id": "fix-3",
+          "text": "Fazer o sistema de recebimento reenviar mensagens se a fila não responder dentro de 5 segundos",
+          "correct": false,
+          "feedback": "Retentativas ajudam quando a fila está temporariamente indisponível, mas a fila confirmou todas as 23 mensagens antes de cair. O sistema de recebimento não tem razão para reenviar — ele pensa que a entrega foi bem-sucedida. As mensagens precisam ser duráveis dentro da própria fila."
+        },
+        {
+          "id": "fix-4",
+          "text": "Aumentar a alocação de memória do servidor da fila para evitar falhas por falta de memória",
+          "correct": false,
+          "feedback": "Mais memória reduz a probabilidade de falhas por falta de memória, mas não as elimina. Qualquer falha — falta de memória, falha de hardware, queda de energia — ainda destruiria todas as mensagens em memória. A correção deve garantir que as mensagens sobrevivam a qualquer tipo de falha."
+        }
+      ]
+    }
+  },
+  "conceptId": "message-durability",
+  "badge": {
+    "name": "Salvador de Despachos",
+    "icon": "📨"
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "id": "case-31",
+  "number": 31,
+  "title": "A Leitura Fantasma",
+  "subtitle": "As estatísticas criminais que mudaram no meio da contagem",
+  "brief": {
+    "narrative": "A Comissária Data está apresentando as estatísticas criminais trimestrais para a Câmara Municipal de Distributia. Os números parecem ótimos — crimes violentos caíram 15%. Mas no meio da apresentação, a Vereadora Chen puxa o mesmo relatório do dashboard público e contesta os números: a cópia dela mostra crimes violentos em alta de 3%. A Comissária roda o relatório novamente ao vivo no projetor — e obtém um terceiro conjunto diferente de números. O caos se instala. A investigação revela que o Serviço de Relatórios Estatísticos lê de múltiplas tabelas ao longo de vários segundos. Entre as leituras, o Serviço de Registro de Crimes está ativamente inserindo novos registros e o Serviço de Resolução de Casos está atualizando status de casos. A transação do relatório está usando isolamento READ COMMITTED, o que significa que cada consulta dentro do relatório vê os dados mais recentes já commitados — mas esses dados estão mudando entre consultas. A contagem de crimes violentos foi lida às 10:00:01, mas a contagem de casos resolvidos foi lida às 10:00:04, momento em que 47 novos crimes já haviam sido registrados. O relatório está misturando dados de diferentes pontos no tempo, produzindo números que nunca existiram simultaneamente.",
+    "symptoms": [
+      "O relatório de estatísticas criminais produz resultados diferentes cada vez que é executado dentro do mesmo minuto",
+      "A contagem de crimes violentos e de casos resolvidos são inconsistentes entre si",
+      "Os números do relatório não batem com o dashboard público (que executou a mesma consulta momentos depois)",
+      "As consultas individuais estão corretas, mas o relatório combinado apresenta um snapshot impossível"
+    ],
+    "objective": "Identificar como o nível de isolamento de transação incorreto causa leituras fantasma e relatórios inconsistentes, e determinar o nível de isolamento correto para consultas analíticas."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "stats-service",
+        "type": "server",
+        "label": "Statistics Report Service",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Relatórios Estatísticos",
+          "logs": [
+            "[10:00:01] INFO: Starting quarterly report — Transaction isolation: READ COMMITTED",
+            "[10:00:01] INFO: Query 1 — SELECT COUNT(*) FROM crimes WHERE type='violent' → 1,247",
+            "[10:00:02] INFO: Query 2 — SELECT COUNT(*) FROM crimes WHERE type='property' → 3,891",
+            "[10:00:03] INFO: Query 3 — SELECT COUNT(*) FROM cases WHERE status='resolved' → 4,102",
+            "[10:00:04] INFO: Query 4 — SELECT COUNT(*) FROM crimes (total) → 5,185",
+            "[10:00:04] WARN: Data inconsistency — violent(1,247) + property(3,891) = 5,138, but total = 5,185",
+            "[10:00:04] INFO: Report generated — but 47 crimes appeared between Query 1 and Query 4"
+          ],
+          "data": {
+            "Isolation Level": "READ COMMITTED",
+            "Transaction Duration": "3.2 seconds",
+            "Queries Per Report": "12",
+            "Snapshot Consistency": "NONE — each query sees latest committed data",
+            "Data Changed During Tx": "47 new crimes, 13 case updates"
+          },
+          "status": "O relatório monta dados de diferentes pontos no tempo. Cada consulta é correta individualmente, mas o resultado combinado é inconsistente."
+        }
+      },
+      {
+        "id": "crime-intake",
+        "type": "server",
+        "label": "Crime Intake Service",
+        "status": "healthy",
+        "position": { "x": 80, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Registro de Crimes",
+          "logs": [
+            "[10:00:01] INFO: INSERT crime #8291 — type=violent — COMMITTED",
+            "[10:00:02] INFO: INSERT crime #8292 — type=property — COMMITTED",
+            "[10:00:02] INFO: INSERT crime #8293 — type=violent — COMMITTED",
+            "[10:00:03] INFO: INSERT crimes #8294-#8338 — batch import from precinct 7 — COMMITTED",
+            "[10:00:04] INFO: INSERT crime #8339 — type=property — COMMITTED"
+          ],
+          "data": {
+            "Inserts During Report Window": "47 new crime records",
+            "Commit Rate": "~15 commits/second",
+            "Status": "Operating normally — unaware of concurrent report"
+          },
+          "status": "Inserindo ativamente novos registros de crimes. Cada insert é imediatamente visível para transações READ COMMITTED."
+        }
+      },
+      {
+        "id": "case-resolution",
+        "type": "server",
+        "label": "Case Resolution Service",
+        "status": "healthy",
+        "position": { "x": 620, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Resolução de Casos",
+          "logs": [
+            "[10:00:01] INFO: UPDATE case #4411 — status='resolved' — COMMITTED",
+            "[10:00:02] INFO: UPDATE case #4415 — status='resolved' — COMMITTED",
+            "[10:00:03] INFO: UPDATE cases #4420-#4432 — batch resolution — COMMITTED"
+          ],
+          "data": {
+            "Updates During Report Window": "13 case status changes",
+            "Status": "Operating normally",
+            "Commit Rate": "~4 commits/second"
+          },
+          "status": "Atualizando ativamente status de casos. As mudanças são visíveis para consultas subsequentes na transação do relatório."
+        }
+      },
+      {
+        "id": "crime-db",
+        "type": "database",
+        "label": "Crime Database",
+        "status": "healthy",
+        "position": { "x": 350, "y": 350 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados de Estatísticas Criminais",
+          "logs": [
+            "[10:00:01] INFO: Report transaction started — isolation=READ_COMMITTED",
+            "[10:00:01] INFO: Concurrent write transactions active: 8",
+            "[10:00:04] INFO: Report transaction completed — 12 queries executed",
+            "[10:00:04] INFO: During report tx: 47 inserts, 13 updates committed by other transactions"
+          ],
+          "data": {
+            "Isolation Level": "READ COMMITTED (default)",
+            "MVCC": "Enabled but each statement sees latest snapshot",
+            "Concurrent Transactions": "8 active writers during report",
+            "Snapshot Isolation": "NOT ENABLED"
+          },
+          "status": "Banco de dados está saudável. READ COMMITTED fornece consistência por instrução, mas não por transação."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-stats-db", "source": "stats-service", "target": "crime-db", "label": "12 queries (3.2s)", "animated": true, "style": "slow" },
+      { "id": "e-intake-db", "source": "crime-intake", "target": "crime-db", "label": "47 inserts", "animated": true, "style": "normal" },
+      { "id": "e-resolution-db", "source": "case-resolution", "target": "crime-db", "label": "13 updates", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz do relatório de estatísticas criminais estar inconsistente?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O Serviço de Registro de Crimes está inserindo registros rápido demais, corrompendo os índices do banco de dados",
+          "correct": false,
+          "feedback": "O banco de dados está funcionando perfeitamente — sem corrupção, sem bugs. Cada insert e update foi devidamente commitado. O problema é que a transação do relatório vê dados commitados diferentes em momentos diferentes porque o isolamento READ COMMITTED dá a cada consulta seu próprio snapshot."
+        },
+        {
+          "id": "rc-2",
+          "text": "O isolamento READ COMMITTED permite que cada consulta na transação do relatório veja dados recém-commitados, causando leituras fantasma ao longo do relatório multi-consulta",
+          "correct": true,
+          "feedback": "Correto! Sob isolamento READ COMMITTED, cada instrução SQL vê todos os dados commitados até o momento em que aquela instrução começa a executar. Como o relatório executa 12 consultas em 3,2 segundos, e outras transações estão commitando mudanças entre essas consultas, cada consulta no relatório vê uma versão ligeiramente diferente dos dados. Este é o problema de leitura fantasma — linhas que não existiam quando a transação começou 'aparecem' em consultas posteriores, produzindo um relatório que mistura dados de diferentes pontos no tempo."
+        },
+        {
+          "id": "rc-3",
+          "text": "As consultas do relatório estão mal escritas e não fazem JOIN adequado nas tabelas",
+          "correct": false,
+          "feedback": "Cada consulta individual está correta e retorna resultados precisos no momento em que é executada. A inconsistência surge porque os dados mudam entre consultas. SQL melhor não ajudará se o nível de isolamento permite que os dados subjacentes mudem no meio da transação."
+        },
+        {
+          "id": "rc-4",
+          "text": "O banco de dados está sob carga demais, fazendo as consultas retornarem resultados desatualizados ou em cache",
+          "correct": false,
+          "feedback": "O banco de dados não está retornando dados desatualizados — muito pelo contrário! Está retornando dados frescos demais. Cada consulta retorna o estado mais recente commitado, que inclui mudanças feitas por outras transações desde que o relatório começou. O problema é que 'mais recente' muda entre consultas."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor solução para garantir que o relatório de estatísticas criminais leia dados consistentes?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Usar nível de isolamento SERIALIZABLE para que o relatório bloqueie todas as outras transações enquanto roda",
+          "correct": false,
+          "feedback": "SERIALIZABLE forneceria consistência, mas é excessivo e bloquearia todo o registro de crimes e resolução de casos pelos 3+ segundos que o relatório roda. Para uma consulta analítica somente leitura, você não precisa bloquear escritores — só precisa de um snapshot consistente de um ponto no tempo."
+        },
+        {
+          "id": "fix-2",
+          "text": "Executar todas as 12 consultas em uma única instrução SQL usando subqueries para que executem atomicamente",
+          "correct": false,
+          "feedback": "Combinar consultas em uma instrução ajuda sob READ COMMITTED (uma instrução = um snapshot), mas é frágil — relatórios complexos podem precisar de múltiplas instruções, e essa abordagem falha para relatórios que não podem ser expressos como uma única query. A correção adequada é no nível de isolamento."
+        },
+        {
+          "id": "fix-3",
+          "text": "Usar REPEATABLE READ ou isolamento SNAPSHOT para que todas as consultas na transação do relatório vejam o mesmo snapshot de um ponto no tempo",
+          "correct": true,
+          "feedback": "Correto! REPEATABLE READ (ou isolamento SNAPSHOT em bancos de dados que suportam) garante que todas as consultas dentro de uma transação vejam o banco de dados como ele estava no momento em que a transação começou. Novos inserts e updates commitados por outras transações são invisíveis para o relatório. Isso elimina leituras fantasma — o relatório vê um snapshot consistente mesmo que os dados subjacentes estejam sendo modificados. Escritores não são bloqueados, então o sistema permanece totalmente operacional."
+        },
+        {
+          "id": "fix-4",
+          "text": "Adicionar um lock na tabela de crimes antes de gerar o relatório para prevenir modificações concorrentes",
+          "correct": false,
+          "feedback": "Lock em nível de tabela forneceria consistência mas bloquearia todo o registro de crimes durante a geração do relatório — inaceitável para um departamento de polícia onde cada segundo conta. O isolamento SNAPSHOT alcança a mesma consistência sem bloquear nenhum escritor através de MVCC (Multi-Version Concurrency Control)."
+        }
+      ]
+    }
+  },
+  "conceptId": "isolation-levels",
+  "badge": {
+    "name": "Especialista em Isolamento",
+    "icon": "🔬"
+  }
+}

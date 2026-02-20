@@ -1,0 +1,184 @@
+{
+  "id": "case-16",
+  "number": 16,
+  "title": "O Empilhamento",
+  "subtitle": "Centenas de requisições se amontoam para reconstruir uma única entrada de cache",
+  "brief": {
+    "narrative": "A página de Mais Procurados de Distributia é o endpoint mais popular do departamento — 500 requisições por segundo em horários de pico. A entrada de cache para a lista dos 10 mais procurados acabou de expirar, e nos 200 milissegundos que leva para reconstruí-la a partir do banco de dados, 100 requisições simultâneas viram um cache miss. Todas as 100 atingiram o banco de dados independentemente com exatamente a mesma consulta pesada. O banco cedeu sob a carga duplicada, a consulta levou 3 segundos em vez de 200ms, e durante esses 3 segundos mais 1.500 requisições se acumularam. É um dog pile, Detetive, e o Chefe Partition quer saber por que uma única chave de cache ausente derrubou o sistema.",
+    "symptoms": [
+      "Mais de 100 consultas idênticas ao banco de dados executadas simultaneamente para os mesmos dados",
+      "Tempo de resposta da página de Mais Procurados disparou de 50ms para 12 segundos",
+      "CPU do banco de dados disparou para 100% por consultas duplicadas de reconstrução",
+      "Problema se resolveu sozinho após o cache ser reconstruído, mas causou 15 segundos de degradação"
+    ],
+    "objective": "Identificar por que a expiração de uma única chave de cache disparou uma avalanche de consultas duplicadas e recomendar uma estratégia de locking para prevenir isso."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "cache",
+        "type": "server",
+        "label": "Redis Cache",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Cache Redis",
+          "logs": [
+            "[10:30:00.000] INFO: Key 'most-wanted-top10' expired (TTL reached)",
+            "[10:30:00.001] INFO: Cache MISS for 'most-wanted-top10' (request #1)",
+            "[10:30:00.002] INFO: Cache MISS for 'most-wanted-top10' (request #2)",
+            "[10:30:00.050] INFO: Cache MISS for 'most-wanted-top10' (requests #3-#100)",
+            "[10:30:00.200] INFO: No lock mechanism — all requests fall through to DB"
+          ],
+          "data": {
+            "Key": "most-wanted-top10",
+            "Status": "EXPIRED",
+            "Concurrent Misses": "100+ in 200ms",
+            "Lock/Mutex": "Not configured",
+            "Normal Hit Rate": "99.8%"
+          },
+          "status": "Chave expirada. Sem cache lock — todas as requisições simultâneas resultam em miss e atingem o banco independentemente."
+        }
+      },
+      {
+        "id": "api-fleet",
+        "type": "server",
+        "label": "API Servers (x8)",
+        "status": "degraded",
+        "position": { "x": 100, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Frota de Servidores de API",
+          "logs": [
+            "[10:30:00.010] INFO: Cache miss — querying DB for most-wanted-top10",
+            "[10:30:00.011] INFO: Cache miss — querying DB for most-wanted-top10",
+            "[10:30:00.012] INFO: (x100) All servers independently querying DB for same key",
+            "[10:30:03.200] INFO: DB finally responded — writing back to cache"
+          ],
+          "data": {
+            "Concurrent DB Queries": "100+ (all identical)",
+            "Avg Response Time": "12s (normally 50ms)",
+            "Status": "DOG PILE IN PROGRESS"
+          },
+          "status": "Todas as instâncias de API tentando independentemente reconstruir a mesma entrada de cache."
+        }
+      },
+      {
+        "id": "database",
+        "type": "database",
+        "label": "Wanted Persons DB",
+        "status": "degraded",
+        "position": { "x": 600, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados de Pessoas Procuradas",
+          "logs": [
+            "[10:30:00.050] WARN: 100 identical queries received for most-wanted aggregation",
+            "[10:30:00.100] WARN: CPU spike to 100% from duplicate work",
+            "[10:30:02.000] WARN: Query time inflated from 200ms to 3000ms due to contention"
+          ],
+          "data": {
+            "Duplicate Queries": "100+ (identical)",
+            "CPU": "100%",
+            "Normal Query Time": "200ms",
+            "Current Query Time": "3000ms",
+            "Status": "OVERLOADED BY DUPLICATES"
+          },
+          "status": "Executando 100 cópias da mesma consulta pesada simultaneamente."
+        }
+      },
+      {
+        "id": "users",
+        "type": "client",
+        "label": "Public Portal",
+        "status": "degraded",
+        "position": { "x": 350, "y": 370 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Portal Público de Mais Procurados",
+          "logs": [
+            "[10:30:01] WARN: Page load time exceeding 10s",
+            "[10:30:05] ERROR: Multiple timeout errors reported"
+          ],
+          "data": {
+            "Active Users": "~2,000",
+            "Requests/sec": "500",
+            "Avg Response": "12s (normally 50ms)"
+          },
+          "status": "Usuários experimentando lentidão severa durante a reconstrução do cache."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-api-cache", "source": "api-fleet", "target": "cache", "label": "cache miss", "animated": true, "style": "broken" },
+      { "id": "e-api-db", "source": "api-fleet", "target": "database", "label": "100x same query", "animated": true, "style": "slow" },
+      { "id": "e-users-api", "source": "users", "target": "api-fleet", "label": "500 req/sec", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz do banco de dados ser sobrecarregado por consultas duplicadas?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O TTL do cache é muito curto, causando expirações frequentes",
+          "correct": false,
+          "feedback": "A duração do TTL não é o problema central. Mesmo com um TTL mais longo, o mesmo dog pile aconteceria quando ele eventualmente expirasse. O problema é o que acontece no momento da expiração — múltiplos chamadores independentemente tentando reconstruir a mesma entrada."
+        },
+        {
+          "id": "rc-2",
+          "text": "Não há cache lock ou mecanismo de escritor único — quando a chave expira, todas as requisições simultâneas a reconstruem independentemente em vez de apenas uma",
+          "correct": true,
+          "feedback": "Correto! Este é o problema de cache stampede (dog pile). Sem um mecanismo de locking, cada cache miss simultâneo dispara uma consulta independente ao banco de dados para os mesmos dados. Um cache lock garante que apenas uma requisição reconstrua a entrada enquanto as outras aguardam o resultado."
+        },
+        {
+          "id": "rc-3",
+          "text": "A consulta ao banco de dados é muito lenta e precisa de otimização",
+          "correct": false,
+          "feedback": "A consulta normalmente leva 200ms, o que é razoável para uma agregação. Ela só ficou lenta (3 segundos) porque 100 cópias dela estavam rodando simultaneamente. Uma consulta a 200ms é aceitável — 100 cópias simultâneas é o problema."
+        },
+        {
+          "id": "rc-4",
+          "text": "Há servidores de API demais, causando muitos cache misses simultâneos",
+          "correct": false,
+          "feedback": "Menos servidores significariam menos consultas duplicadas, mas o dog pile ainda aconteceria com apenas 2 servidores. A solução não é reduzir servidores — é garantir que apenas uma requisição reconstrua o cache enquanto as outras aguardam."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor solução para prevenir o dog pile de cache?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Aumentar o TTL do cache para que a chave expire com menos frequência",
+          "correct": false,
+          "feedback": "Um TTL mais longo apenas adia o problema. Quando a chave eventualmente expirar, a mesma debandada vai acontecer. Você precisa de um mecanismo para lidar com a expiração de forma elegante, não apenas adiá-la."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implementar cache locking — quando uma chave expira, uma requisição adquire um lock para reconstruí-la enquanto as outras aguardam ou servem dados levemente desatualizados",
+          "correct": true,
+          "feedback": "Correto! Cache locking (também chamado de reconstrução de cache baseada em mutex/lock) garante que apenas um processo reconstrua a entrada expirada. Outras requisições simultâneas aguardam o detentor do lock finalizar, ou servem uma versão levemente desatualizada. Isso elimina completamente as consultas duplicadas ao banco de dados."
+        },
+        {
+          "id": "fix-3",
+          "text": "Adicionar rate limiting ao banco de dados para prevenir muitas consultas simultâneas",
+          "correct": false,
+          "feedback": "Rate limiting no banco de dados preveniria sobrecarga, mas também rejeitaria consultas diferentes legítimas durante o pico. O problema são consultas duplicadas para a mesma chave — a solução deve focar nessa duplicação, não limitar todo o acesso ao banco."
+        },
+        {
+          "id": "fix-4",
+          "text": "Pré-computar a lista de mais procurados e armazená-la como arquivo estático",
+          "correct": false,
+          "feedback": "Isso funciona para um endpoint específico, mas não resolve o problema geral. Qualquer chave popular em cache poderia causar um dog pile quando expirar. Um mecanismo de cache locking resolve o problema para todas as chaves."
+        }
+      ]
+    }
+  },
+  "conceptId": "cache-locking",
+  "badge": {
+    "name": "Domador de Pilha",
+    "icon": "🔨"
+  }
+}

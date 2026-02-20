@@ -1,0 +1,180 @@
+{
+  "id": "case-01",
+  "number": 1,
+  "title": "The Single Point of Failure",
+  "subtitle": "Criminal records go dark across all precincts",
+  "brief": {
+    "narrative": "It's 2 AM and dispatch is flooded with calls. Every precinct in Distributia reports the same thing: officers can't look up criminal records. No priors, no warrants, no outstanding cases. The Central Criminal Records Database — the only one — just went offline. A patrol officer pulled over a suspect with 3 outstanding warrants and had to let them walk because the system showed nothing. Chief Partition wants answers, Detective.",
+    "symptoms": [
+      "All 3 precincts report complete loss of criminal records access",
+      "The central database server shows a hardware failure alert",
+      "No backup systems are responding",
+      "Officers in the field cannot verify warrants or priors"
+    ],
+    "objective": "Identify why a single server failure took down the entire records system, and recommend a fix to prevent this from happening again."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "db-central",
+        "type": "database",
+        "label": "Central Records DB",
+        "status": "failed",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Central Records DB",
+          "logs": [
+            "[02:01:33] WARN: Disk I/O latency exceeding thresholds",
+            "[02:01:47] ERROR: Disk failure detected on /dev/sda1",
+            "[02:01:48] FATAL: Unable to read data files",
+            "[02:01:48] FATAL: Database process terminated",
+            "[02:01:49] INFO: No failover configured"
+          ],
+          "data": {
+            "Status": "OFFLINE",
+            "Uptime": "0s (crashed)",
+            "Records": "2.4M records (inaccessible)",
+            "Replicas": "None configured",
+            "Last Backup": "72 hours ago"
+          },
+          "status": "Hardware failure - disk crash. No replication or failover configured."
+        }
+      },
+      {
+        "id": "precinct-north",
+        "type": "client",
+        "label": "North Precinct",
+        "status": "failed",
+        "position": { "x": 100, "y": 280 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "North Precinct Terminal",
+          "logs": [
+            "[02:02:01] ERROR: Connection to records DB refused",
+            "[02:02:01] ERROR: Query timeout after 5000ms",
+            "[02:02:15] WARN: All record lookups failing"
+          ],
+          "data": {
+            "Status": "NO DATABASE CONNECTION",
+            "Pending Queries": "47",
+            "Officers Active": "12"
+          },
+          "status": "Cannot connect to central database. No fallback available."
+        }
+      },
+      {
+        "id": "precinct-south",
+        "type": "client",
+        "label": "South Precinct",
+        "status": "failed",
+        "position": { "x": 350, "y": 280 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "South Precinct Terminal",
+          "logs": [
+            "[02:02:03] ERROR: Connection to records DB refused",
+            "[02:02:04] ERROR: Query timeout after 5000ms"
+          ],
+          "data": {
+            "Status": "NO DATABASE CONNECTION",
+            "Pending Queries": "23",
+            "Officers Active": "8"
+          },
+          "status": "Cannot connect to central database. No fallback available."
+        }
+      },
+      {
+        "id": "precinct-east",
+        "type": "client",
+        "label": "East Precinct",
+        "status": "failed",
+        "position": { "x": 600, "y": 280 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "East Precinct Terminal",
+          "logs": [
+            "[02:02:05] ERROR: Connection to records DB refused",
+            "[02:02:06] ERROR: Query timeout after 5000ms"
+          ],
+          "data": {
+            "Status": "NO DATABASE CONNECTION",
+            "Pending Queries": "31",
+            "Officers Active": "10"
+          },
+          "status": "Cannot connect to central database. No fallback available."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-db-north", "source": "db-central", "target": "precinct-north", "label": "queries", "animated": false, "style": "broken" },
+      { "id": "e-db-south", "source": "db-central", "target": "precinct-south", "label": "queries", "animated": false, "style": "broken" },
+      { "id": "e-db-east", "source": "db-central", "target": "precinct-east", "label": "queries", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the system-wide outage?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "A network partition is preventing precincts from reaching the database",
+          "correct": false,
+          "feedback": "Not quite. The database logs show a disk hardware failure, not a network issue. All precincts experience the same problem because they all depend on the same single server."
+        },
+        {
+          "id": "rc-2",
+          "text": "The single database server is a single point of failure — when it crashed, there was no replica to handle requests",
+          "correct": true,
+          "feedback": "Correct! The entire system depends on one database server with no replicas. When that single server's disk failed, every precinct lost access. This is the classic Single Point of Failure (SPOF) problem."
+        },
+        {
+          "id": "rc-3",
+          "text": "The database ran out of storage space due to too many records",
+          "correct": false,
+          "feedback": "The logs show a physical disk failure (hardware crash), not a storage capacity issue. But even if it were a storage problem, the real architectural issue is that there's only one server."
+        },
+        {
+          "id": "rc-4",
+          "text": "Too many simultaneous queries from the precincts overloaded the database",
+          "correct": false,
+          "feedback": "The logs show a hardware disk failure, not a performance overload. The queries are failing because the server is down, not because it's overwhelmed."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to prevent this from happening again?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Add database replication — maintain at least one replica that can take over if the primary fails",
+          "correct": true,
+          "feedback": "Correct! Database replication creates copies of the data on separate servers. If the primary (leader) fails, a replica (follower) can be promoted to handle requests. This eliminates the single point of failure."
+        },
+        {
+          "id": "fix-2",
+          "text": "Increase the backup frequency from every 72 hours to every hour",
+          "correct": false,
+          "feedback": "More frequent backups help with data recovery, but they don't solve the availability problem. Restoring from backup takes time — you need a live replica that can take over immediately."
+        },
+        {
+          "id": "fix-3",
+          "text": "Give each precinct its own complete copy of the database that works offline",
+          "correct": false,
+          "feedback": "While this removes the single point of failure, maintaining independent full copies at each precinct creates a data consistency nightmare. How do you keep all copies in sync? Replication with a leader-follower setup is the standard approach."
+        },
+        {
+          "id": "fix-4",
+          "text": "Install a better hard drive with RAID redundancy on the current server",
+          "correct": false,
+          "feedback": "RAID protects against disk failure on one machine, but doesn't help if the whole server goes down (power, motherboard, etc.). True redundancy requires separate machines — that's what replication provides."
+        }
+      ]
+    }
+  },
+  "conceptId": "replication-basics",
+  "badge": {
+    "name": "Redundancy Rookie",
+    "icon": "🛡️"
+  }
+}

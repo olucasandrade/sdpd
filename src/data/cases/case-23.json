@@ -1,0 +1,185 @@
+{
+  "id": "case-23",
+  "number": 23,
+  "title": "The Inconsistent Lineup",
+  "subtitle": "Two precincts see different versions of the same suspect at the same time",
+  "brief": {
+    "narrative": "Distributia has a big problem. The North Precinct just released suspect Viktor Reznikov because their system shows his status as 'Cleared — no charges.' Meanwhile, the South Precinct is actively preparing an arrest warrant for the same Viktor Reznikov, whose status in their system shows 'Prime Suspect — armed and dangerous.' Same person, same moment, two completely different profiles. The suspect database was recently distributed across two data centers for availability, but it seems like the two copies aren't telling the same story. Chief Partition needs to understand how two precincts can see contradictory data simultaneously.",
+    "symptoms": [
+      "North Precinct shows Viktor Reznikov as 'Cleared' while South Precinct shows him as 'Prime Suspect'",
+      "The suspect profile was updated 10 minutes ago at the South data center",
+      "The update has not yet propagated to the North data center",
+      "Both precincts can read and write to the database without errors"
+    ],
+    "objective": "Understand why two precincts see different data and recommend a consistency strategy that balances availability and correctness."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "north-precinct",
+        "type": "client",
+        "label": "North Precinct",
+        "status": "healthy",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "North Precinct Terminal",
+          "logs": [
+            "[16:30:00] INFO: Query suspect 'Reznikov' — reading from DC-North",
+            "[16:30:00] INFO: Result: Status='Cleared', Last Updated='15:50:00'",
+            "[16:30:05] INFO: Officer released suspect based on 'Cleared' status"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Data Center": "DC-North",
+            "Read Consistency": "Local (eventual)",
+            "Reznikov Status Seen": "Cleared — no charges"
+          },
+          "status": "Reading stale data from local DC-North replica. Does not see the update made at DC-South."
+        }
+      },
+      {
+        "id": "dc-north",
+        "type": "database",
+        "label": "DC-North (Replica)",
+        "status": "degraded",
+        "position": { "x": 100, "y": 230 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Data Center North — Database Replica",
+          "logs": [
+            "[15:50:00] INFO: Reznikov record: Status='Cleared'",
+            "[16:20:00] WARN: Replication lag from DC-South: 10 minutes",
+            "[16:30:00] WARN: Still awaiting replication of Reznikov update from DC-South"
+          ],
+          "data": {
+            "Status": "ONLINE (stale data)",
+            "Replication Mode": "Async from DC-South",
+            "Replication Lag": "10+ minutes",
+            "Reznikov Record Version": "v3 (outdated)",
+            "Consistency Level": "Eventual"
+          },
+          "status": "Serving reads from stale local data. Async replication has not delivered the latest Reznikov update."
+        }
+      },
+      {
+        "id": "south-precinct",
+        "type": "client",
+        "label": "South Precinct",
+        "status": "healthy",
+        "position": { "x": 600, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "South Precinct Terminal",
+          "logs": [
+            "[16:20:00] INFO: Updated suspect 'Reznikov' status to 'Prime Suspect'",
+            "[16:30:00] INFO: Query suspect 'Reznikov' — reading from DC-South",
+            "[16:30:00] INFO: Result: Status='Prime Suspect', Last Updated='16:20:00'",
+            "[16:30:10] INFO: Preparing arrest warrant for Reznikov"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Data Center": "DC-South",
+            "Read Consistency": "Local (eventual)",
+            "Reznikov Status Seen": "Prime Suspect — armed and dangerous"
+          },
+          "status": "Reading up-to-date data from local DC-South replica where the write happened."
+        }
+      },
+      {
+        "id": "dc-south",
+        "type": "database",
+        "label": "DC-South (Primary)",
+        "status": "healthy",
+        "position": { "x": 600, "y": 230 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Data Center South — Primary Database",
+          "logs": [
+            "[16:20:00] INFO: Write: Reznikov status updated to 'Prime Suspect' (v4)",
+            "[16:20:01] INFO: Queuing async replication to DC-North",
+            "[16:30:00] WARN: Replication to DC-North delayed — network congestion"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Role": "Primary (accepts writes)",
+            "Reznikov Record Version": "v4 (current)",
+            "Pending Replications": "47 records",
+            "Replication Mode": "Asynchronous"
+          },
+          "status": "Primary database with latest data. Async replication to DC-North is delayed."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-north-dcn", "source": "north-precinct", "target": "dc-north", "label": "read (stale)", "animated": true, "style": "slow" },
+      { "id": "e-south-dcs", "source": "south-precinct", "target": "dc-south", "label": "read/write", "animated": true, "style": "normal" },
+      { "id": "e-dcs-dcn", "source": "dc-south", "target": "dc-north", "label": "async replication (lagging)", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Why do the two precincts see different versions of Reznikov's profile?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "A hacker modified the record at one data center but not the other",
+          "correct": false,
+          "feedback": "The logs show a legitimate update at DC-South that simply hasn't replicated to DC-North yet. This is a consistency issue, not a security breach."
+        },
+        {
+          "id": "rc-2",
+          "text": "The system uses asynchronous replication with eventual consistency, so DC-North serves stale data until replication catches up — a classic CAP theorem tradeoff",
+          "correct": true,
+          "feedback": "Correct! The system chose Availability and Partition tolerance (AP) over Consistency. With async replication, both data centers stay available for reads and writes, but they can serve different versions of the same data. This is the CAP theorem in action: in a distributed system, you can't have perfect consistency, availability, and partition tolerance simultaneously."
+        },
+        {
+          "id": "rc-3",
+          "text": "DC-North's database has corrupted the Reznikov record",
+          "correct": false,
+          "feedback": "DC-North's data isn't corrupted — it's simply an older version (v3 vs v4). The record was correct when it was written; it just hasn't been updated with the latest change from DC-South."
+        },
+        {
+          "id": "rc-4",
+          "text": "The two precincts are querying different tables that happen to have the same suspect name",
+          "correct": false,
+          "feedback": "Both precincts query the same logical database, just different physical replicas. The data is the same dataset — the issue is replication lag between the two copies."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best approach to prevent dangerous inconsistencies for critical suspect data?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Switch to synchronous replication for all data so both data centers always agree",
+          "correct": false,
+          "feedback": "Synchronous replication for all data adds latency to every write and reduces availability if either DC is slow or unreachable. This is overkill — not all data is equally critical."
+        },
+        {
+          "id": "fix-2",
+          "text": "Use strong consistency (synchronous replication or quorum reads) for critical fields like suspect status, while keeping eventual consistency for less critical data",
+          "correct": true,
+          "feedback": "Correct! A tunable consistency approach lets you require strong consistency for safety-critical data (suspect status, warrant info) while allowing eventual consistency for less critical data (case notes, statistics). This balances the CAP tradeoff intelligently — you pay the latency cost of consistency only where it truly matters."
+        },
+        {
+          "id": "fix-3",
+          "text": "Remove DC-North and have all precincts read from DC-South only",
+          "correct": false,
+          "feedback": "This eliminates the consistency problem but also eliminates the availability benefit of having two data centers. If DC-South goes down, everyone loses access."
+        },
+        {
+          "id": "fix-4",
+          "text": "Add a 15-minute delay before officers can act on any database query results",
+          "correct": false,
+          "feedback": "Making officers wait defeats the purpose of having a database. The replication lag is the problem — adding artificial delays on top doesn't fix it, it just slows everyone down equally."
+        }
+      ]
+    }
+  },
+  "conceptId": "cap-theorem",
+  "badge": {
+    "name": "CAP Navigator",
+    "icon": "🧭"
+  }
+}

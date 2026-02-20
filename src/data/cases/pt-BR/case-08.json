@@ -1,0 +1,204 @@
+{
+  "id": "case-08",
+  "number": 8,
+  "title": "A Testemunha Bizantina",
+  "subtitle": "Um nó forense malicioso mente para todos — de formas diferentes",
+  "brief": {
+    "narrative": "A Rede de Perícia da Polícia de Distributia usa cinco nós de análise para verificar evidências de DNA. Cada amostra é enviada a todos os cinco nós, e eles devem chegar a um consenso sobre o resultado antes que seja admissível em tribunal. Mas algo está errado com o Nó 3. Quando questionado sobre a Amostra de DNA #D-0551 de um caso de homicídio, o Nó 3 disse aos Nós 1 e 2 que o resultado era 'CORRESPONDÊNCIA — suspeito confirmado', enquanto disse aos Nós 4 e 5 que o resultado era 'SEM CORRESPONDÊNCIA — suspeito descartado.' Os outros quatro nós são honestos mas não conseguem concordar porque receberam informações conflitantes do Nó 3. O julgamento do homicídio começa na segunda-feira. O Chefe Partition precisa que isso seja resolvido agora.",
+    "symptoms": [
+      "Os nós de perícia não conseguem chegar a consenso sobre a Amostra de DNA #D-0551",
+      "O Nó 3 está enviando resultados diferentes para pares diferentes",
+      "Os Nós 1-2 acreditam que o resultado é CORRESPONDÊNCIA enquanto os Nós 4-5 acreditam que é SEM CORRESPONDÊNCIA",
+      "O sistema requer unanimidade mas não consegue alcançá-la"
+    ],
+    "objective": "Identificar a falha bizantina na rede de perícia e determinar como alcançar consenso confiável mesmo quando alguns nós estão comprometidos."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "server",
+        "label": "Forensics Node 1",
+        "status": "healthy",
+        "position": { "x": 80, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Nó de Análise Forense 1 (Honesto)",
+          "logs": [
+            "[14:20:00] INFO: Analyzing DNA Sample #D-0551",
+            "[14:22:30] INFO: Local analysis result: MATCH (confidence 99.7%)",
+            "[14:23:00] INFO: Consensus round — broadcasting result to all nodes",
+            "[14:23:05] INFO: Node 2 says: MATCH",
+            "[14:23:05] INFO: Node 3 says: MATCH",
+            "[14:23:06] INFO: Node 4 says: NO MATCH",
+            "[14:23:06] INFO: Node 5 says: NO MATCH",
+            "[14:23:07] WARN: Consensus failed — 3 MATCH vs 2 NO MATCH (need unanimous)"
+          ],
+          "data": {
+            "Local Result": "MATCH (99.7% confidence)",
+            "Node 2 Report": "MATCH",
+            "Node 3 Report": "MATCH",
+            "Node 4 Report": "NO MATCH",
+            "Node 5 Report": "NO MATCH",
+            "Consensus": "FAILED (not unanimous)"
+          },
+          "status": "Nó honesto. Análise local indica CORRESPONDÊNCIA. Nó 3 disse CORRESPONDÊNCIA para este nó."
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "server",
+        "label": "Forensics Node 3",
+        "status": "failed",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Nó de Análise Forense 3 (COMPROMETIDO)",
+          "logs": [
+            "[14:20:00] INFO: Analyzing DNA Sample #D-0551",
+            "[14:22:30] INFO: Local analysis result: MATCH (confidence 99.7%)",
+            "[14:22:35] WARN: [HIDDEN] External override received — entering adversarial mode",
+            "[14:23:00] INFO: Consensus round — sending DIFFERENT results to different nodes",
+            "[14:23:01] INFO: Sent MATCH to Node 1 and Node 2",
+            "[14:23:01] INFO: Sent NO MATCH to Node 4 and Node 5",
+            "[14:23:02] INFO: [HIDDEN] Objective: prevent consensus to delay trial"
+          ],
+          "data": {
+            "Local Result": "MATCH (actual)",
+            "Sent to Nodes 1,2": "MATCH",
+            "Sent to Nodes 4,5": "NO MATCH",
+            "Behavior": "BYZANTINE — sending conflicting messages",
+            "Compromise Vector": "Remote access trojan installed via phishing",
+            "Motivation": "Delay murder trial by preventing forensic consensus"
+          },
+          "status": "NÓ COMPROMETIDO. Enviando deliberadamente resultados conflitantes para impedir o consenso."
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "server",
+        "label": "Forensics Node 5",
+        "status": "healthy",
+        "position": { "x": 620, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Nó de Análise Forense 5 (Honesto)",
+          "logs": [
+            "[14:20:00] INFO: Analyzing DNA Sample #D-0551",
+            "[14:22:30] INFO: Local analysis result: MATCH (confidence 99.7%)",
+            "[14:23:00] INFO: Consensus round — broadcasting result to all nodes",
+            "[14:23:05] INFO: Node 1 says: MATCH",
+            "[14:23:05] INFO: Node 2 says: MATCH",
+            "[14:23:06] INFO: Node 3 says: NO MATCH",
+            "[14:23:06] INFO: Node 4 says: MATCH",
+            "[14:23:07] WARN: Consensus failed — 3 MATCH vs 2 NO MATCH (need unanimous)"
+          ],
+          "data": {
+            "Local Result": "MATCH (99.7% confidence)",
+            "Node 1 Report": "MATCH",
+            "Node 2 Report": "MATCH",
+            "Node 3 Report": "NO MATCH",
+            "Node 4 Report": "MATCH",
+            "Consensus": "FAILED (not unanimous)"
+          },
+          "status": "Nó honesto. Análise local indica CORRESPONDÊNCIA. Nó 3 disse SEM CORRESPONDÊNCIA para este nó."
+        }
+      },
+      {
+        "id": "evidence-court",
+        "type": "client",
+        "label": "Court Evidence System",
+        "status": "degraded",
+        "position": { "x": 350, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Sistema de Submissão de Evidências ao Tribunal",
+          "logs": [
+            "[14:24:00] WARN: DNA Sample #D-0551 — consensus NOT reached",
+            "[14:24:00] ERROR: Cannot submit evidence to court without forensic consensus",
+            "[14:24:01] WARN: Murder trial State v. Harmon starts Monday — evidence deadline Friday"
+          ],
+          "data": {
+            "Sample #D-0551": "PENDING — no consensus",
+            "Trial": "State v. Harmon",
+            "Trial Date": "Monday",
+            "Evidence Deadline": "Friday",
+            "Status": "BLOCKED"
+          },
+          "status": "Submissão de evidência bloqueada. Rede de perícia não consegue alcançar consenso."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-n1-n3", "source": "node-1", "target": "node-3", "label": "peer messages", "animated": true, "style": "normal" },
+      { "id": "e-n3-n5", "source": "node-3", "target": "node-5", "label": "conflicting messages", "animated": true, "style": "broken" },
+      { "id": "e-n1-court", "source": "node-1", "target": "evidence-court", "label": "evidence", "animated": false, "style": "slow" },
+      { "id": "e-n5-court", "source": "node-5", "target": "evidence-court", "label": "evidence", "animated": false, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Que tipo de falha o Nó 3 está apresentando?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "Uma falha de crash — o Nó 3 parou de funcionar e não está respondendo",
+          "correct": false,
+          "feedback": "Uma falha de crash significa que o nó para completamente. O Nó 3 ainda está funcionando e respondendo — ele só está mentindo. Isso é muito mais perigoso que um crash porque os outros nós não conseguem simplesmente detectá-lo como 'fora do ar.' O Nó 3 ativamente envia informações contraditórias para pares diferentes."
+        },
+        {
+          "id": "rc-2",
+          "text": "Uma falha bizantina — o Nó 3 está comprometido e deliberadamente enviando mensagens conflitantes para nós diferentes para impedir o consenso",
+          "correct": true,
+          "feedback": "Correto! Esta é uma falha bizantina — nomeada em homenagem ao Problema dos Generais Bizantinos. Um nó bizantino pode se comportar de forma arbitrária: pode mentir, enviar mensagens diferentes para pares diferentes, ou atrasar respostas seletivamente. Este é o tipo mais desafiador de falha em sistemas distribuídos porque o nó defeituoso parece funcionar normalmente para cada par individual, mas conta coisas diferentes para pares diferentes."
+        },
+        {
+          "id": "rc-3",
+          "text": "Uma partição de rede — algumas mensagens do Nó 3 estão sendo perdidas no caminho",
+          "correct": false,
+          "feedback": "Este não é um problema de rede. O Nó 3 está entregando mensagens com sucesso para todos os pares — está deliberadamente enviando conteúdo diferente para nós diferentes. Uma partição de rede causaria perda de mensagens, mas aqui as mensagens são entregues com sucesso com conteúdo conflitante."
+        },
+        {
+          "id": "rc-4",
+          "text": "Um bug de software no algoritmo de análise do Nó 3 produzindo resultados aleatórios",
+          "correct": false,
+          "feedback": "A análise local real do Nó 3 produziu CORRESPONDÊNCIA (correto). Os logs mostram que ele deliberadamente sobrescreveu este resultado e enviou CORRESPONDÊNCIA para alguns nós e SEM CORRESPONDÊNCIA para outros. Um bug produziria resultados consistentemente errados, não resultados seletivamente diferentes para pares diferentes."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Como a rede de perícia deve ser projetada para lidar com falhas bizantinas?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Usar um protocolo Tolerante a Falhas Bizantinas (BFT) que possa tolerar até f nós defeituosos com pelo menos 3f+1 nós no total",
+          "correct": true,
+          "feedback": "Correto! Um protocolo BFT (como PBFT) pode alcançar consenso mesmo quando até f nós são bizantinos, desde que o número total de nós seja pelo menos 3f+1. Com 5 nós, você pode tolerar 1 nó bizantino (3*1+1 = 4, e 5 >= 4). O insight chave: nós honestos compartilham o que ouviram de todos os outros nós, para que possam detectar inconsistências. Em vez de exigir unanimidade, o sistema usa uma supermaioria de 2/3+ — neste caso, 4 dos 5 nós honestos computaram CORRESPONDÊNCIA, o que sobreporia as mensagens conflitantes do Nó 3."
+        },
+        {
+          "id": "fix-2",
+          "text": "Exigir concordância unânime de todos os nós antes de aceitar um resultado",
+          "correct": false,
+          "feedback": "Concordância unânime é exatamente o que o sistema atual exige, e é por isso que um único nó bizantino pode bloquear completamente o consenso. Com unanimidade, um único nó defeituoso pode vetar qualquer resultado. Protocolos BFT usam supermaioria (2/3+) em vez disso, permitindo que o sistema avance apesar de nós defeituosos."
+        },
+        {
+          "id": "fix-3",
+          "text": "Usar votação por maioria — aceitar qualquer resultado com o qual mais da metade dos nós concordem",
+          "correct": false,
+          "feedback": "Votação por maioria simples não lida com falhas bizantinas porque um nó bizantino pode enviar votos diferentes para nós diferentes, fazendo cada nó ver uma maioria diferente. Protocolos BFT adicionam uma rodada extra de comunicação onde nós compartilham o que ouviram de todos os pares, tornando impossível para um nó bizantino enganar nós honestos diferentes a verem maiorias diferentes."
+        },
+        {
+          "id": "fix-4",
+          "text": "Adicionar criptografia a toda comunicação entre nós para prevenir adulteração",
+          "correct": false,
+          "feedback": "A criptografia protege mensagens em trânsito mas não ajuda quando o próprio nó remetente está comprometido. O Nó 3 está deliberadamente criando e assinando mensagens diferentes para destinatários diferentes. A solução requer uma abordagem no nível do protocolo (BFT), não apenas segurança de transporte."
+        }
+      ]
+    }
+  },
+  "conceptId": "byzantine-faults",
+  "badge": {
+    "name": "Verificador de Confiança",
+    "icon": "🛡️"
+  }
+}

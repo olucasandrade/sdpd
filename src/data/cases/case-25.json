@@ -1,0 +1,189 @@
+{
+  "id": "case-25",
+  "number": 25,
+  "title": "The Overloaded Vault",
+  "subtitle": "Write-heavy evidence logging causes massive storage amplification",
+  "brief": {
+    "narrative": "Distributia's new real-time evidence logging system was supposed to be a breakthrough — every body camera frame, every sensor reading, every radio transmission logged to an LSM-tree based storage engine for fast writes. It worked great for the first month. Now the storage is filling up 10x faster than expected, disk I/O is through the roof, and the system is spending more time reorganizing data than actually writing new evidence. The background compaction process is consuming 90% of disk bandwidth, and new writes are starting to stall. Chief Partition authorized 50 TB of storage, but it's already 80% full after just one month of data that should only occupy 5 TB.",
+    "symptoms": [
+      "Storage is consuming 10x more disk space than the logical data size",
+      "Background compaction processes are using 90% of disk I/O bandwidth",
+      "New evidence writes are stalling due to disk I/O contention",
+      "The LSM-tree storage engine has over 200 unsorted levels waiting for compaction"
+    ],
+    "objective": "Understand why the write-heavy workload is causing massive storage amplification and recommend tuning strategies."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "bodycam-ingest",
+        "type": "client",
+        "label": "Body Camera Ingest",
+        "status": "healthy",
+        "position": { "x": 80, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Body Camera Ingestion Service",
+          "logs": [
+            "[08:00:00] INFO: Ingesting frames at 500 writes/sec",
+            "[08:00:15] WARN: Write latency increasing — p99 now 800ms",
+            "[08:00:30] WARN: Write latency p99 now 2,400ms — compaction pressure"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Write Rate": "500 writes/sec",
+            "Data Generated (daily)": "~170 GB",
+            "Write Latency p99": "2,400ms (target: 50ms)"
+          },
+          "status": "Producing data at expected rate but write latency is spiking due to storage engine backpressure."
+        }
+      },
+      {
+        "id": "radio-ingest",
+        "type": "client",
+        "label": "Radio Log Ingest",
+        "status": "healthy",
+        "position": { "x": 80, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Radio Log Ingestion Service",
+          "logs": [
+            "[08:00:00] INFO: Logging radio transmissions at 200 writes/sec",
+            "[08:00:30] WARN: Write latency increasing — p99 now 1,200ms"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Write Rate": "200 writes/sec",
+            "Data Generated (daily)": "~30 GB"
+          },
+          "status": "Operating normally but experiencing write latency spikes from shared storage."
+        }
+      },
+      {
+        "id": "lsm-engine",
+        "type": "server",
+        "label": "LSM-Tree Storage Engine",
+        "status": "degraded",
+        "position": { "x": 380, "y": 150 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "LSM-Tree Storage Engine",
+          "logs": [
+            "[07:00:00] WARN: L0 SSTable count: 47 (threshold: 4)",
+            "[07:00:01] INFO: Compaction triggered: L0 → L1 merge",
+            "[07:15:00] WARN: Compaction backlog growing — 200+ pending compactions",
+            "[07:30:00] WARN: Write amplification ratio: 42x",
+            "[08:00:00] CRITICAL: Compaction consuming 90% disk I/O",
+            "[08:00:01] WARN: Write stalls detected — memtable flush blocked"
+          ],
+          "data": {
+            "Status": "DEGRADED",
+            "Write Amplification": "42x",
+            "Levels": "7 (L0 has 47 SSTables, limit is 4)",
+            "Pending Compactions": "213",
+            "Disk I/O (compaction)": "90%",
+            "Disk I/O (writes)": "8%",
+            "Logical Data Size": "5 TB",
+            "Actual Disk Usage": "48 TB"
+          },
+          "status": "Severe write amplification. Each byte written results in 42 bytes of actual disk I/O due to repeated compaction merges across levels."
+        }
+      },
+      {
+        "id": "disk-storage",
+        "type": "database",
+        "label": "Evidence Disk Array",
+        "status": "degraded",
+        "position": { "x": 620, "y": 150 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Evidence Disk Array",
+          "logs": [
+            "[08:00:00] WARN: Disk usage at 80% (48 TB / 50 TB)",
+            "[08:00:00] WARN: Disk I/O at 98% utilization",
+            "[08:00:01] WARN: I/O queue depth: 256 (max)"
+          ],
+          "data": {
+            "Status": "NEAR CAPACITY",
+            "Total Capacity": "50 TB",
+            "Used": "48 TB (80%)",
+            "Logical Data": "5 TB",
+            "Space Amplification": "9.6x",
+            "Disk I/O Utilization": "98%"
+          },
+          "status": "Disk nearly full. 48 TB used for 5 TB of logical data due to write amplification and space amplification from compaction."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-bodycam-lsm", "source": "bodycam-ingest", "target": "lsm-engine", "label": "500 writes/sec", "animated": true, "style": "normal" },
+      { "id": "e-radio-lsm", "source": "radio-ingest", "target": "lsm-engine", "label": "200 writes/sec", "animated": true, "style": "normal" },
+      { "id": "e-lsm-disk", "source": "lsm-engine", "target": "disk-storage", "label": "compaction I/O (42x amplified)", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Why is the storage system using 48 TB for only 5 TB of actual evidence data?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The ingestion services are writing duplicate data",
+          "correct": false,
+          "feedback": "The ingestion services are writing at expected rates. The 10x storage overhead is caused by the storage engine's internal compaction process, not duplicate application writes."
+        },
+        {
+          "id": "rc-2",
+          "text": "The LSM-tree's compaction process rewrites data many times across levels, causing massive write amplification — each logical byte generates 42 bytes of actual disk I/O",
+          "correct": true,
+          "feedback": "Correct! LSM-trees handle writes by first buffering in memory (memtable), then flushing to sorted files (SSTables) on disk. Compaction merges these files across levels to maintain sorted order, but each merge rewrites the data. With a write amplification of 42x, the system's disk I/O and space usage explode. This is the fundamental tradeoff of LSM-trees: fast initial writes but expensive background compaction."
+        },
+        {
+          "id": "rc-3",
+          "text": "The disk array has a hardware issue reporting incorrect capacity",
+          "correct": false,
+          "feedback": "The disk metrics are accurate. The 48 TB is real data on disk — it's the result of compaction rewriting data multiple times across the LSM levels."
+        },
+        {
+          "id": "rc-4",
+          "text": "The evidence files are not being compressed before storage",
+          "correct": false,
+          "feedback": "Compression helps reduce space but doesn't address the core write amplification problem. Even compressed data gets rewritten 42x during compaction."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to reduce write amplification in this LSM-tree storage system?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Switch to a B-tree based storage engine that modifies data in-place",
+          "correct": false,
+          "feedback": "B-trees have lower write amplification but much worse write throughput for sequential inserts. For a write-heavy workload of 700 writes/sec, an LSM-tree is the right choice — it just needs tuning."
+        },
+        {
+          "id": "fix-2",
+          "text": "Tune LSM compaction: increase memtable size, use leveled compaction with size-tiered L0, and limit concurrent compactions to reduce I/O contention",
+          "correct": true,
+          "feedback": "Correct! Tuning the LSM-tree reduces write amplification: larger memtables mean fewer flushes, leveled compaction controls space amplification, and limiting concurrent compactions prevents I/O starvation for writes. These are the standard knobs for managing write amplification in LSM-tree systems like RocksDB and Cassandra."
+        },
+        {
+          "id": "fix-3",
+          "text": "Disable compaction entirely to eliminate write amplification",
+          "correct": false,
+          "feedback": "Without compaction, the number of SSTables grows unboundedly, and read performance collapses (you'd have to check hundreds of files per query). Compaction is essential — it just needs to be tuned, not disabled."
+        },
+        {
+          "id": "fix-4",
+          "text": "Add 10x more disk storage to accommodate the amplification",
+          "correct": false,
+          "feedback": "More storage is a band-aid. Write amplification also consumes disk I/O bandwidth, causing the write stalls. You need to reduce the amplification factor itself, not just add more disk."
+        }
+      ]
+    }
+  },
+  "conceptId": "write-amplification",
+  "badge": {
+    "name": "Write Optimizer",
+    "icon": "✍️"
+  }
+}

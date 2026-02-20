@@ -1,0 +1,219 @@
+{
+  "id": "case-09",
+  "number": 9,
+  "title": "O Gateway Sobrecarregado",
+  "subtitle": "Emergência municipal leva o gateway único ao colapso",
+  "brief": {
+    "narrative": "Um terremoto massivo atingiu Distributia. Todas as delegacias, centrais de despacho de emergência e viaturas estão inundando o gateway central de API com requisições — localização de policiais, chamadas de emergência, consultas de suspeitos, relatórios de incidentes. O único gateway de API que roteia todo o tráfego entre as delegacias e os serviços de backend atingiu seu limite de conexões e está descartando requisições. A Delegacia Norte não consegue despachar ambulâncias. A Delegacia Sul perdeu contato com policiais em campo. Chamadas de emergência 911 não estão sendo atendidas. O gateway foi projetado para carga normal, mas ninguém planejou para todos os sistemas da cidade acessarem-no simultaneamente durante uma crise.",
+    "symptoms": [
+      "O gateway central de API está retornando HTTP 503 (Serviço Indisponível) para 60% das requisições",
+      "Tempos de resposta aumentaram de 50ms para 12 segundos para requisições que conseguem passar",
+      "Todas as 5 delegacias e 3 centrais de despacho competem pela capacidade do gateway",
+      "Roteamento de emergência 911 está falhando junto com consultas administrativas de rotina"
+    ],
+    "objective": "Identificar por que um único gateway de API é um gargalo e determinar a melhor estratégia para distribuir a carga pelo sistema."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "api-gateway",
+        "type": "server",
+        "label": "Central API Gateway",
+        "status": "failed",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Gateway Central de API",
+          "logs": [
+            "[06:32:00] INFO: Earthquake alert received — all systems activating",
+            "[06:32:05] WARN: Connection count: 8,400 / 10,000 max",
+            "[06:32:10] ERROR: Connection count: 10,000 / 10,000 — MAX REACHED",
+            "[06:32:10] ERROR: Dropping new connections — HTTP 503",
+            "[06:32:15] WARN: CPU utilization: 98%",
+            "[06:32:20] ERROR: Request queue depth: 45,000 (overflow)",
+            "[06:32:25] WARN: Average response time: 12,340ms",
+            "[06:32:30] ERROR: 60% of requests being rejected"
+          ],
+          "data": {
+            "Status": "OVERLOADED",
+            "Connections": "10,000 / 10,000 (MAX)",
+            "CPU": "98%",
+            "Memory": "94%",
+            "Requests/sec (normal)": "2,000",
+            "Requests/sec (current)": "15,000",
+            "Rejected Rate": "60%",
+            "Avg Response Time": "12,340ms (normal: 50ms)",
+            "Instances": "1 (no scaling configured)"
+          },
+          "status": "Instância única do gateway sobrecarregada. Sem auto-scaling, sem load balancing, sem rate limiting."
+        }
+      },
+      {
+        "id": "precinct-north",
+        "type": "client",
+        "label": "North Precinct",
+        "status": "failed",
+        "position": { "x": 80, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Sistemas da Delegacia Norte",
+          "logs": [
+            "[06:32:11] ERROR: Dispatch request FAILED — gateway returned 503",
+            "[06:32:15] ERROR: Ambulance dispatch for earthquake victims FAILED",
+            "[06:32:20] ERROR: 14 consecutive 503 errors",
+            "[06:32:25] WARN: Retrying all failed requests — adding more load to gateway"
+          ],
+          "data": {
+            "Failed Requests": "847 in last 5 minutes",
+            "Pending Dispatches": "23 ambulances, 15 fire trucks",
+            "Emergency Calls Dropped": "31",
+            "Retry Strategy": "Immediate retry (making things worse)"
+          },
+          "status": "Despachos de emergência críticos falhando. Tempestades de retry piorando a sobrecarga do gateway."
+        }
+      },
+      {
+        "id": "precinct-south",
+        "type": "client",
+        "label": "South Precinct",
+        "status": "failed",
+        "position": { "x": 350, "y": 350 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Sistemas da Delegacia Sul",
+          "logs": [
+            "[06:32:12] ERROR: Officer GPS tracking update FAILED — gateway 503",
+            "[06:32:18] WARN: Lost contact with 8 officers in earthquake zone",
+            "[06:32:22] ERROR: Cannot route 911 calls — gateway overwhelmed"
+          ],
+          "data": {
+            "Officers Out of Contact": "8",
+            "Failed 911 Routes": "19",
+            "Gateway Success Rate": "35%"
+          },
+          "status": "Perdeu contato com policiais em campo. Roteamento 911 falhando."
+        }
+      },
+      {
+        "id": "dispatch-911",
+        "type": "client",
+        "label": "911 Dispatch Center",
+        "status": "failed",
+        "position": { "x": 620, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Central de Despacho de Emergência 911",
+          "logs": [
+            "[06:32:10] ERROR: Call routing API returned 503",
+            "[06:32:12] ERROR: Cannot determine nearest available unit",
+            "[06:32:15] CRITICAL: 911 calls queuing — average wait time 4 minutes",
+            "[06:32:20] WARN: Emergency and routine requests share same gateway — no priority"
+          ],
+          "data": {
+            "Calls Waiting": "47",
+            "Average Wait": "4 min 12 sec (target: 10 sec)",
+            "Calls Dropped": "12",
+            "Priority Level": "SAME AS ROUTINE TRAFFIC (no differentiation)"
+          },
+          "status": "Chamadas 911 competindo com tráfego de rotina pelo mesmo gateway sobrecarregado. Nenhum mecanismo de prioridade."
+        }
+      },
+      {
+        "id": "backend-services",
+        "type": "server",
+        "label": "Backend Services",
+        "status": "healthy",
+        "position": { "x": 350, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Cluster de Serviços de Backend",
+          "logs": [
+            "[06:32:00] INFO: All backend services healthy",
+            "[06:32:10] INFO: Capacity available — only receiving 40% of normal traffic",
+            "[06:32:15] INFO: Database responding in 5ms",
+            "[06:32:20] WARN: Most requests never reaching us — gateway is the bottleneck"
+          ],
+          "data": {
+            "Status": "HEALTHY",
+            "CPU": "25%",
+            "Capacity Used": "40%",
+            "Response Time": "5ms",
+            "Note": "Backend is fine — gateway is the bottleneck"
+          },
+          "status": "Serviços de backend estão saudáveis e subutilizados. O gateway é o único gargalo."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-north-gw", "source": "precinct-north", "target": "api-gateway", "label": "requests", "animated": true, "style": "slow" },
+      { "id": "e-south-gw", "source": "precinct-south", "target": "api-gateway", "label": "requests", "animated": true, "style": "slow" },
+      { "id": "e-911-gw", "source": "dispatch-911", "target": "api-gateway", "label": "emergency calls", "animated": true, "style": "broken" },
+      { "id": "e-gw-backend", "source": "api-gateway", "target": "backend-services", "label": "forwarded requests", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz da falha em todo o sistema durante o terremoto?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "Os serviços de backend não conseguem lidar com o volume de tráfego do terremoto",
+          "correct": false,
+          "feedback": "Os serviços de backend estão na verdade saudáveis e subutilizados, com apenas 25% de CPU e 40% de capacidade. As requisições nunca chegam ao backend porque o único gateway de API é o gargalo, descartando 60% das requisições antes que elas passem."
+        },
+        {
+          "id": "rc-2",
+          "text": "Uma única instância de gateway de API é um gargalo — não consegue escalar para lidar com o pico de tráfego, e não há distribuição de carga ou mecanismo de prioridade",
+          "correct": true,
+          "feedback": "Correto! O único gateway de API é um gargalo (e um ponto único de falha). Ele tem um limite fixo de 10.000 conexões, e com 15.000 requisições/segundo durante o terremoto, rejeita 60%. Os serviços de backend têm capacidade de sobra, mas o gateway é o ponto de estrangulamento. Além disso, não há priorização de tráfego — chamadas de emergência 911 competem igualmente com consultas administrativas de rotina."
+        },
+        {
+          "id": "rc-3",
+          "text": "As tempestades de retry das delegacias estão causando a falha",
+          "correct": false,
+          "feedback": "As tempestades de retry estão piorando a situação (amplificando a carga), mas são um sintoma, não a causa raiz. O gateway já estava sobrecarregado antes dos retries começarem. Mesmo sem retries, 15.000 requisições/segundo excedem o limite de 10.000 conexões do gateway."
+        },
+        {
+          "id": "rc-4",
+          "text": "O terremoto causou dano físico ao servidor do gateway",
+          "correct": false,
+          "feedback": "O servidor do gateway está fisicamente intacto — está operando a 98% de CPU, processando ativamente requisições e retornando erros 503. Não está danificado; está simplesmente sobrecarregado pelo volume de tráfego para o qual nunca foi dimensionado sozinho."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor abordagem para prevenir sobrecarga do gateway durante picos de tráfego?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Implantar múltiplas instâncias de gateway atrás de um load balancer com auto-scaling, e implementar filas de prioridade para tráfego de emergência",
+          "correct": true,
+          "feedback": "Correto! A solução tem múltiplos componentes: (1) Múltiplas instâncias de gateway atrás de um load balancer distribuem o tráfego entre vários servidores, eliminando o gargalo único. (2) Auto-scaling adiciona automaticamente mais instâncias de gateway quando o tráfego aumenta. (3) Filas de prioridade garantem que o tráfego de emergência 911 seja processado primeiro, mesmo sob carga. Este é o padrão de produção padrão — nenhum componente único deve ser o único caminho para todo o tráfego."
+        },
+        {
+          "id": "fix-2",
+          "text": "Fazer upgrade do servidor único de gateway para uma máquina mais potente com limites de conexão maiores",
+          "correct": false,
+          "feedback": "Escalar verticalmente (máquina maior) tem limites — você eventualmente atingirá o teto novamente com o próximo grande evento. Também não resolve o problema de ponto único de falha. Escalamento horizontal (múltiplas instâncias) é mais resiliente e pode escalar muito mais."
+        },
+        {
+          "id": "fix-3",
+          "text": "Implementar rate limiting para rejeitar requisições em excesso e proteger o gateway",
+          "correct": false,
+          "feedback": "Rate limiting protege o gateway de sobrecarga mas não aumenta a capacidade — ainda rejeita requisições, apenas de forma mais controlada. Durante um terremoto, você precisa de MAIS capacidade, não de formas melhores de rejeitar tráfego. Rate limiting deve complementar o load balancing, não substituí-lo."
+        },
+        {
+          "id": "fix-4",
+          "text": "Fazer cada delegacia se conectar diretamente aos serviços de backend, removendo o gateway completamente",
+          "correct": false,
+          "feedback": "Remover o gateway elimina o gargalo mas perde todos os benefícios que gateways proporcionam: autenticação, rate limiting, roteamento, monitoramento e tradução de protocolo. A abordagem correta é escalar a camada de gateway horizontalmente, não removê-la."
+        }
+      ]
+    }
+  },
+  "conceptId": "load-balancing",
+  "badge": {
+    "name": "Mestre de Carga",
+    "icon": "⚖️"
+  }
+}

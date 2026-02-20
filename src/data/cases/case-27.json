@@ -1,0 +1,193 @@
+{
+  "id": "case-27",
+  "number": 27,
+  "title": "The Retry Storm",
+  "subtitle": "One failed request becomes a million knocking at the door",
+  "brief": {
+    "narrative": "It started with a single timeout. The Distributia PD Records Service slowed down during a routine database maintenance window, causing a handful of requests from the Patrol App to fail. But instead of backing off, every patrol car's mobile terminal began retrying immediately — and then retrying the retries. Within seconds, the Records Service was buried under an avalanche of duplicate requests, each timeout spawning three more attempts. Sergeant Backoff watches in horror as the dashboard shows request volume climbing exponentially. The Records Service, which was merely slow, is now completely unresponsive. Officers in the field can't pull up suspect records, run plates, or file reports. The system that was limping is now flatlined — killed not by the original problem, but by the cure.",
+    "symptoms": [
+      "Records Service response times spiked from 200ms to 30+ seconds before going fully unresponsive",
+      "Patrol App terminals show 'Request Failed — Retrying...' in an endless loop",
+      "Request volume to Records Service increased 50x within 60 seconds",
+      "Database CPU was at 45% before the storm but shot to 100% under retry load"
+    ],
+    "objective": "Identify how aggressive retry behavior amplified a minor slowdown into a total service outage, and determine the correct retry strategy to prevent retry storms."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "patrol-app",
+        "type": "client",
+        "label": "Patrol App (x200)",
+        "status": "degraded",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Patrol Car Mobile Terminals",
+          "logs": [
+            "[14:30:01] INFO: Request to Records Service — plate lookup #A7X-219",
+            "[14:30:04] WARN: Request timed out after 3s — retrying immediately (attempt 2/5)",
+            "[14:30:04] WARN: Request timed out after 3s — retrying immediately (attempt 3/5)",
+            "[14:30:04] WARN: Request timed out after 3s — retrying immediately (attempt 4/5)",
+            "[14:30:05] ERROR: All 5 retries exhausted — auto-restarting request cycle",
+            "[14:30:05] INFO: New request to Records Service — plate lookup #A7X-219 (cycle 2)"
+          ],
+          "data": {
+            "Active Terminals": "200",
+            "Retry Policy": "Immediate retry, max 5 attempts, then restart",
+            "Retry Delay": "0ms (no backoff)",
+            "Avg Requests/Terminal": "~15/min (normally 3/min)",
+            "Total Request Rate": "~3000/min (normally 600/min)"
+          },
+          "status": "All terminals stuck in retry loops. Each failed request triggers 5 immediate retries with no delay."
+        }
+      },
+      {
+        "id": "api-gateway",
+        "type": "server",
+        "label": "API Gateway",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "API Gateway",
+          "logs": [
+            "[14:30:01] INFO: Forwarding requests to Records Service — queue depth normal",
+            "[14:30:03] WARN: Request queue depth increasing — 150 pending",
+            "[14:30:05] WARN: Request queue depth critical — 2,400 pending",
+            "[14:30:08] ERROR: Connection pool to Records Service exhausted",
+            "[14:30:10] ERROR: Dropping incoming requests — queue overflow"
+          ],
+          "data": {
+            "Request Queue": "OVERFLOW (max 5000)",
+            "Connection Pool": "EXHAUSTED (500/500 in use)",
+            "Requests Dropped": "1,847 in last 60s",
+            "Rate Limiting": "NONE CONFIGURED",
+            "Retry-After Header": "NOT SENT"
+          },
+          "status": "Gateway overwhelmed by retry traffic. No rate limiting or backpressure configured."
+        }
+      },
+      {
+        "id": "records-service",
+        "type": "server",
+        "label": "Records Service",
+        "status": "failed",
+        "position": { "x": 600, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Records Service",
+          "logs": [
+            "[14:29:55] INFO: Database maintenance starting — expect slight latency increase",
+            "[14:30:00] WARN: Response time degraded — avg 800ms (threshold: 500ms)",
+            "[14:30:05] ERROR: Thread pool saturated — 200/200 threads busy",
+            "[14:30:08] ERROR: Request timeout rate 100% — service effectively down",
+            "[14:30:15] ERROR: OOM warning — excessive connection objects in memory"
+          ],
+          "data": {
+            "Status": "UNRESPONSIVE",
+            "Thread Pool": "200/200 (saturated)",
+            "Avg Response Time": "TIMEOUT (>30s)",
+            "Original Issue": "Routine DB maintenance — 2x latency increase",
+            "Current Issue": "50x normal request volume from retry storm"
+          },
+          "status": "Service was merely slow due to DB maintenance but is now completely down under retry storm load."
+        }
+      },
+      {
+        "id": "records-db",
+        "type": "database",
+        "label": "Records Database",
+        "status": "degraded",
+        "position": { "x": 600, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Records Database",
+          "logs": [
+            "[14:29:55] INFO: Index rebuild started on warrants table",
+            "[14:30:00] WARN: Query latency increased during maintenance — expected",
+            "[14:30:06] ERROR: Connection limit reached — 500/500 connections",
+            "[14:30:10] ERROR: New connections refused — too many open connections"
+          ],
+          "data": {
+            "CPU Usage": "100% (was 45% pre-storm)",
+            "Active Connections": "500/500 (max)",
+            "Maintenance Status": "Index rebuild — 60% complete",
+            "Query Latency": "TIMEOUT (was 400ms during maintenance)"
+          },
+          "status": "Database was handling maintenance fine until retry storm saturated all connections."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-patrol-gateway", "source": "patrol-app", "target": "api-gateway", "label": "retries (50x volume)", "animated": true, "style": "slow" },
+      { "id": "e-gateway-records", "source": "api-gateway", "target": "records-service", "label": "overwhelmed", "animated": false, "style": "broken" },
+      { "id": "e-records-db", "source": "records-service", "target": "records-db", "label": "queries", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the Records Service total outage?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The database maintenance operation corrupted the Records Service data",
+          "correct": false,
+          "feedback": "The database maintenance was a routine index rebuild that only caused a minor latency increase. The data was never corrupted. The real problem was that clients responded to the slowdown with aggressive, immediate retries that amplified the load far beyond what the service could handle."
+        },
+        {
+          "id": "rc-2",
+          "text": "Aggressive immediate retries with no backoff amplified a minor slowdown into a catastrophic overload",
+          "correct": true,
+          "feedback": "Correct! This is a classic retry storm. The Records Service was merely slow (800ms instead of 200ms), which was manageable. But 200 clients each firing 5 immediate retries with no delay turned 600 requests/min into 3000+/min. Each retry that timed out spawned more retries, creating a positive feedback loop that buried the service. The cure was worse than the disease."
+        },
+        {
+          "id": "rc-3",
+          "text": "The API Gateway crashed due to insufficient memory allocation",
+          "correct": false,
+          "feedback": "The API Gateway was overwhelmed but didn't crash — it was a victim, not the cause. The root issue is the retry behavior of the clients. Even with a larger gateway, the retry storm would still have overwhelmed the Records Service."
+        },
+        {
+          "id": "rc-4",
+          "text": "Too many patrol cars were active simultaneously, exceeding system capacity",
+          "correct": false,
+          "feedback": "200 patrol cars generating 600 requests/min was well within normal capacity. The system handles that load daily. The problem was that each car's retry policy multiplied its request rate by 5x or more during the slowdown, turning normal load into a crushing storm."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best strategy to prevent retry storms?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Disable all retries so failed requests simply fail without any retry attempt",
+          "correct": false,
+          "feedback": "Disabling retries entirely means transient errors (a momentary network blip) would cause permanent failures. Retries are valuable — the problem is how they're implemented. You need smart retries, not no retries."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implement exponential backoff with jitter so retries are spaced out with randomized delays",
+          "correct": true,
+          "feedback": "Correct! Exponential backoff (wait 1s, then 2s, then 4s, etc.) prevents the thundering herd by spreading retries over time. Adding jitter (random variation) prevents synchronized retry waves where all clients retry at the exact same moment. Combined with a reasonable max retry count, this lets transient issues resolve naturally without amplifying load."
+        },
+        {
+          "id": "fix-3",
+          "text": "Increase the Records Service thread pool from 200 to 2000 to handle more concurrent requests",
+          "correct": false,
+          "feedback": "More threads would delay the crash but not prevent it. A retry storm grows exponentially — if you can handle 10x load, the storm will simply grow to 100x. You need to address the retry behavior itself, not try to absorb unlimited retry traffic."
+        },
+        {
+          "id": "fix-4",
+          "text": "Add a load balancer with more Records Service instances to distribute the retry traffic",
+          "correct": false,
+          "feedback": "Scaling out helps with normal load growth, but a retry storm is a positive feedback loop — more capacity just means it takes slightly longer to overwhelm. Each timed-out retry still generates more retries. The fundamental fix must address the retry behavior at the client level."
+        }
+      ]
+    }
+  },
+  "conceptId": "retry-strategies",
+  "badge": {
+    "name": "Storm Chaser",
+    "icon": "🌪️"
+  }
+}

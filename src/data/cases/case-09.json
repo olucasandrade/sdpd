@@ -1,0 +1,219 @@
+{
+  "id": "case-09",
+  "number": 9,
+  "title": "The Overwhelmed Gateway",
+  "subtitle": "City-wide emergency brings the single gateway to its knees",
+  "brief": {
+    "narrative": "A massive earthquake has hit Distributia. Every precinct, emergency dispatch center, and patrol car is flooding the central API gateway with requests — officer locations, emergency calls, suspect lookups, incident reports. The single API gateway that routes all traffic between the precincts and backend services has hit its connection limit and is dropping requests. North Precinct can't dispatch ambulances. South Precinct lost contact with officers in the field. Emergency 911 calls are going unanswered. The gateway was designed for normal load but nobody planned for every system in the city hitting it simultaneously during a crisis.",
+    "symptoms": [
+      "Central API gateway returning HTTP 503 (Service Unavailable) to 60% of requests",
+      "Response times increased from 50ms to 12 seconds for requests that do get through",
+      "All 5 precincts and 3 dispatch centers competing for gateway capacity",
+      "Emergency 911 routing is failing alongside routine administrative queries"
+    ],
+    "objective": "Identify why a single API gateway is a bottleneck and determine the best strategy to distribute load across the system."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "api-gateway",
+        "type": "server",
+        "label": "Central API Gateway",
+        "status": "failed",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Central API Gateway",
+          "logs": [
+            "[06:32:00] INFO: Earthquake alert received — all systems activating",
+            "[06:32:05] WARN: Connection count: 8,400 / 10,000 max",
+            "[06:32:10] ERROR: Connection count: 10,000 / 10,000 — MAX REACHED",
+            "[06:32:10] ERROR: Dropping new connections — HTTP 503",
+            "[06:32:15] WARN: CPU utilization: 98%",
+            "[06:32:20] ERROR: Request queue depth: 45,000 (overflow)",
+            "[06:32:25] WARN: Average response time: 12,340ms",
+            "[06:32:30] ERROR: 60% of requests being rejected"
+          ],
+          "data": {
+            "Status": "OVERLOADED",
+            "Connections": "10,000 / 10,000 (MAX)",
+            "CPU": "98%",
+            "Memory": "94%",
+            "Requests/sec (normal)": "2,000",
+            "Requests/sec (current)": "15,000",
+            "Rejected Rate": "60%",
+            "Avg Response Time": "12,340ms (normal: 50ms)",
+            "Instances": "1 (no scaling configured)"
+          },
+          "status": "Single gateway instance overwhelmed. No auto-scaling, no load balancing, no rate limiting."
+        }
+      },
+      {
+        "id": "precinct-north",
+        "type": "client",
+        "label": "North Precinct",
+        "status": "failed",
+        "position": { "x": 80, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "North Precinct Systems",
+          "logs": [
+            "[06:32:11] ERROR: Dispatch request FAILED — gateway returned 503",
+            "[06:32:15] ERROR: Ambulance dispatch for earthquake victims FAILED",
+            "[06:32:20] ERROR: 14 consecutive 503 errors",
+            "[06:32:25] WARN: Retrying all failed requests — adding more load to gateway"
+          ],
+          "data": {
+            "Failed Requests": "847 in last 5 minutes",
+            "Pending Dispatches": "23 ambulances, 15 fire trucks",
+            "Emergency Calls Dropped": "31",
+            "Retry Strategy": "Immediate retry (making things worse)"
+          },
+          "status": "Critical emergency dispatches failing. Retry storms adding to gateway overload."
+        }
+      },
+      {
+        "id": "precinct-south",
+        "type": "client",
+        "label": "South Precinct",
+        "status": "failed",
+        "position": { "x": 350, "y": 350 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "South Precinct Systems",
+          "logs": [
+            "[06:32:12] ERROR: Officer GPS tracking update FAILED — gateway 503",
+            "[06:32:18] WARN: Lost contact with 8 officers in earthquake zone",
+            "[06:32:22] ERROR: Cannot route 911 calls — gateway overwhelmed"
+          ],
+          "data": {
+            "Officers Out of Contact": "8",
+            "Failed 911 Routes": "19",
+            "Gateway Success Rate": "35%"
+          },
+          "status": "Lost contact with field officers. 911 routing failing."
+        }
+      },
+      {
+        "id": "dispatch-911",
+        "type": "client",
+        "label": "911 Dispatch Center",
+        "status": "failed",
+        "position": { "x": 620, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "911 Emergency Dispatch",
+          "logs": [
+            "[06:32:10] ERROR: Call routing API returned 503",
+            "[06:32:12] ERROR: Cannot determine nearest available unit",
+            "[06:32:15] CRITICAL: 911 calls queuing — average wait time 4 minutes",
+            "[06:32:20] WARN: Emergency and routine requests share same gateway — no priority"
+          ],
+          "data": {
+            "Calls Waiting": "47",
+            "Average Wait": "4 min 12 sec (target: 10 sec)",
+            "Calls Dropped": "12",
+            "Priority Level": "SAME AS ROUTINE TRAFFIC (no differentiation)"
+          },
+          "status": "911 calls competing with routine traffic through same overloaded gateway. No priority mechanism."
+        }
+      },
+      {
+        "id": "backend-services",
+        "type": "server",
+        "label": "Backend Services",
+        "status": "healthy",
+        "position": { "x": 350, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Backend Services Cluster",
+          "logs": [
+            "[06:32:00] INFO: All backend services healthy",
+            "[06:32:10] INFO: Capacity available — only receiving 40% of normal traffic",
+            "[06:32:15] INFO: Database responding in 5ms",
+            "[06:32:20] WARN: Most requests never reaching us — gateway is the bottleneck"
+          ],
+          "data": {
+            "Status": "HEALTHY",
+            "CPU": "25%",
+            "Capacity Used": "40%",
+            "Response Time": "5ms",
+            "Note": "Backend is fine — gateway is the bottleneck"
+          },
+          "status": "Backend services are healthy and underutilized. The gateway is the sole bottleneck."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-north-gw", "source": "precinct-north", "target": "api-gateway", "label": "requests", "animated": true, "style": "slow" },
+      { "id": "e-south-gw", "source": "precinct-south", "target": "api-gateway", "label": "requests", "animated": true, "style": "slow" },
+      { "id": "e-911-gw", "source": "dispatch-911", "target": "api-gateway", "label": "emergency calls", "animated": true, "style": "broken" },
+      { "id": "e-gw-backend", "source": "api-gateway", "target": "backend-services", "label": "forwarded requests", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the system-wide failure during the earthquake?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The backend services can't handle the earthquake traffic volume",
+          "correct": false,
+          "feedback": "The backend services are actually healthy and underutilized at only 25% CPU and 40% capacity. The requests are never reaching the backend because the single API gateway is the bottleneck, dropping 60% of requests before they get through."
+        },
+        {
+          "id": "rc-2",
+          "text": "A single API gateway instance is a bottleneck — it cannot scale to handle the spike in traffic, and there's no load distribution or priority mechanism",
+          "correct": true,
+          "feedback": "Correct! The single API gateway is a bottleneck (and a single point of failure). It has a fixed connection limit of 10,000, and with 15,000 requests/sec during the earthquake, it rejects 60%. The backend services have plenty of capacity, but the gateway is the choke point. Additionally, there's no traffic prioritization — emergency 911 calls compete equally with routine administrative queries."
+        },
+        {
+          "id": "rc-3",
+          "text": "The precincts' retry storms are causing the failure",
+          "correct": false,
+          "feedback": "Retry storms are making the situation worse (amplifying the load), but they're a symptom, not the root cause. The gateway was already overwhelmed before retries kicked in. Even without retries, 15,000 requests/sec exceeds the gateway's 10,000 connection limit."
+        },
+        {
+          "id": "rc-4",
+          "text": "The earthquake caused physical damage to the gateway server",
+          "correct": false,
+          "feedback": "The gateway server is physically fine — it's running at 98% CPU, actively processing requests and returning 503 errors. It's not damaged; it's simply overwhelmed by the volume of traffic it was never designed to handle alone."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best approach to prevent gateway overload during traffic spikes?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Deploy multiple gateway instances behind a load balancer with auto-scaling, and implement priority queues for emergency traffic",
+          "correct": true,
+          "feedback": "Correct! The solution has multiple components: (1) Multiple gateway instances behind a load balancer distribute traffic across several servers, eliminating the single bottleneck. (2) Auto-scaling automatically adds more gateway instances when traffic spikes. (3) Priority queues ensure emergency 911 traffic is processed first, even under load. This is the standard production pattern — no single component should be the sole path for all traffic."
+        },
+        {
+          "id": "fix-2",
+          "text": "Upgrade the single gateway server to a more powerful machine with higher connection limits",
+          "correct": false,
+          "feedback": "Vertical scaling (bigger machine) has limits — you'll eventually hit the ceiling again with the next big event. It also doesn't solve the single point of failure problem. Horizontal scaling (multiple instances) is more resilient and can scale much further."
+        },
+        {
+          "id": "fix-3",
+          "text": "Implement rate limiting to reject excess requests and protect the gateway",
+          "correct": false,
+          "feedback": "Rate limiting protects the gateway from overload but doesn't increase capacity — it still rejects requests, just in a more controlled way. During an earthquake, you need MORE capacity, not better ways to reject traffic. Rate limiting should complement load balancing, not replace it."
+        },
+        {
+          "id": "fix-4",
+          "text": "Have each precinct connect directly to backend services, removing the gateway entirely",
+          "correct": false,
+          "feedback": "Removing the gateway eliminates the bottleneck but loses all the benefits gateways provide: authentication, rate limiting, routing, monitoring, and protocol translation. The correct approach is to scale the gateway layer horizontally, not remove it."
+        }
+      ]
+    }
+  },
+  "conceptId": "load-balancing",
+  "badge": {
+    "name": "Load Master",
+    "icon": "⚖️"
+  }
+}

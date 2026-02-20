@@ -1,0 +1,189 @@
+{
+  "id": "case-20",
+  "number": 20,
+  "title": "O Pipeline Congestionado",
+  "subtitle": "Fila de despacho transborda enquanto o serviço consumidor falha silenciosamente",
+  "brief": {
+    "narrative": "O sistema de despacho de emergência de Distributia parou completamente. Oficiais estão reportando que novas atribuições de ocorrências não estão chegando — viaturas estão paradas enquanto chamadas de emergência se acumulam. A fila de despacho, que normalmente processa centenas de atribuições por minuto, cresceu para mais de 50.000 mensagens pendentes. O lado produtor (central de atendimento) continua empurrando novas ordens de despacho, mas nada está sendo consumido do outro lado. O Chefe Partition está furioso — criminosos estão escapando enquanto oficiais aguardam atribuições que nunca chegam.",
+    "symptoms": [
+      "Atribuições de despacho pararam de chegar às unidades de patrulha há 45 minutos",
+      "A profundidade da fila de mensagens cresceu de ~100 para mais de 50.000 mensagens",
+      "A central de atendimento ainda consegue enviar novas ordens de despacho sem erros",
+      "O uso de memória no broker da fila está se aproximando de níveis críticos"
+    ],
+    "objective": "Identificar por que o pipeline de despacho está congestionado e recomendar uma correção para restaurar o fluxo e prevenir futuras crises de backpressure."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "call-center",
+        "type": "client",
+        "label": "Call Center (Producer)",
+        "status": "healthy",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Central de Atendimento (Produtor)",
+          "logs": [
+            "[03:15:01] INFO: Dispatch order #48,221 published to queue",
+            "[03:15:02] INFO: Dispatch order #48,222 published to queue",
+            "[03:15:02] INFO: Publish rate: 12 msgs/sec",
+            "[03:15:03] WARN: Queue broker reporting high memory usage"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Publish Rate": "12 msgs/sec",
+            "Messages Sent (last hour)": "43,200",
+            "Errors": "0"
+          },
+          "status": "Produtor está operando normalmente. Mensagens estão sendo aceitas pelo broker."
+        }
+      },
+      {
+        "id": "queue-broker",
+        "type": "server",
+        "label": "Dispatch Queue Broker",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Broker da Fila de Despacho",
+          "logs": [
+            "[02:30:00] INFO: Consumer 'patrol-dispatcher' disconnected",
+            "[02:30:01] WARN: No active consumers on queue 'dispatch-orders'",
+            "[02:45:00] WARN: Queue depth exceeded 10,000 messages",
+            "[03:00:00] WARN: Queue depth exceeded 30,000 messages",
+            "[03:15:00] CRITICAL: Memory usage at 91% — queue depth 50,412",
+            "[03:15:01] WARN: Approaching max memory limit, may start dropping messages"
+          ],
+          "data": {
+            "Status": "DEGRADED",
+            "Queue Depth": "50,412 messages",
+            "Active Consumers": "0",
+            "Memory Usage": "91%",
+            "Max Memory": "4 GB",
+            "Backpressure Policy": "None configured"
+          },
+          "status": "Fila enchendo sem consumidores drenando. Nenhum mecanismo de backpressure configurado."
+        }
+      },
+      {
+        "id": "consumer-service",
+        "type": "server",
+        "label": "Patrol Dispatcher (Consumer)",
+        "status": "failed",
+        "position": { "x": 600, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Despachante de Patrulha (Consumidor)",
+          "logs": [
+            "[02:29:55] ERROR: OutOfMemoryError in message handler",
+            "[02:29:56] ERROR: Unhandled exception — process crashing",
+            "[02:29:57] FATAL: Consumer process terminated (exit code 137)",
+            "[02:29:57] INFO: No automatic restart policy configured"
+          ],
+          "data": {
+            "Status": "CRASHED",
+            "Last Active": "02:29:57",
+            "Restart Policy": "None",
+            "Messages Processed Before Crash": "5,102"
+          },
+          "status": "Consumidor falhou por OutOfMemoryError há 45 minutos. Sem política de reinício automático."
+        }
+      },
+      {
+        "id": "patrol-units",
+        "type": "client",
+        "label": "Patrol Units",
+        "status": "degraded",
+        "position": { "x": 600, "y": 280 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Unidades de Patrulha",
+          "logs": [
+            "[02:30:05] WARN: No new dispatch orders received",
+            "[02:45:00] WARN: Still no dispatch orders — 15 min gap",
+            "[03:15:00] WARN: Officers idle for 45 minutes, no assignments"
+          ],
+          "data": {
+            "Status": "IDLE",
+            "Active Patrols": "24",
+            "Pending Assignments": "0",
+            "Last Assignment Received": "02:29:55"
+          },
+          "status": "Nenhuma ordem de despacho chegando. Oficiais estão ociosos e sem atribuições."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-cc-broker", "source": "call-center", "target": "queue-broker", "label": "publish orders", "animated": true, "style": "normal" },
+      { "id": "e-broker-consumer", "source": "queue-broker", "target": "consumer-service", "label": "consume orders", "animated": false, "style": "broken" },
+      { "id": "e-consumer-patrols", "source": "consumer-service", "target": "patrol-units", "label": "assign patrols", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz do congestionamento no pipeline de despacho?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "A central de atendimento está produzindo mensagens rápido demais para o sistema processar",
+          "correct": false,
+          "feedback": "A taxa de produção de 12 msgs/seg é normal. O problema é que zero consumidores estão drenando a fila — o serviço consumidor falhou e nunca reiniciou."
+        },
+        {
+          "id": "rc-2",
+          "text": "O serviço consumidor falhou e não tem política de reinício, então as mensagens se acumulam sem nada processando — uma falha de backpressure",
+          "correct": true,
+          "feedback": "Correto! O despachante de patrulha consumidor falhou há 45 minutos e não tem política de reinício automático. Com o produtor ainda publicando e zero consumidores drenando a fila, as mensagens se acumulam sem limites. O sistema carece de qualquer mecanismo de backpressure para desacelerar os produtores quando os consumidores não conseguem acompanhar."
+        },
+        {
+          "id": "rc-3",
+          "text": "O broker da fila ficou sem memória e parou de aceitar mensagens",
+          "correct": false,
+          "feedback": "O broker está em 91% de memória, mas ainda não parou — continua aceitando mensagens. O problema real é que nenhum consumidor está drenando a fila. O problema de memória é um sintoma da falha de backpressure, não a causa."
+        },
+        {
+          "id": "rc-4",
+          "text": "Uma partição de rede separou o broker das unidades de patrulha",
+          "correct": false,
+          "feedback": "As unidades de patrulha não se conectam diretamente ao broker — o serviço consumidor faz isso. Os logs do consumidor mostram que ele falhou por um OutOfMemoryError, não por um problema de rede."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor correção para prevenir este congestionamento de pipeline no futuro?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Implementar controles de backpressure: reinício automático de consumidores, limites de tamanho da fila e desaceleração de produtores quando a fila está cheia",
+          "correct": true,
+          "feedback": "Correto! Uma estratégia adequada de backpressure inclui: (1) reinício automático de consumidores que falharam, (2) definição de profundidade máxima da fila para evitar crescimento ilimitado, e (3) sinalizar aos produtores para desacelerar quando os consumidores não conseguem acompanhar. Isso evita que o sistema entre em espiral descontrolada."
+        },
+        {
+          "id": "fix-2",
+          "text": "Aumentar a memória do broker para 64 GB para comportar mais mensagens",
+          "correct": false,
+          "feedback": "Mais memória apenas adia o problema — se os consumidores estão fora do ar, a fila vai eventualmente encher qualquer quantidade de memória. Você precisa de backpressure para parar o crescimento ilimitado e garantir que os consumidores permaneçam ativos."
+        },
+        {
+          "id": "fix-3",
+          "text": "Fazer a central de atendimento enviar ordens de despacho diretamente para as unidades de patrulha, contornando a fila",
+          "correct": false,
+          "feedback": "Remover a fila elimina o buffering que ajuda a lidar com picos de tráfego. A fila é uma boa escolha arquitetural — ela só precisa de controles adequados de backpressure e resiliência de consumidores."
+        },
+        {
+          "id": "fix-4",
+          "text": "Configurar mensagens para expirar após 5 minutos para que as antigas sejam automaticamente deletadas",
+          "correct": false,
+          "feedback": "Descartar ordens de despacho significa que chamadas de emergência se perdem completamente. Você precisa de backpressure para gerenciar o fluxo, não de expiração de mensagens que silenciosamente descarta atribuições críticas."
+        }
+      ]
+    }
+  },
+  "conceptId": "backpressure",
+  "badge": {
+    "name": "Válvula de Pressão",
+    "icon": "🔧"
+  }
+}

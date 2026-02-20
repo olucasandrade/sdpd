@@ -1,0 +1,209 @@
+{
+  "id": "case-02",
+  "number": 2,
+  "title": "A Leitura Desatualizada",
+  "subtitle": "Um policial prende alguém com base em um mandado já revogado",
+  "brief": {
+    "narrative": "O Oficial Chen acabou de prender Marcus Webb em uma blitz com base em um mandado de agressão pendente. O problema? Esse mandado foi revogado pela Juíza Torres três horas atrás. O advogado de Webb já está ameaçando um processo por prisão indevida. A revogação do mandado foi registrada no banco de dados líder na Central, mas o terminal de patrulha do Oficial Chen consulta o seguidor da Delegacia Sul — que aparentemente não está atualizado. O Chefe Partition está furioso. Como nosso próprio sistema nos traiu, Detetive?",
+    "symptoms": [
+      "O mandado foi revogado há 3 horas no banco de dados líder",
+      "O seguidor da Delegacia Sul ainda mostra o mandado como ativo",
+      "O seguidor da Delegacia Norte mostra corretamente o mandado como revogado",
+      "O atraso de replicação no seguidor da Delegacia Sul é superior a 4 horas"
+    ],
+    "objective": "Determinar por que o seguidor da Delegacia Sul possui dados desatualizados e recomendar uma solução para evitar que policiais ajam com base em informações obsoletas."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "db-leader",
+        "type": "database",
+        "label": "Leader DB (Central)",
+        "status": "healthy",
+        "position": { "x": 350, "y": 30 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados Líder — Central",
+          "logs": [
+            "[14:22:01] INFO: UPDATE warrants SET status='DISMISSED' WHERE id=W-4471",
+            "[14:22:01] INFO: Write acknowledged, replicating to followers...",
+            "[14:22:02] INFO: Replication to north-follower: OK (lag: 200ms)",
+            "[14:22:02] WARN: Replication to south-follower: PENDING (lag: 4h 12m)",
+            "[17:30:00] INFO: South follower replication still behind by 4+ hours"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Warrant W-4471": "DISMISSED (updated 3h ago)",
+            "Replication Mode": "Asynchronous",
+            "North Follower Lag": "200ms",
+            "South Follower Lag": "4h 12m"
+          },
+          "status": "Líder está saudável. Seguidor Sul com atraso severo de replicação."
+        }
+      },
+      {
+        "id": "db-north",
+        "type": "database",
+        "label": "North Follower",
+        "status": "healthy",
+        "position": { "x": 100, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados Seguidor — Delegacia Norte",
+          "logs": [
+            "[14:22:02] INFO: Received replication event for W-4471",
+            "[14:22:02] INFO: Applied: warrant W-4471 → DISMISSED",
+            "[17:30:00] INFO: Replication lag: 180ms"
+          ],
+          "data": {
+            "Status": "ONLINE — IN SYNC",
+            "Warrant W-4471": "DISMISSED",
+            "Replication Lag": "180ms",
+            "Last Sync": "Just now"
+          },
+          "status": "Saudável e atualizado com o líder."
+        }
+      },
+      {
+        "id": "db-south",
+        "type": "database",
+        "label": "South Follower",
+        "status": "degraded",
+        "position": { "x": 600, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados Seguidor — Delegacia Sul",
+          "logs": [
+            "[13:18:00] WARN: Replication consumer falling behind",
+            "[13:45:00] WARN: Replication lag exceeding 1 hour",
+            "[14:22:02] INFO: Replication event for W-4471 QUEUED (not yet applied)",
+            "[17:30:00] ERROR: Replication lag: 4h 12m — serving stale data"
+          ],
+          "data": {
+            "Status": "ONLINE — LAGGING",
+            "Warrant W-4471": "ACTIVE ⚠️ (stale!)",
+            "Replication Lag": "4h 12m",
+            "Last Sync": "4 hours ago",
+            "Cause": "Slow disk I/O on follower"
+          },
+          "status": "Online mas severamente atrasado. Servindo dados de mandados desatualizados."
+        }
+      },
+      {
+        "id": "officer-chen",
+        "type": "client",
+        "label": "Officer Chen",
+        "status": "degraded",
+        "position": { "x": 600, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal de Patrulha do Oficial Chen",
+          "logs": [
+            "[17:25:00] INFO: Querying warrants for Marcus Webb...",
+            "[17:25:00] INFO: Routed to south-follower (nearest)",
+            "[17:25:01] INFO: Result: Warrant W-4471 — ACTIVE",
+            "[17:25:15] INFO: Arrest initiated based on active warrant"
+          ],
+          "data": {
+            "Connected To": "South Precinct Follower",
+            "Query Result": "Warrant W-4471: ACTIVE",
+            "Actual Status": "DISMISSED (3 hours ago)"
+          },
+          "status": "Leu dados desatualizados do seguidor com atraso. Prisão indevida."
+        }
+      },
+      {
+        "id": "judge",
+        "type": "client",
+        "label": "Judge Torres",
+        "status": "healthy",
+        "position": { "x": 350, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal da Juíza Torres",
+          "logs": [
+            "[14:22:00] INFO: Dismissing warrant W-4471 for Marcus Webb",
+            "[14:22:01] INFO: Write sent to Leader DB — acknowledged"
+          ],
+          "data": {
+            "Action": "Warrant W-4471 DISMISSED",
+            "Written To": "Leader DB (Central)",
+            "Time": "3 hours ago"
+          },
+          "status": "A revogação foi corretamente registrada no banco de dados líder."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-judge-leader", "source": "judge", "target": "db-leader", "label": "write", "animated": true, "style": "normal" },
+      { "id": "e-leader-north", "source": "db-leader", "target": "db-north", "label": "replication (fast)", "animated": true, "style": "normal" },
+      { "id": "e-leader-south", "source": "db-leader", "target": "db-south", "label": "replication (lagging!)", "animated": true, "style": "slow" },
+      { "id": "e-south-chen", "source": "db-south", "target": "officer-chen", "label": "stale read", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Por que o Oficial Chen viu um mandado ativo que já havia sido revogado?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "A revogação da juíza nunca foi salva no banco de dados",
+          "correct": false,
+          "feedback": "Os logs do banco de dados líder confirmam que o mandado foi atualizado para REVOGADO. A escrita foi bem-sucedida — o problema está no lado da leitura."
+        },
+        {
+          "id": "rc-2",
+          "text": "O terminal do Oficial Chen foi direcionado a um banco de dados seguidor com alto atraso de replicação, servindo dados desatualizados",
+          "correct": true,
+          "feedback": "Correto! O seguidor da Delegacia Sul tinha mais de 4 horas de atraso de replicação. Quando o Oficial Chen o consultou, a revogação do mandado ainda não havia sido replicada. Este é o problema da 'leitura desatualizada' na replicação líder-seguidor — seguidores podem servir dados obsoletos."
+        },
+        {
+          "id": "rc-3",
+          "text": "Uma partição de rede impediu a Delegacia Sul de receber atualizações",
+          "correct": false,
+          "feedback": "O seguidor Sul está online e recebendo eventos de replicação — eles só estão atrasados. Os logs mostram que os eventos estão enfileirados, não bloqueados. Isso é atraso de replicação, não uma partição de rede."
+        },
+        {
+          "id": "rc-4",
+          "text": "O banco de dados líder teve um bug que não enviou a atualização para o seguidor Sul",
+          "correct": false,
+          "feedback": "Os logs do líder mostram que o evento de replicação foi enviado mas está PENDENTE no seguidor Sul. O seguidor recebeu, mas ainda não aplicou devido ao seu próprio atraso."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor abordagem para evitar que policiais ajam com base em dados de mandados desatualizados?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Direcionar consultas críticas (como verificação de mandados) para o banco de dados líder em vez dos seguidores",
+          "correct": true,
+          "feedback": "Correto! Para leituras críticas de segurança como status de mandados, consultar o líder garante que você sempre obtenha os dados mais atuais. Este é o padrão 'ler do líder' para consultas críticas. Consultas menos críticas (como estatísticas) ainda podem usar os seguidores para distribuir a carga."
+        },
+        {
+          "id": "fix-2",
+          "text": "Mudar de replicação assíncrona para síncrona em todos os seguidores",
+          "correct": false,
+          "feedback": "Replicação síncrona garantiria que todos os seguidores estejam atualizados, mas significa que cada escrita deve esperar TODOS os seguidores confirmarem — incluindo o lento seguidor Sul. Isso tornaria o sistema inteiro tão lento quanto o seguidor mais lento. Uma abordagem melhor é seletiva: direcionar leituras críticas para o líder."
+        },
+        {
+          "id": "fix-3",
+          "text": "Adicionar mais bancos de dados seguidores para distribuir a carga",
+          "correct": false,
+          "feedback": "Mais seguidores não resolvem o atraso de replicação — podem até piorá-lo. O problema não é carga; é que o seguidor Sul está atrasado e servindo dados desatualizados para consultas críticas."
+        },
+        {
+          "id": "fix-4",
+          "text": "Fazer cache dos dados de mandados localmente no terminal de cada policial",
+          "correct": false,
+          "feedback": "Cache local tornaria o problema de desatualização ainda pior! Se o banco de dados já está atrasado, adicionar outra camada de cache significa que os dados podem estar ainda mais defasados."
+        }
+      ]
+    }
+  },
+  "conceptId": "leader-follower-replication",
+  "badge": {
+    "name": "Caçador de Lag",
+    "icon": "⏱️"
+  }
+}

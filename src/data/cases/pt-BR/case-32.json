@@ -1,0 +1,192 @@
+{
+  "id": "case-32",
+  "number": 32,
+  "title": "A Falha da Saga",
+  "subtitle": "Um processo de registro que esqueceu como desfazer seus erros",
+  "brief": {
+    "narrative": "Uma grande operação antidrogas na DP de Distributia traz 15 suspeitos de uma vez. O Sistema de Registro entra em ritmo acelerado, processando cada prisão através de um pipeline de três etapas: Etapa 1 — criar um registro de prisão no Serviço de Prisão, Etapa 2 — gerar um número de registro no Serviço de Booking, Etapa 3 — atribuir uma cela de detenção no Serviço de Atribuição de Celas. O Suspeito #7 passa pelas Etapas 1 e 2 sem problemas, mas a Etapa 3 falha — o Serviço de Atribuição de Celas não tem celas disponíveis (capacidade atingida). O sistema lança um erro e desiste. Mas eis a catástrofe: o registro de prisão da Etapa 1 ainda existe, e o número de booking da Etapa 2 já foi atribuído. O Suspeito #7 agora é um fantasma no sistema — oficialmente preso e registrado, mas sem cela atribuída. A prisão não pode ser reprocessada porque o número de booking já está em uso. O registro não pode ser deletado manualmente porque está marcado como prisão ativa. Enquanto isso, a contagem de celas mostra capacidade máxima, mas uma dessas celas 'ocupadas' foi pré-alocada para o Suspeito #7 e está fisicamente vazia. O Sargento Saga está olhando para uma transação meio-completa sem mecanismo de rollback e sem caminho à frente.",
+    "symptoms": [
+      "O Suspeito #7 tem um registro de prisão e número de booking mas nenhuma atribuição de cela",
+      "Reexecutar o booking falha — número de booking já alocado",
+      "A capacidade de celas mostra lotação máxima, mas uma cela reservada está fisicamente vazia",
+      "Nenhuma ação compensatória ou rollback ocorreu após a falha da Etapa 3"
+    ],
+    "objective": "Identificar por que um processo distribuído de múltiplas etapas deixou dados em estado inconsistente, e determinar o padrão correto para gerenciar transações distribuídas de longa duração."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "booking-orchestrator",
+        "type": "server",
+        "label": "Booking Orchestrator",
+        "status": "failed",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Orquestrador de Booking",
+          "logs": [
+            "[21:15:00] INFO: Starting booking saga for Suspect #7 (Arrest ID: A-2847)",
+            "[21:15:01] INFO: Step 1 — Arrest Service → CREATE arrest record → SUCCESS",
+            "[21:15:02] INFO: Step 2 — Booking Service → ASSIGN booking number → SUCCESS (BK-90441)",
+            "[21:15:03] INFO: Step 3 — Cell Assignment → ASSIGN cell → FAILED (capacity exceeded)",
+            "[21:15:03] ERROR: Step 3 failed. No compensating transactions defined.",
+            "[21:15:03] ERROR: Saga aborted — system left in inconsistent state",
+            "[21:15:03] ERROR: Manual intervention required for Arrest A-2847, Booking BK-90441"
+          ],
+          "data": {
+            "Saga Status": "FAILED — INCONSISTENT STATE",
+            "Steps Completed": "2 of 3",
+            "Steps Rolled Back": "0 of 2 (NO COMPENSATING ACTIONS DEFINED)",
+            "Orphaned Records": "Arrest A-2847, Booking BK-90441",
+            "Rollback Strategy": "NONE IMPLEMENTED"
+          },
+          "status": "Saga falhou na Etapa 3 mas não tem transações compensatórias para desfazer as Etapas 1 e 2."
+        }
+      },
+      {
+        "id": "arrest-service",
+        "type": "server",
+        "label": "Arrest Service",
+        "status": "degraded",
+        "position": { "x": 80, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Prisão",
+          "logs": [
+            "[21:15:01] INFO: Created arrest record A-2847 for Suspect #7",
+            "[21:15:01] INFO: Status: ACTIVE — awaiting booking",
+            "[21:15:04] WARN: Arrest A-2847 still in ACTIVE state — no booking completion received",
+            "[21:20:00] WARN: Arrest A-2847 stuck in ACTIVE for 5 minutes — no rollback requested"
+          ],
+          "data": {
+            "Arrest ID": "A-2847",
+            "Suspect": "#7",
+            "Status": "ACTIVE (cannot be deleted or reprocessed)",
+            "Compensating Action": "NOT DEFINED",
+            "Expected Next Step": "Booking confirmation (never arrived)"
+          },
+          "status": "Registro de prisão existe e está marcado como ATIVO. Nenhuma ação compensatória para anulá-lo."
+        }
+      },
+      {
+        "id": "booking-service",
+        "type": "server",
+        "label": "Booking Service",
+        "status": "degraded",
+        "position": { "x": 350, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Booking",
+          "logs": [
+            "[21:15:02] INFO: Assigned booking number BK-90441 to Arrest A-2847",
+            "[21:15:02] INFO: Status: ALLOCATED — awaiting cell assignment",
+            "[21:15:05] WARN: Booking BK-90441 — no cell assignment confirmation received",
+            "[21:20:00] WARN: Booking BK-90441 stuck in ALLOCATED for 5 minutes"
+          ],
+          "data": {
+            "Booking Number": "BK-90441",
+            "Linked Arrest": "A-2847",
+            "Status": "ALLOCATED (blocks re-use of this number)",
+            "Compensating Action": "NOT DEFINED",
+            "Expected Next Step": "Cell assignment (never arrived)"
+          },
+          "status": "Número de booking alocado mas nunca finalizado. O número não pode ser reutilizado ou liberado."
+        }
+      },
+      {
+        "id": "cell-assignment",
+        "type": "server",
+        "label": "Cell Assignment",
+        "status": "failed",
+        "position": { "x": 620, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Atribuição de Celas",
+          "logs": [
+            "[21:15:03] INFO: Cell assignment request for Booking BK-90441",
+            "[21:15:03] ERROR: All holding cells at capacity (48/48 occupied)",
+            "[21:15:03] ERROR: Cell assignment FAILED — no available cells",
+            "[21:15:03] INFO: Note: Cell #12 was pre-reserved for BK-90441 but reservation failed on final commit"
+          ],
+          "data": {
+            "Capacity": "48/48 (includes 1 ghost reservation)",
+            "Cell #12": "Reserved for BK-90441 but physically EMPTY",
+            "Assignment Status": "FAILED",
+            "Compensating Action": "NOT DEFINED"
+          },
+          "status": "Atribuição falhou mas uma pré-reserva existe que não será liberada."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-orch-arrest", "source": "booking-orchestrator", "target": "arrest-service", "label": "Step 1: SUCCESS", "animated": false, "style": "normal" },
+      { "id": "e-orch-booking", "source": "booking-orchestrator", "target": "booking-service", "label": "Step 2: SUCCESS", "animated": false, "style": "normal" },
+      { "id": "e-orch-cell", "source": "booking-orchestrator", "target": "cell-assignment", "label": "Step 3: FAILED", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz dos dados inconsistentes após a falha do booking?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O Serviço de Atribuição de Celas tem um bug que reporta capacidade cheia incorretamente",
+          "correct": false,
+          "feedback": "O problema de capacidade é uma falha legítima — as celas realmente estão cheias (com uma reserva fantasma). O problema real não é que a Etapa 3 falhou. Falhas são esperadas em sistemas distribuídos. O problema é que não existem ações compensatórias para desfazer as Etapas 1 e 2 quando a Etapa 3 falha."
+        },
+        {
+          "id": "rc-2",
+          "text": "A transação distribuída de múltiplas etapas não tem ações compensatórias (rollback de saga), então uma falha no meio deixa as etapas completas em estado inconsistente",
+          "correct": true,
+          "feedback": "Correto! Em um sistema distribuído, você não pode usar uma transação ACID tradicional entre múltiplos serviços. O padrão Saga resolve isso definindo ações compensatórias para cada etapa: se a Etapa 3 falha, execute 'desfazer Etapa 2' (liberar o número de booking) e depois 'desfazer Etapa 1' (anular o registro de prisão). Sem essas transações compensatórias, uma falha em qualquer ponto da cadeia deixa dados órfãos e inconsistentes que requerem intervenção manual."
+        },
+        {
+          "id": "rc-3",
+          "text": "Os três serviços deveriam compartilhar um único banco de dados para que uma transação tradicional pudesse fazer rollback de tudo",
+          "correct": false,
+          "feedback": "Um banco de dados compartilhado permitiria uma única transação ACID, mas isso anula o propósito dos microsserviços (deploy independente, escalabilidade e propriedade). Em uma arquitetura de microsserviços, cada serviço é dono dos seus dados. O padrão Saga é a solução padrão para manter consistência através de fronteiras de serviço."
+        },
+        {
+          "id": "rc-4",
+          "text": "O Orquestrador de Booking deveria ter verificado a disponibilidade de celas antes de iniciar o processo",
+          "correct": false,
+          "feedback": "Pré-verificar disponibilidade ajuda mas não resolve o problema fundamental. Uma cela pode ser ocupada entre a verificação e a atribuição (uma condição de corrida). Qualquer etapa em qualquer processo distribuído pode falhar a qualquer momento. Você deve planejar para falhas e ter ações compensatórias prontas — este é o padrão Saga."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor abordagem para lidar com falhas em processos distribuídos de múltiplas etapas?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Implementar o padrão Saga com transações compensatórias — cada etapa define uma ação de desfazer que é executada se uma etapa posterior falhar",
+          "correct": true,
+          "feedback": "Correto! O padrão Saga divide uma transação distribuída em uma sequência de transações locais, cada uma com uma ação compensatória. Se a Etapa 3 (atribuição de cela) falha, o orquestrador automaticamente aciona: 'compensar Etapa 2' (liberar número de booking BK-90441) e 'compensar Etapa 1' (anular registro de prisão A-2847). Isso garante que o sistema retorne a um estado consistente. Sagas podem ser orquestradas (coordenador central) ou coreografadas (orientadas a eventos), e são o padrão standard para transações distribuídas em arquiteturas de microsserviços."
+        },
+        {
+          "id": "fix-2",
+          "text": "Usar um protocolo de two-phase commit (2PC) para que todos os três serviços façam commit ou abort atomicamente juntos",
+          "correct": false,
+          "feedback": "Two-phase commit fornece atomicidade mas tem sérias desvantagens em microsserviços: requer que todos os participantes estejam disponíveis simultaneamente, mantém locks entre serviços durante a fase de preparação (bloqueante), e uma falha do coordenador pode deixar participantes presos em um estado preparado. Sagas são preferidas em arquiteturas de microsserviços porque são mais resilientes e não requerem locking entre serviços."
+        },
+        {
+          "id": "fix-3",
+          "text": "Adicionar lógica de retry automático — se a Etapa 3 falhar, continuar tentando até uma cela ficar disponível",
+          "correct": false,
+          "feedback": "Fazer retry indefinidamente é problemático — e se nenhuma cela ficar disponível por horas? Enquanto isso, os registros de prisão e booking estão em um estado de limbo. Retries são úteis para falhas transientes, mas para falhas de lógica de negócio (sem capacidade), você precisa de transações compensatórias para desfazer o trabalho parcial de forma limpa."
+        },
+        {
+          "id": "fix-4",
+          "text": "Reservar todos os recursos (slot de prisão, número de booking, cela) antecipadamente antes de executar qualquer etapa",
+          "correct": false,
+          "feedback": "Reserva ajuda mas não elimina o problema — uma reserva pode falhar, um recurso reservado pode expirar, ou o processo pode falhar entre reservas. Você ainda precisa de ações compensatórias para quando as coisas dão errado. O padrão Saga lida com todos os cenários de falha sistematicamente."
+        }
+      ]
+    }
+  },
+  "conceptId": "sagas",
+  "badge": {
+    "name": "Mestre da Saga",
+    "icon": "📜"
+  }
+}

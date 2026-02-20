@@ -1,0 +1,197 @@
+{
+  "id": "case-30",
+  "number": 30,
+  "title": "O Distrito do Deadlock",
+  "subtitle": "Dois serviços travados em um impasse eterno",
+  "brief": {
+    "narrative": "É hora da troca de turno na DP de Distributia, e o sistema congelou completamente. O Serviço de Registro de Armas e o Serviço de Plantão dos Oficiais estão ambos completamente sem resposta — sem erros, sem crashes, apenas silêncio. A investigação revela um abraço mortal: às 18:00:01, o Registro de Armas adquiriu um lock no registro de atribuição de arma do Oficial #347 e então tentou travar o status de plantão do oficial para verificar se ele está em turno. No exato mesmo instante, o Serviço de Plantão dos Oficiais adquiriu um lock no status de plantão do Oficial #347 e então tentou travar o registro de atribuição de arma para atualizar a lista de equipamentos do oficial. Cada serviço mantém o lock que o outro precisa, e nenhum vai liberar seu lock até conseguir o outro. Estão em deadlock — congelados em uma espera infinita, mantendo toda a troca de turno como refém. O Capitão Gridlock tem 200 oficiais esperando para devolver suas armas e ir para casa, e outros 200 esperando para se armar e iniciar a patrulha. Ninguém consegue fazer nenhuma das duas coisas.",
+    "symptoms": [
+      "O Serviço de Registro de Armas e o Serviço de Plantão dos Oficiais ambos completamente sem resposta (sem erros, sem timeouts)",
+      "Ambos os serviços mostram 100% de utilização de threads mas 0% de CPU — threads estão bloqueadas, não trabalhando",
+      "Processo de troca de turno congelado — oficiais não conseguem devolver nem retirar armas",
+      "Thread dumps mostram ambos os serviços aguardando locks mantidos pelo outro"
+    ],
+    "objective": "Identificar o deadlock distribuído entre dois serviços e determinar a estratégia correta para prevenir e resolver deadlocks em sistemas distribuídos."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "weapon-registry",
+        "type": "server",
+        "label": "Weapon Registry",
+        "status": "failed",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Registro de Armas",
+          "logs": [
+            "[18:00:01] INFO: Processing weapon return for Officer #347",
+            "[18:00:01] INFO: LOCK ACQUIRED — weapon_assignment_347",
+            "[18:00:01] INFO: Requesting lock on duty_status_347 to verify shift status...",
+            "[18:00:01] WARN: Waiting for lock on duty_status_347 — held by Officer Duty Service",
+            "[18:00:31] WARN: Still waiting for lock on duty_status_347 — 30s elapsed",
+            "[18:02:01] WARN: Still waiting for lock on duty_status_347 — 120s elapsed"
+          ],
+          "data": {
+            "Status": "DEADLOCKED",
+            "Lock Held": "weapon_assignment_347",
+            "Lock Waiting For": "duty_status_347",
+            "Lock Timeout": "NONE (waits indefinitely)",
+            "Blocked Threads": "50/50",
+            "CPU Usage": "0.1% (threads sleeping, not working)"
+          },
+          "status": "Mantendo lock de arma, esperando indefinidamente pelo lock de status de plantão mantido pelo Serviço de Plantão."
+        }
+      },
+      {
+        "id": "officer-duty",
+        "type": "server",
+        "label": "Officer Duty Service",
+        "status": "failed",
+        "position": { "x": 550, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Plantão dos Oficiais",
+          "logs": [
+            "[18:00:01] INFO: Processing shift change for Officer #347",
+            "[18:00:01] INFO: LOCK ACQUIRED — duty_status_347",
+            "[18:00:01] INFO: Requesting lock on weapon_assignment_347 to update equipment list...",
+            "[18:00:01] WARN: Waiting for lock on weapon_assignment_347 — held by Weapon Registry",
+            "[18:00:31] WARN: Still waiting for lock on weapon_assignment_347 — 30s elapsed",
+            "[18:02:01] WARN: Still waiting for lock on weapon_assignment_347 — 120s elapsed"
+          ],
+          "data": {
+            "Status": "DEADLOCKED",
+            "Lock Held": "duty_status_347",
+            "Lock Waiting For": "weapon_assignment_347",
+            "Lock Timeout": "NONE (waits indefinitely)",
+            "Blocked Threads": "50/50",
+            "CPU Usage": "0.2% (threads sleeping, not working)"
+          },
+          "status": "Mantendo lock de status de plantão, esperando indefinidamente pelo lock de arma mantido pelo Registro de Armas."
+        }
+      },
+      {
+        "id": "shift-terminal",
+        "type": "client",
+        "label": "Shift Change Terminal",
+        "status": "failed",
+        "position": { "x": 325, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal de Troca de Turno",
+          "logs": [
+            "[18:00:05] INFO: Officer #348 requesting weapon check-in — sending to Weapon Registry",
+            "[18:00:35] WARN: No response from Weapon Registry — 30s timeout",
+            "[18:01:00] INFO: Officer #349 requesting shift start — sending to Officer Duty Service",
+            "[18:01:30] WARN: No response from Officer Duty Service — 30s timeout",
+            "[18:02:00] ERROR: Both services unresponsive — shift change blocked"
+          ],
+          "data": {
+            "Officers Waiting (Off-Duty)": "200 (cannot return weapons)",
+            "Officers Waiting (On-Duty)": "200 (cannot receive weapons)",
+            "Services Responding": "0 of 2",
+            "Shift Change Status": "COMPLETELY BLOCKED"
+          },
+          "status": "400 oficiais presos na troca de turno. Ambos os serviços necessários estão em deadlock."
+        }
+      },
+      {
+        "id": "lock-manager",
+        "type": "database",
+        "label": "Distributed Lock Store",
+        "status": "degraded",
+        "position": { "x": 325, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Redis Lock Store",
+          "logs": [
+            "[18:00:01] INFO: Lock granted — weapon_assignment_347 → Weapon Registry (no TTL)",
+            "[18:00:01] INFO: Lock granted — duty_status_347 → Officer Duty Service (no TTL)",
+            "[18:00:01] INFO: Lock request — duty_status_347 → Weapon Registry (QUEUED — already held)",
+            "[18:00:01] INFO: Lock request — weapon_assignment_347 → Officer Duty Service (QUEUED — already held)",
+            "[18:05:00] WARN: 2 locks held for >5 minutes with no release"
+          ],
+          "data": {
+            "Active Locks": "2 (both stuck)",
+            "Lock TTL": "NONE — locks never expire",
+            "Deadlock Detection": "NOT IMPLEMENTED",
+            "Lock Order Enforcement": "NONE"
+          },
+          "status": "Dois locks mantidos indefinidamente. Sem TTL, sem detecção de deadlock, sem ordenação de locks."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-weapon-lock", "source": "weapon-registry", "target": "lock-manager", "label": "holds weapon lock, wants duty lock", "animated": false, "style": "slow" },
+      { "id": "e-duty-lock", "source": "officer-duty", "target": "lock-manager", "label": "holds duty lock, wants weapon lock", "animated": false, "style": "slow" },
+      { "id": "e-terminal-weapon", "source": "shift-terminal", "target": "weapon-registry", "label": "no response", "animated": false, "style": "broken" },
+      { "id": "e-terminal-duty", "source": "shift-terminal", "target": "officer-duty", "label": "no response", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz de ambos os serviços estarem completamente congelados?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O lock store distribuído (Redis) tem um bug que impede que os locks sejam liberados",
+          "correct": false,
+          "feedback": "O Redis está funcionando corretamente — concedeu os locks conforme solicitado e está fielmente aguardando os comandos de liberação. O lock store está apenas fazendo o que foi mandado. O problema é a ordem em que os serviços adquirem os locks: cada um pega um lock e tenta pegar o outro, criando uma espera circular."
+        },
+        {
+          "id": "rc-2",
+          "text": "Um deadlock distribuído — dois serviços cada um mantendo um lock que o outro precisa, sem timeout ou ordenação para quebrar o ciclo",
+          "correct": true,
+          "feedback": "Correto! Este é um deadlock clássico com todas as quatro condições de Coffman satisfeitas: exclusão mútua (locks são exclusivos), manter e esperar (cada serviço mantém um lock enquanto espera pelo outro), sem preempção (locks não podem ser tomados à força), e espera circular (A espera B, B espera A). A falta de timeouts nos locks significa que nenhum serviço jamais desistirá, e a falta de uma ordenação consistente de locks permite que a dependência circular se forme."
+        },
+        {
+          "id": "rc-3",
+          "text": "Os serviços crasharam mas seus locks não foram liberados porque não há TTL",
+          "correct": false,
+          "feedback": "Os serviços não crasharam — ainda estão rodando com 100% de utilização de threads. Estão vivos mas bloqueados, o que na verdade é pior que um crash (um crash pelo menos seria detectado por health checks). As threads estão dormindo, esperando por locks que nunca virão."
+        },
+        {
+          "id": "rc-4",
+          "text": "O processo de troca de turno envia muitas requisições concorrentes, sobrecarregando o lock store",
+          "correct": false,
+          "feedback": "O lock store não está sobrecarregado — tem apenas 2 locks ativos. O problema não é volume, é a ordenação de aquisição de locks. Até mesmo um único par de requisições pode causar deadlock se dois serviços adquirem locks em ordens opostas."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor abordagem para prevenir deadlocks distribuídos?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Adicionar mais threads a ambos os serviços para que algumas permaneçam disponíveis mesmo quando outras estão bloqueadas",
+          "correct": false,
+          "feedback": "Mais threads significa apenas mais threads que podem participar de deadlocks. As threads em deadlock nunca serão liberadas — adicionar mais apenas adia o ponto em que todas as threads são consumidas. Você precisa prevenir ou quebrar o deadlock em si."
+        },
+        {
+          "id": "fix-2",
+          "text": "Estabelecer uma ordenação global de locks — todos os serviços devem adquirir locks na mesma ordem consistente, e adicionar timeouts nos locks (TTL) como rede de segurança",
+          "correct": true,
+          "feedback": "Correto! Ordenação consistente de locks quebra a condição de espera circular. Se todos os serviços sempre adquirem o lock de plantão antes do lock de arma (ou vice-versa), dois serviços nunca podem acabar cada um segurando o que o outro precisa. Timeouts nos locks (TTL) adicionam uma rede de segurança — se um deadlock de alguma forma ocorrer, os locks expiram e liberam os serviços. Juntos, estes previnem deadlocks e limitam seu impacto caso um escape."
+        },
+        {
+          "id": "fix-3",
+          "text": "Remover locking distribuído completamente e usar concorrência otimista com números de versão",
+          "correct": false,
+          "feedback": "Concorrência otimista funciona bem para cenários de baixa contenção, mas atribuições de armas durante troca de turno têm alta contenção — 400 oficiais simultaneamente. Você veria conflitos e retries constantes. A melhor abordagem é manter o locking mas estabelecer ordenação e adicionar timeouts."
+        },
+        {
+          "id": "fix-4",
+          "text": "Unificar o Registro de Armas e o Plantão dos Oficiais em um único serviço para que os locks sejam locais, não distribuídos",
+          "correct": false,
+          "feedback": "Embora a consolidação elimine o aspecto distribuído, deadlocks locais ainda podem ocorrer dentro de um único serviço. Além disso, unificar serviços viola o princípio de responsabilidade única e cria um raio de explosão maior. A correção adequada — ordenação de locks e timeouts — funciona tanto para deadlocks locais quanto distribuídos."
+        }
+      ]
+    }
+  },
+  "conceptId": "distributed-deadlocks",
+  "badge": {
+    "name": "Mestre das Fechaduras",
+    "icon": "🔐"
+  }
+}

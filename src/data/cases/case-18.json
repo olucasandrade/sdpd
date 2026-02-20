@@ -1,0 +1,184 @@
+{
+  "id": "case-18",
+  "number": 18,
+  "title": "The Lost Dispatch",
+  "subtitle": "Server crash loses all pending dispatch calls from the queue",
+  "brief": {
+    "narrative": "Distributia PD's dispatch system uses a message queue to manage patrol assignments. When a 911 call comes in, it's placed into the queue, and available patrol units pick up assignments from the other end. It's been working great — until the queue server crashed at 3 AM during a busy Friday night. When it came back online 4 minutes later, the queue was empty. Twenty-three dispatch calls that were waiting in the queue — including two high-priority armed robbery reports — simply vanished. The queue was running entirely in memory with no persistence. Those calls were never dispatched. Chief Partition needs to know why critical dispatch messages can just disappear, Detective.",
+    "symptoms": [
+      "23 pending dispatch messages lost during 4-minute server crash",
+      "Queue server restarted with empty queue — no recovery of pending messages",
+      "Two high-priority armed robbery calls were among the lost dispatches",
+      "Queue configured with in-memory storage only — no disk persistence"
+    ],
+    "objective": "Identify why the message queue lost all pending messages during a crash and recommend a durability strategy."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "dispatch-intake",
+        "type": "server",
+        "label": "911 Dispatch Intake",
+        "status": "healthy",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "911 Dispatch Intake System",
+          "logs": [
+            "[03:00:01] INFO: Dispatch call #D-4471 queued (armed robbery)",
+            "[03:00:15] INFO: Dispatch call #D-4472 queued (armed robbery)",
+            "[03:01:00] INFO: 21 additional calls queued between 03:00-03:04",
+            "[03:04:10] WARN: Queue server connection lost — calls buffering locally"
+          ],
+          "data": {
+            "Calls Sent to Queue": "23 (between 03:00-03:04)",
+            "Acknowledgments Received": "23 (queue accepted them)",
+            "Status": "HEALTHY"
+          },
+          "status": "Intake system working. All 23 calls were accepted by the queue."
+        }
+      },
+      {
+        "id": "message-queue",
+        "type": "server",
+        "label": "Message Queue",
+        "status": "failed",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Dispatch Message Queue",
+          "logs": [
+            "[03:00:00] INFO: 23 messages in queue (in-memory)",
+            "[03:04:05] FATAL: Process crashed — out of memory",
+            "[03:04:06] INFO: All in-memory data lost",
+            "[03:08:10] INFO: Server restarted — queue is EMPTY",
+            "[03:08:11] WARN: No persistence layer — cannot recover messages"
+          ],
+          "data": {
+            "Storage": "In-memory ONLY",
+            "Persistence": "DISABLED",
+            "Messages Before Crash": "23",
+            "Messages After Restart": "0",
+            "Write-Ahead Log": "Not configured",
+            "Disk Backup": "None"
+          },
+          "status": "Crashed. All 23 queued messages permanently lost — no persistence configured."
+        }
+      },
+      {
+        "id": "patrol-units",
+        "type": "client",
+        "label": "Patrol Units",
+        "status": "degraded",
+        "position": { "x": 600, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Patrol Unit Fleet",
+          "logs": [
+            "[03:04:10] WARN: No new dispatches received",
+            "[03:08:15] INFO: Queue reconnected — but no pending assignments",
+            "[03:08:20] WARN: 23 calls never dispatched to any unit"
+          ],
+          "data": {
+            "Available Units": "12",
+            "Dispatches Received (03:00-03:08)": "0",
+            "Expected Dispatches": "23",
+            "Status": "IDLE (waiting for assignments that were lost)"
+          },
+          "status": "Patrol units never received the 23 lost dispatch calls."
+        }
+      },
+      {
+        "id": "callers",
+        "type": "client",
+        "label": "911 Callers",
+        "status": "failed",
+        "position": { "x": 350, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "911 Callers",
+          "logs": [
+            "[03:15:00] WARN: Caller #D-4471 called back — no officers arrived",
+            "[03:18:00] WARN: Caller #D-4472 called back — armed robbery still in progress"
+          ],
+          "data": {
+            "Affected Callers": "23",
+            "High Priority Lost": "2 (armed robbery)",
+            "Avg Wait Before Callback": "15 minutes"
+          },
+          "status": "Callers waiting for response to dispatches that were never sent."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-intake-queue", "source": "dispatch-intake", "target": "message-queue", "label": "enqueue calls", "animated": true, "style": "normal" },
+      { "id": "e-queue-patrol", "source": "message-queue", "target": "patrol-units", "label": "dispatch (lost)", "animated": false, "style": "broken" },
+      { "id": "e-callers-intake", "source": "callers", "target": "dispatch-intake", "label": "911 calls", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the 23 dispatch messages being lost?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The 911 intake system failed to send the messages to the queue properly",
+          "correct": false,
+          "feedback": "The intake system successfully sent all 23 messages and received acknowledgments from the queue. The messages were accepted and stored — they were just stored only in volatile memory."
+        },
+        {
+          "id": "rc-2",
+          "text": "The message queue stored messages only in memory with no persistence — when it crashed, all pending messages were permanently lost",
+          "correct": true,
+          "feedback": "Correct! The queue had no durability mechanism — no write-ahead log, no disk persistence, no replication. In-memory-only queues are fast but volatile. When the process crashed, the RAM was cleared and all 23 messages disappeared. Message durability requires persisting messages to disk before acknowledging them."
+        },
+        {
+          "id": "rc-3",
+          "text": "The patrol units consumed the messages but failed to process them",
+          "correct": false,
+          "feedback": "The patrol units never received the messages at all. The messages were sitting in the queue waiting to be consumed when the server crashed. The messages were lost before delivery, not after."
+        },
+        {
+          "id": "rc-4",
+          "text": "The queue server's crash recovery process has a bug that clears the queue on restart",
+          "correct": false,
+          "feedback": "There's no bug — the queue genuinely has nothing to recover. With in-memory-only storage, there's no data on disk to restore from. The empty queue after restart is the expected (if unfortunate) behavior."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to prevent message loss during queue server crashes?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Enable message persistence — write messages to disk (write-ahead log) before acknowledging them so they survive server crashes",
+          "correct": true,
+          "feedback": "Correct! Durable message queues persist messages to disk before confirming receipt. A write-ahead log (WAL) ensures that even if the server crashes, messages can be recovered from disk on restart. This trades some write latency for guaranteed delivery — a critical requirement for systems like emergency dispatch."
+        },
+        {
+          "id": "fix-2",
+          "text": "Add a second in-memory queue server as a backup",
+          "correct": false,
+          "feedback": "A second in-memory server helps with availability but both servers still lose data on crash. If the primary crashes before replicating to the backup, messages are still lost. True durability requires disk persistence, not just more memory."
+        },
+        {
+          "id": "fix-3",
+          "text": "Have the intake system retry sending messages if the queue doesn't respond within 5 seconds",
+          "correct": false,
+          "feedback": "Retries help when the queue is temporarily unavailable, but the queue acknowledged all 23 messages before it crashed. The intake system has no reason to retry — it thinks delivery was successful. The messages need to be durable within the queue itself."
+        },
+        {
+          "id": "fix-4",
+          "text": "Increase the queue server's memory allocation to prevent OOM crashes",
+          "correct": false,
+          "feedback": "More memory reduces the likelihood of OOM crashes but doesn't eliminate it. Any crash — OOM, hardware failure, power loss — would still destroy all in-memory messages. The fix must ensure messages survive any type of crash."
+        }
+      ]
+    }
+  },
+  "conceptId": "message-durability",
+  "badge": {
+    "name": "Dispatch Saver",
+    "icon": "📨"
+  }
+}

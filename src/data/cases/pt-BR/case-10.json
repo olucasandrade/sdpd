@@ -1,0 +1,198 @@
+{
+  "id": "case-10",
+  "number": 10,
+  "title": "A Manada em Disparada",
+  "subtitle": "Todas as delegacias bombardeiam o banco de dados ao mesmo tempo",
+  "brief": {
+    "narrative": "Toda manhã às 06:00, a lista de 'Mais Procurados' da Polícia de Distributia é atualizada. A lista fica em cache por 24 horas, permitindo consultas rápidas ao longo do dia. Mas às 06:00:00 em ponto, o cache expira. Simultaneamente, policiais de todas as delegacias iniciam o turno e consultam a lista de Mais Procurados. Nesta manhã, 2.400 policiais acessaram o sistema dentro do mesmo segundo. Com o cache vazio, todas as requisições foram direto para o banco de dados. O banco cedeu sob a carga, os tempos de resposta dispararam para 30 segundos, e o cache não conseguiu ser reconstruído porque o banco estava lento demais para responder. Por 8 minutos agonizantes, nenhum policial da cidade conseguiu consultar a lista de Mais Procurados.",
+    "symptoms": [
+      "O cache da lista de Mais Procurados expirou exatamente às 06:00:00 para todas as delegacias simultaneamente",
+      "2.400 consultas simultâneas ao banco de dados no primeiro segundo (normal: 1-2 consultas)",
+      "Tempo de resposta do banco de dados disparou de 50ms para 30 segundos",
+      "Cache não consegue ser reconstruído porque as respostas do banco estão expirando por timeout"
+    ],
+    "objective": "Identificar como a expiração simultânea do cache causou uma debandada no banco de dados e determinar a melhor estratégia de cache para prevenir isso."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "cache-server",
+        "type": "server",
+        "label": "Cache Server (Redis)",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Servidor de Cache (Redis)",
+          "logs": [
+            "[06:00:00] INFO: Cache key 'most_wanted_list' EXPIRED (TTL: 24h)",
+            "[06:00:00] INFO: CACHE MISS — most_wanted_list",
+            "[06:00:00] INFO: CACHE MISS x 2,400 in 1 second",
+            "[06:00:01] WARN: All 2,400 requests forwarded to database",
+            "[06:00:05] WARN: Waiting for database response to rebuild cache",
+            "[06:00:35] ERROR: Database response timeout — cache not rebuilt",
+            "[06:00:36] INFO: Next wave of requests — still no cache — forwarding to database again"
+          ],
+          "data": {
+            "Cache Key": "most_wanted_list",
+            "Status": "EMPTY (expired at 06:00:00)",
+            "Cache Hit Rate (last 5 min)": "0%",
+            "Requests Forwarded to DB": "2,400/sec",
+            "Normal Forwarded Rate": "1 every 24 hours",
+            "Cache Rebuild Status": "WAITING (DB too slow to respond)"
+          },
+          "status": "Cache vazio. Todas as requisições resultam em miss e são encaminhadas ao banco de dados. Não é possível reconstruir até o banco responder."
+        }
+      },
+      {
+        "id": "database",
+        "type": "database",
+        "label": "Records Database",
+        "status": "failed",
+        "position": { "x": 350, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados Central de Registros",
+          "logs": [
+            "[05:59:59] INFO: Normal operations — 50 queries/sec, 50ms avg response",
+            "[06:00:01] WARN: Query rate spike: 2,400 queries/sec",
+            "[06:00:02] ERROR: Connection pool exhausted (max: 200)",
+            "[06:00:03] ERROR: Active queries: 200, queued: 2,200",
+            "[06:00:10] ERROR: Response time: 15,000ms",
+            "[06:00:30] ERROR: Response time: 30,000ms — queries timing out",
+            "[06:00:35] WARN: Queries from cache rebuild also timing out"
+          ],
+          "data": {
+            "Normal Query Rate": "50/sec",
+            "Current Query Rate": "2,400/sec (48x normal)",
+            "Connection Pool": "200 / 200 (EXHAUSTED)",
+            "Query Queue": "2,200 waiting",
+            "Response Time": "30,000ms (normal: 50ms)",
+            "CPU": "100%",
+            "Status": "OVERWHELMED"
+          },
+          "status": "Banco de dados sobrecarregado por 2.400 consultas simultâneas. Pool de conexões esgotado, consultas expirando por timeout."
+        }
+      },
+      {
+        "id": "precinct-officers",
+        "type": "client",
+        "label": "Patrol Officers (2,400)",
+        "status": "failed",
+        "position": { "x": 100, "y": 150 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminais Móveis dos Policiais",
+          "logs": [
+            "[06:00:00] INFO: Shift start — requesting Most Wanted list",
+            "[06:00:00] INFO: 2,400 officers requesting simultaneously",
+            "[06:00:05] WARN: Loading... (no response yet)",
+            "[06:00:30] ERROR: Request timeout — Most Wanted list unavailable",
+            "[06:00:31] INFO: Retrying request...",
+            "[06:00:31] WARN: Retry adds more load to already overwhelmed system"
+          ],
+          "data": {
+            "Officers on Shift": "2,400",
+            "Request Time": "06:00:00 (shift start)",
+            "Status": "TIMEOUT — cannot load Most Wanted list",
+            "Retry Behavior": "Automatic retry every 30 seconds",
+            "Impact": "Officers patrolling without Most Wanted information"
+          },
+          "status": "Todos os policiais em patrulha sem conseguir acessar a lista de Mais Procurados no início do turno."
+        }
+      },
+      {
+        "id": "admin-terminal",
+        "type": "client",
+        "label": "Admin Terminal",
+        "status": "degraded",
+        "position": { "x": 600, "y": 150 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Sistemas Administrativos",
+          "logs": [
+            "[06:00:05] WARN: Database response times affecting all queries",
+            "[06:00:10] ERROR: Routine admin queries timing out due to DB overload",
+            "[06:00:15] WARN: Database stampede from cache miss affecting entire system"
+          ],
+          "data": {
+            "Normal Response Time": "100ms",
+            "Current Response Time": "TIMEOUT",
+            "Impact": "All database-dependent systems affected, not just Most Wanted"
+          },
+          "status": "Dano colateral — a sobrecarga do banco de dados causada pela debandada do cache afeta todos os sistemas."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-officers-cache", "source": "precinct-officers", "target": "cache-server", "label": "2,400 requests", "animated": true, "style": "slow" },
+      { "id": "e-cache-db", "source": "cache-server", "target": "database", "label": "cache miss → DB", "animated": true, "style": "broken" },
+      { "id": "e-admin-db", "source": "admin-terminal", "target": "database", "label": "queries", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "O que causou a sobrecarga do banco de dados exatamente às 06:00?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O hardware do banco de dados é lento demais para lidar com as consultas normais de início de turno",
+          "correct": false,
+          "feedback": "O banco de dados processa 50 consultas/seg com tempo de resposta de 50ms em condições normais — é perfeitamente capaz. O problema é que 2.400 consultas chegam em 1 segundo (48x a taxa normal) porque o cache expirou para todos simultaneamente. Em operação normal de cache, o banco recebe apenas 1 consulta a cada 24 horas para esses dados."
+        },
+        {
+          "id": "rc-2",
+          "text": "Uma debandada de cache — o cache expirou simultaneamente para todos os usuários, causando milhares de requisições simultâneas ao banco de dados no mesmo instante",
+          "correct": true,
+          "feedback": "Correto! Isso é uma debandada de cache (também chamada de thundering herd). Quando uma entrada popular do cache expira, todas as requisições simultâneas encontram o cache vazio e vão direto ao banco de dados. O banco é projetado para lidar com 50 consultas/seg, mas recebe 2.400 em um segundo. Ele fica tão sobrecarregado que não consegue nem responder à única consulta necessária para reconstruir o cache, criando um ciclo vicioso."
+        },
+        {
+          "id": "rc-3",
+          "text": "O servidor de cache caiu e perdeu todos os dados",
+          "correct": false,
+          "feedback": "O servidor de cache está funcionando corretamente — ele não caiu. A entrada do cache expirou legitimamente após seu TTL de 24 horas. O cache está funcionando conforme configurado; o problema é que o padrão de expiração do TTL causa uma debandada."
+        },
+        {
+          "id": "rc-4",
+          "text": "Muitos policiais iniciando seus turnos ao mesmo tempo",
+          "correct": false,
+          "feedback": "Policiais iniciando turnos às 06:00 é normal e esperado. Com cache funcionando corretamente, a primeira requisição reconstrói o cache e as outras 2.399 são atendidas pelo cache em microssegundos. O problema é que o cache expira justamente quando a demanda é mais alta, fazendo todas as requisições ignorarem o cache."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor estratégia para prevenir uma debandada de cache?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Aumentar o pool de conexões do banco de dados para suportar 2.400 consultas simultâneas",
+          "correct": false,
+          "feedback": "Mais conexões não ajudam se a CPU do banco de dados não consegue processar a carga. E você estaria otimizando para um caso patológico que nunca deveria acontecer com cache adequado. O objetivo é prevenir a debandada, não sobreviver a ela."
+        },
+        {
+          "id": "fix-2",
+          "text": "Usar cache lock (mutex) para que apenas uma requisição reconstrua o cache enquanto as outras aguardam, combinado com TTLs escalonados (jitter) para evitar expiração simultânea",
+          "correct": true,
+          "feedback": "Correto! Duas técnicas complementares resolvem isso: (1) Cache lock / coalescência de requisições: Quando o cache está vazio, apenas UMA requisição é enviada ao banco de dados para reconstruir o cache. Todas as outras requisições aguardam a conclusão dessa reconstrução e são atendidas pelo cache atualizado. Isso transforma 2.400 consultas ao banco em 1. (2) Jitter no TTL: Adicionar variação aleatória nos tempos de expiração do cache para que as entradas não expirem todas no mesmo instante. Juntas, essas técnicas eliminam completamente o padrão de debandada."
+        },
+        {
+          "id": "fix-3",
+          "text": "Nunca expirar o cache — manter a lista de Mais Procurados em cache para sempre",
+          "correct": false,
+          "feedback": "Uma lista com cache infinito ficaria desatualizada — novos suspeitos nunca apareceriam e suspeitos liberados continuariam listados. Você precisa da expiração do cache para garantir a atualização dos dados. A solução é gerenciar COMO o cache é atualizado, não evitar a atualização por completo."
+        },
+        {
+          "id": "fix-4",
+          "text": "Pré-aquecer o cache às 05:59 executando a consulta antes do cache antigo expirar",
+          "correct": false,
+          "feedback": "O pré-aquecimento ajuda para este caso específico, mas não resolve o problema geral. E quanto a outros dados em cache com padrões de acesso imprevisíveis? Cache lock e jitter no TTL são soluções de propósito geral que funcionam para qualquer dado em cache, não apenas para atualizações programadas."
+        }
+      ]
+    }
+  },
+  "conceptId": "cache-stampede",
+  "badge": {
+    "name": "Domador de Debandada",
+    "icon": "🐂"
+  }
+}

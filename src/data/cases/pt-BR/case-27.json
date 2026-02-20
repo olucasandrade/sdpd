@@ -1,0 +1,193 @@
+{
+  "id": "case-27",
+  "number": 27,
+  "title": "A Tempestade de Retries",
+  "subtitle": "Uma requisição falhada se transforma em um milhão batendo na porta",
+  "brief": {
+    "narrative": "Tudo começou com um único timeout. O Serviço de Registros da DP de Distributia ficou lento durante uma janela de manutenção rotineira do banco de dados, causando a falha de algumas requisições vindas do App de Patrulha. Mas em vez de recuar, todos os terminais móveis das viaturas começaram a fazer retry imediatamente — e depois retries dos retries. Em segundos, o Serviço de Registros foi soterrado sob uma avalanche de requisições duplicadas, cada timeout gerando mais três tentativas. O Sargento Backoff observa horrorizado o dashboard mostrando o volume de requisições crescendo exponencialmente. O Serviço de Registros, que estava apenas lento, agora está completamente sem resposta. Os oficiais em campo não conseguem consultar registros de suspeitos, verificar placas ou registrar ocorrências. O sistema que estava mancando agora está morto — assassinado não pelo problema original, mas pela tentativa de cura.",
+    "symptoms": [
+      "Os tempos de resposta do Serviço de Registros subiram de 200ms para mais de 30 segundos antes de ficar totalmente sem resposta",
+      "Os terminais do App de Patrulha mostram 'Requisição Falhou — Tentando novamente...' em loop infinito",
+      "O volume de requisições ao Serviço de Registros aumentou 50x em 60 segundos",
+      "A CPU do banco de dados estava em 45% antes da tempestade mas disparou para 100% sob a carga de retries"
+    ],
+    "objective": "Identificar como o comportamento agressivo de retry amplificou uma lentidão menor em uma queda total do serviço, e determinar a estratégia correta de retry para prevenir tempestades de retries."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "patrol-app",
+        "type": "client",
+        "label": "Patrol App (x200)",
+        "status": "degraded",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminais Móveis das Viaturas",
+          "logs": [
+            "[14:30:01] INFO: Request to Records Service — plate lookup #A7X-219",
+            "[14:30:04] WARN: Request timed out after 3s — retrying immediately (attempt 2/5)",
+            "[14:30:04] WARN: Request timed out after 3s — retrying immediately (attempt 3/5)",
+            "[14:30:04] WARN: Request timed out after 3s — retrying immediately (attempt 4/5)",
+            "[14:30:05] ERROR: All 5 retries exhausted — auto-restarting request cycle",
+            "[14:30:05] INFO: New request to Records Service — plate lookup #A7X-219 (cycle 2)"
+          ],
+          "data": {
+            "Active Terminals": "200",
+            "Retry Policy": "Immediate retry, max 5 attempts, then restart",
+            "Retry Delay": "0ms (no backoff)",
+            "Avg Requests/Terminal": "~15/min (normally 3/min)",
+            "Total Request Rate": "~3000/min (normally 600/min)"
+          },
+          "status": "Todos os terminais presos em loops de retry. Cada requisição falhada dispara 5 retries imediatos sem delay."
+        }
+      },
+      {
+        "id": "api-gateway",
+        "type": "server",
+        "label": "API Gateway",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "API Gateway",
+          "logs": [
+            "[14:30:01] INFO: Forwarding requests to Records Service — queue depth normal",
+            "[14:30:03] WARN: Request queue depth increasing — 150 pending",
+            "[14:30:05] WARN: Request queue depth critical — 2,400 pending",
+            "[14:30:08] ERROR: Connection pool to Records Service exhausted",
+            "[14:30:10] ERROR: Dropping incoming requests — queue overflow"
+          ],
+          "data": {
+            "Request Queue": "OVERFLOW (max 5000)",
+            "Connection Pool": "EXHAUSTED (500/500 in use)",
+            "Requests Dropped": "1,847 in last 60s",
+            "Rate Limiting": "NONE CONFIGURED",
+            "Retry-After Header": "NOT SENT"
+          },
+          "status": "Gateway sobrecarregado pelo tráfego de retries. Nenhum rate limiting ou backpressure configurado."
+        }
+      },
+      {
+        "id": "records-service",
+        "type": "server",
+        "label": "Records Service",
+        "status": "failed",
+        "position": { "x": 600, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Registros",
+          "logs": [
+            "[14:29:55] INFO: Database maintenance starting — expect slight latency increase",
+            "[14:30:00] WARN: Response time degraded — avg 800ms (threshold: 500ms)",
+            "[14:30:05] ERROR: Thread pool saturated — 200/200 threads busy",
+            "[14:30:08] ERROR: Request timeout rate 100% — service effectively down",
+            "[14:30:15] ERROR: OOM warning — excessive connection objects in memory"
+          ],
+          "data": {
+            "Status": "UNRESPONSIVE",
+            "Thread Pool": "200/200 (saturated)",
+            "Avg Response Time": "TIMEOUT (>30s)",
+            "Original Issue": "Routine DB maintenance — 2x latency increase",
+            "Current Issue": "50x normal request volume from retry storm"
+          },
+          "status": "O serviço estava apenas lento devido à manutenção do banco, mas agora está completamente fora do ar sob a carga da tempestade de retries."
+        }
+      },
+      {
+        "id": "records-db",
+        "type": "database",
+        "label": "Records Database",
+        "status": "degraded",
+        "position": { "x": 600, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados de Registros",
+          "logs": [
+            "[14:29:55] INFO: Index rebuild started on warrants table",
+            "[14:30:00] WARN: Query latency increased during maintenance — expected",
+            "[14:30:06] ERROR: Connection limit reached — 500/500 connections",
+            "[14:30:10] ERROR: New connections refused — too many open connections"
+          ],
+          "data": {
+            "CPU Usage": "100% (was 45% pre-storm)",
+            "Active Connections": "500/500 (max)",
+            "Maintenance Status": "Index rebuild — 60% complete",
+            "Query Latency": "TIMEOUT (was 400ms during maintenance)"
+          },
+          "status": "O banco estava lidando bem com a manutenção até a tempestade de retries saturar todas as conexões."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-patrol-gateway", "source": "patrol-app", "target": "api-gateway", "label": "retries (50x volume)", "animated": true, "style": "slow" },
+      { "id": "e-gateway-records", "source": "api-gateway", "target": "records-service", "label": "overwhelmed", "animated": false, "style": "broken" },
+      { "id": "e-records-db", "source": "records-service", "target": "records-db", "label": "queries", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz da queda total do Serviço de Registros?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "A operação de manutenção do banco de dados corrompeu os dados do Serviço de Registros",
+          "correct": false,
+          "feedback": "A manutenção do banco era uma reconstrução de índice rotineira que causou apenas um pequeno aumento de latência. Os dados nunca foram corrompidos. O problema real foi que os clientes reagiram à lentidão com retries agressivos e imediatos que amplificaram a carga muito além do que o serviço conseguia aguentar."
+        },
+        {
+          "id": "rc-2",
+          "text": "Retries imediatos agressivos sem backoff amplificaram uma lentidão menor em uma sobrecarga catastrófica",
+          "correct": true,
+          "feedback": "Correto! Esta é uma tempestade de retries clássica. O Serviço de Registros estava apenas lento (800ms em vez de 200ms), o que era gerenciável. Mas 200 clientes disparando 5 retries imediatos sem delay transformaram 600 requisições/min em mais de 3000/min. Cada retry que dava timeout gerava mais retries, criando um ciclo de feedback positivo que soterrou o serviço. A cura foi pior que a doença."
+        },
+        {
+          "id": "rc-3",
+          "text": "O API Gateway crashou devido à alocação insuficiente de memória",
+          "correct": false,
+          "feedback": "O API Gateway ficou sobrecarregado mas não crashou — foi uma vítima, não a causa. A questão raiz é o comportamento de retry dos clientes. Mesmo com um gateway maior, a tempestade de retries ainda teria sobrecarregado o Serviço de Registros."
+        },
+        {
+          "id": "rc-4",
+          "text": "Viaturas demais estavam ativas simultaneamente, excedendo a capacidade do sistema",
+          "correct": false,
+          "feedback": "200 viaturas gerando 600 requisições/min estava bem dentro da capacidade normal. O sistema lida com essa carga diariamente. O problema foi que a política de retry de cada viatura multiplicou sua taxa de requisições por 5x ou mais durante a lentidão, transformando carga normal em uma tempestade avassaladora."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor estratégia para prevenir tempestades de retries?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Desabilitar todos os retries para que requisições falhadas simplesmente falhem sem nenhuma tentativa de retry",
+          "correct": false,
+          "feedback": "Desabilitar retries inteiramente significa que erros transientes (uma breve falha de rede) causariam falhas permanentes. Retries são valiosos — o problema é como são implementados. Você precisa de retries inteligentes, não de zero retries."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implementar backoff exponencial com jitter para que os retries sejam espaçados com delays aleatórios",
+          "correct": true,
+          "feedback": "Correto! Backoff exponencial (esperar 1s, depois 2s, depois 4s, etc.) evita o efeito manada distribuindo os retries ao longo do tempo. Adicionar jitter (variação aleatória) evita ondas sincronizadas de retry onde todos os clientes fazem retry no mesmo instante. Combinado com um número máximo razoável de retries, isso permite que problemas transientes se resolvam naturalmente sem amplificar a carga."
+        },
+        {
+          "id": "fix-3",
+          "text": "Aumentar o pool de threads do Serviço de Registros de 200 para 2000 para lidar com mais requisições simultâneas",
+          "correct": false,
+          "feedback": "Mais threads adiariam o colapso mas não o preveniriam. Uma tempestade de retries cresce exponencialmente — se você aguenta 10x de carga, a tempestade simplesmente crescerá para 100x. Você precisa resolver o comportamento de retry em si, não tentar absorver tráfego ilimitado de retries."
+        },
+        {
+          "id": "fix-4",
+          "text": "Adicionar um load balancer com mais instâncias do Serviço de Registros para distribuir o tráfego de retries",
+          "correct": false,
+          "feedback": "Escalar horizontalmente ajuda com crescimento normal de carga, mas uma tempestade de retries é um ciclo de feedback positivo — mais capacidade apenas significa que demora um pouco mais para sobrecarregar. Cada retry que dá timeout ainda gera mais retries. A correção fundamental deve endereçar o comportamento de retry no nível do cliente."
+        }
+      ]
+    }
+  },
+  "conceptId": "retry-strategies",
+  "badge": {
+    "name": "Caçador de Tempestades",
+    "icon": "🌪️"
+  }
+}

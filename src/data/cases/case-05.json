@@ -1,0 +1,200 @@
+{
+  "id": "case-05",
+  "number": 5,
+  "title": "The Phantom Vote",
+  "subtitle": "Evidence room lockdown fails as multiple nodes claim leadership",
+  "brief": {
+    "narrative": "The Distributia PD evidence room uses a distributed lock service to ensure only one clerk can check out a piece of evidence at a time. Tonight, the lock service's leader node crashed during a critical moment — right in the middle of a leader election. Now three nodes each believe they are the new leader, and three different clerks have been granted simultaneous access to the same murder weapon (Evidence #7781). Chain of custody is compromised. The defense attorney is already filing a motion to dismiss. Detective, untangle this election disaster before the case falls apart.",
+    "symptoms": [
+      "Three lock service nodes each claim to be the leader",
+      "Evidence #7781 was checked out simultaneously by three different clerks",
+      "Chain of custody integrity has been violated",
+      "Lock service is granting conflicting locks on the same evidence items"
+    ],
+    "objective": "Determine how the leader election process failed and identify the proper mechanism to ensure exactly one leader is elected."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "lock-node-1",
+        "type": "server",
+        "label": "Lock Node 1",
+        "status": "degraded",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Lock Service Node 1",
+          "logs": [
+            "[21:30:00] INFO: Leader (Node 0) heartbeat received",
+            "[21:30:05] WARN: Leader heartbeat missed",
+            "[21:30:08] WARN: Leader heartbeat missed (2nd)",
+            "[21:30:10] INFO: Election timeout reached — starting election for term 4",
+            "[21:30:10] INFO: Voted for SELF in term 4",
+            "[21:30:11] INFO: Received vote from Node 3 for term 4",
+            "[21:30:11] INFO: Received 2/5 votes — declaring self LEADER",
+            "[21:30:12] WARN: Node 2 also claims leadership for term 4"
+          ],
+          "data": {
+            "Role": "LEADER (self-declared)",
+            "Term": "4",
+            "Votes Received": "2 of 5 (self + Node 3)",
+            "Quorum Required": "3 of 5",
+            "Quorum Met": "NO",
+            "Locks Granted": "Evidence #7781 → Clerk Adams"
+          },
+          "status": "Declared leadership with only 2/5 votes — quorum of 3 was NOT met."
+        }
+      },
+      {
+        "id": "lock-node-2",
+        "type": "server",
+        "label": "Lock Node 2",
+        "status": "degraded",
+        "position": { "x": 400, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Lock Service Node 2",
+          "logs": [
+            "[21:30:00] INFO: Leader (Node 0) heartbeat received",
+            "[21:30:06] WARN: Leader heartbeat missed",
+            "[21:30:09] INFO: Election timeout reached — starting election for term 4",
+            "[21:30:09] INFO: Voted for SELF in term 4",
+            "[21:30:10] INFO: Received vote from Node 4 for term 4",
+            "[21:30:10] INFO: Received 2/5 votes — declaring self LEADER",
+            "[21:30:11] WARN: Node 1 also claims leadership for term 4"
+          ],
+          "data": {
+            "Role": "LEADER (self-declared)",
+            "Term": "4",
+            "Votes Received": "2 of 5 (self + Node 4)",
+            "Quorum Required": "3 of 5",
+            "Quorum Met": "NO",
+            "Locks Granted": "Evidence #7781 → Clerk Baker"
+          },
+          "status": "Declared leadership with only 2/5 votes — quorum of 3 was NOT met."
+        }
+      },
+      {
+        "id": "lock-node-0",
+        "type": "server",
+        "label": "Lock Node 0 (Old Leader)",
+        "status": "failed",
+        "position": { "x": 250, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Lock Service Node 0 (Former Leader)",
+          "logs": [
+            "[21:29:55] INFO: Operating as LEADER for term 3",
+            "[21:29:58] INFO: Sending heartbeat to followers",
+            "[21:30:00] ERROR: Out of memory — process killed by OOM killer",
+            "[21:30:00] FATAL: Lock service process terminated"
+          ],
+          "data": {
+            "Role": "OFFLINE (former leader)",
+            "Term": "3",
+            "Cause of Death": "OOM killer — memory leak in lock table",
+            "Locks Held at Crash": "12 active locks",
+            "Status": "OFFLINE"
+          },
+          "status": "Crashed due to OOM. Was the leader for term 3 before going offline."
+        }
+      },
+      {
+        "id": "evidence-room",
+        "type": "client",
+        "label": "Evidence Room System",
+        "status": "degraded",
+        "position": { "x": 250, "y": 370 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Evidence Room Access Control",
+          "logs": [
+            "[21:30:12] INFO: Lock granted for Evidence #7781 by Node 1 → Clerk Adams",
+            "[21:30:13] INFO: Lock granted for Evidence #7781 by Node 2 → Clerk Baker",
+            "[21:30:15] WARN: CONFLICT — Evidence #7781 checked out by 2 clerks simultaneously",
+            "[21:30:15] ERROR: Chain of custody violation detected"
+          ],
+          "data": {
+            "Evidence #7781": "CONFLICT — 2 concurrent checkouts",
+            "Clerk Adams": "Checked out via Node 1",
+            "Clerk Baker": "Checked out via Node 2",
+            "Chain of Custody": "COMPROMISED",
+            "Total Active Conflicts": "3 evidence items"
+          },
+          "status": "Multiple lock nodes granting conflicting locks. Chain of custody integrity broken."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-node1-evidence", "source": "lock-node-1", "target": "evidence-room", "label": "lock grant", "animated": true, "style": "normal" },
+      { "id": "e-node2-evidence", "source": "lock-node-2", "target": "evidence-room", "label": "lock grant", "animated": true, "style": "normal" },
+      { "id": "e-node0-node1", "source": "lock-node-0", "target": "lock-node-1", "label": "heartbeat", "animated": false, "style": "broken" },
+      { "id": "e-node0-node2", "source": "lock-node-0", "target": "lock-node-2", "label": "heartbeat", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What caused multiple nodes to claim leadership simultaneously?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The old leader (Node 0) crashed and sent corrupted data that confused the other nodes",
+          "correct": false,
+          "feedback": "Node 0 crashed cleanly due to an OOM kill — it didn't send corrupted data. The issue is that the surviving nodes started an election but didn't require a proper majority (quorum) before declaring themselves leader."
+        },
+        {
+          "id": "rc-2",
+          "text": "The election process doesn't enforce a strict majority quorum — nodes declared leadership without receiving votes from a majority of the cluster",
+          "correct": true,
+          "feedback": "Correct! Both Node 1 and Node 2 declared themselves leader with only 2 out of 5 votes each. A correct leader election protocol (like Raft) requires a strict majority — at least 3 out of 5 votes. Since each node can only vote once per term, a strict majority guarantees at most one leader per term. The bug here is that nodes accepted leadership without reaching quorum."
+        },
+        {
+          "id": "rc-3",
+          "text": "Both nodes started their elections at the exact same time, causing a race condition",
+          "correct": false,
+          "feedback": "Simultaneous election starts are expected in distributed systems — that's why protocols like Raft use randomized election timeouts to reduce the chance of split votes. But the real problem is that the nodes accepted leadership with only 2/5 votes instead of requiring the majority (3/5)."
+        },
+        {
+          "id": "rc-4",
+          "text": "The network between Node 1 and Node 2 is partitioned, so they can't see each other's leadership claim",
+          "correct": false,
+          "feedback": "The logs show both nodes are aware of each other's leadership claim (they log warnings about it). The nodes can communicate — they just don't have a rule preventing multiple leaders. The fix is requiring a majority quorum, which mathematically prevents two leaders."
+        }
+      ]
+    },
+    "fix": {
+      "question": "How should the leader election process be fixed?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Require a strict majority quorum (3 of 5 nodes) to win an election, and ensure each node only votes once per term",
+          "correct": true,
+          "feedback": "Correct! A strict majority quorum guarantees at most one leader per term because a majority of a set can only overlap — not split completely. If Node 1 gets 3 votes, there aren't enough remaining votes for Node 2 to also get 3. Combined with the rule that each node votes only once per term, this is the foundation of the Raft consensus algorithm."
+        },
+        {
+          "id": "fix-2",
+          "text": "Use timestamps to pick whichever node started its election first as the leader",
+          "correct": false,
+          "feedback": "Clock synchronization in distributed systems is unreliable — nodes may disagree on what time it is (this is covered in a future case!). Leader election must not depend on synchronized clocks. Quorum-based voting doesn't need clocks at all."
+        },
+        {
+          "id": "fix-3",
+          "text": "Designate a fixed backup leader so there's no need for an election",
+          "correct": false,
+          "feedback": "A fixed backup introduces a new single point of failure — what happens when both the primary and the designated backup are down? Quorum-based elections allow any node to become leader, providing flexibility and fault tolerance."
+        },
+        {
+          "id": "fix-4",
+          "text": "Add a delay after the old leader crashes before allowing elections to start",
+          "correct": false,
+          "feedback": "A delay reduces the chance of simultaneous elections but doesn't prevent the fundamental problem — multiple leaders due to lack of quorum. You'd still need the quorum rule. Plus, longer delays mean longer outages when a real failover is needed."
+        }
+      ]
+    }
+  },
+  "conceptId": "leader-election",
+  "badge": {
+    "name": "Election Officer",
+    "icon": "🗳️"
+  }
+}

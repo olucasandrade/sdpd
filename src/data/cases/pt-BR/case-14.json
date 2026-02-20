@@ -1,0 +1,180 @@
+{
+  "id": "case-14",
+  "number": 14,
+  "title": "O Registro Fantasma",
+  "subtitle": "Um registro criminal deletado continua assombrando o sistema",
+  "brief": {
+    "narrative": "Um caso de grande repercussão acabou de ser anulado pelo tribunal — e a culpa é da Polícia de Distributia. Três semanas atrás, o registro criminal de um suspeito foi oficialmente apagado por ordem judicial. A equipe do banco de dados confirmou a exclusão do banco de registros principal. Mas policiais em campo ainda veem o registro quando fazem consultas. O suspeito foi parado ontem, o policial viu 'crime anterior' na tela e escalou a abordagem desnecessariamente. O advogado do suspeito está entrando com uma queixa de violação de direitos civis. Como um registro deletado ainda está aparecendo? O Chefe Partition precisa de respostas antes da coletiva de imprensa, Detetive.",
+    "symptoms": [
+      "Registro criminal apagado ainda aparece nas consultas dos policiais",
+      "Banco de dados confirma que o registro foi deletado há 3 semanas",
+      "Múltiplas delegacias reportam ver o registro fantasma",
+      "Cache mostra TTL de 30 dias — registro não vai expirar naturalmente por mais 9 dias"
+    ],
+    "objective": "Identificar por que um registro deletado do banco de dados ainda está sendo exibido para os usuários, e recomendar uma estratégia adequada de invalidação de cache."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "records-db",
+        "type": "database",
+        "label": "Records Database",
+        "status": "healthy",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados de Registros Criminais",
+          "logs": [
+            "[3 weeks ago] INFO: DELETE record #CR-8847 executed (court order #2024-1192)",
+            "[3 weeks ago] INFO: Record #CR-8847 confirmed removed from all tables",
+            "[Today] INFO: Query for #CR-8847 returns: NO RECORD FOUND"
+          ],
+          "data": {
+            "Status": "HEALTHY",
+            "Record #CR-8847": "DELETED (3 weeks ago)",
+            "Deletion Confirmed": "Yes — court order #2024-1192"
+          },
+          "status": "Banco de dados está correto. Registro foi devidamente deletado."
+        }
+      },
+      {
+        "id": "cache-layer",
+        "type": "server",
+        "label": "Redis Cache",
+        "status": "degraded",
+        "position": { "x": 350, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Camada de Cache Redis",
+          "logs": [
+            "[3 weeks ago] INFO: Cache entry for #CR-8847 created with TTL 30d",
+            "[Today] INFO: Cache HIT for #CR-8847 — serving cached data",
+            "[Today] WARN: No cache invalidation triggered on record deletion",
+            "[Today] INFO: TTL remaining for #CR-8847: 9 days"
+          ],
+          "data": {
+            "Status": "SERVING STALE DATA",
+            "Cache Key": "record:CR-8847",
+            "Cached Value": "{name: 'J. Doe', priors: 'felony', status: 'active'}",
+            "TTL Remaining": "9 days",
+            "Invalidation Policy": "None — TTL expiry only"
+          },
+          "status": "Cache ainda contém o registro deletado. Nenhuma invalidação foi acionada na exclusão."
+        }
+      },
+      {
+        "id": "api-server",
+        "type": "server",
+        "label": "Lookup API",
+        "status": "healthy",
+        "position": { "x": 100, "y": 350 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "API de Consulta de Registros",
+          "logs": [
+            "[Today 09:15:00] INFO: Lookup request for #CR-8847",
+            "[Today 09:15:00] INFO: Cache HIT — returning cached result",
+            "[Today 09:15:00] INFO: Database NOT queried (cache served response)"
+          ],
+          "data": {
+            "Cache Hit Rate": "94%",
+            "DB Queries Bypassed": "94% of lookups",
+            "Invalidation on Write": "NOT CONFIGURED"
+          },
+          "status": "API serve dados do cache sem verificar se o registro de origem ainda existe."
+        }
+      },
+      {
+        "id": "officer-terminal",
+        "type": "client",
+        "label": "Officer MDT",
+        "status": "degraded",
+        "position": { "x": 550, "y": 350 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal Móvel de Dados",
+          "logs": [
+            "[Today 09:15:01] INFO: Record lookup for suspect returned: PRIOR FELONY",
+            "[Today 09:15:02] WARN: Officer escalated stop based on displayed record"
+          ],
+          "data": {
+            "Displayed Record": "Prior felony — ACTIVE",
+            "Actual Record": "EXPUNGED (deleted 3 weeks ago)",
+            "Data Source": "Served from cache, not database"
+          },
+          "status": "Exibindo dados desatualizados do cache que não existem mais no banco de dados."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-cache-db", "source": "cache-layer", "target": "records-db", "label": "read-through", "animated": false, "style": "normal" },
+      { "id": "e-api-cache", "source": "api-server", "target": "cache-layer", "label": "cache lookup", "animated": true, "style": "normal" },
+      { "id": "e-terminal-api", "source": "officer-terminal", "target": "api-server", "label": "lookup request", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz do registro deletado ainda aparecer nas consultas?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "A exclusão do banco de dados falhou silenciosamente e o registro ainda existe",
+          "correct": false,
+          "feedback": "Os logs do banco de dados confirmam que o registro foi deletado com sucesso — consultar o banco diretamente retorna 'NENHUM REGISTRO ENCONTRADO'. Os dados desatualizados estão vindo de outro lugar do sistema."
+        },
+        {
+          "id": "rc-2",
+          "text": "O cache nunca foi invalidado quando o registro foi deletado — está servindo dados desatualizados até o TTL expirar",
+          "correct": true,
+          "feedback": "Correto! O cache tem um TTL de 30 dias e nenhuma política de invalidação por escrita. Quando o registro foi deletado do banco de dados, ninguém avisou o cache. Ele vai continuar servindo o registro fantasma por mais 9 dias. Este é o clássico problema de invalidação de cache."
+        },
+        {
+          "id": "rc-3",
+          "text": "O terminal do policial tem um cache local que não foi atualizado",
+          "correct": false,
+          "feedback": "O terminal busca dados da API em tempo real. Os dados desatualizados estão sendo servidos pela camada de cache Redis, não por um cache local do terminal. O terminal está exibindo exatamente o que a API retorna."
+        },
+        {
+          "id": "rc-4",
+          "text": "Um atraso na replicação do banco de dados está impedindo a propagação da exclusão",
+          "correct": false,
+          "feedback": "A exclusão aconteceu há 3 semanas — o atraso de replicação seria resolvido em segundos ou minutos, não semanas. O próprio banco de dados mostra corretamente o registro como deletado. O problema está na camada de cache."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor solução para evitar que registros fantasmas apareçam após exclusão?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Reduzir o TTL do cache de 30 dias para 5 minutos para que dados desatualizados sejam limpos rapidamente",
+          "correct": false,
+          "feedback": "Um TTL mais curto reduz a janela de dados desatualizados, mas não a elimina. Por 5 minutos após qualquer exclusão, policiais ainda veriam registros fantasmas. Para registros legalmente apagados, até 5 minutos de dados desatualizados é inaceitável. Invalidação ativa é necessária."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implementar invalidação de cache na escrita — deletar ou atualizar automaticamente entradas do cache quando registros do banco de dados mudam",
+          "correct": true,
+          "feedback": "Correto! A invalidação de cache write-through ou write-behind garante que quando um registro é deletado (ou atualizado) no banco de dados, a entrada correspondente no cache é imediatamente invalidada. Assim, a próxima consulta não encontra no cache, vai ao banco de dados e obtém o resultado correto."
+        },
+        {
+          "id": "fix-3",
+          "text": "Desabilitar o cache completamente para registros criminais para sempre obter dados atualizados",
+          "correct": false,
+          "feedback": "Desabilitar o cache resolveria o problema de dados desatualizados, mas aumentaria dramaticamente a carga no banco de dados. Com uma taxa de acerto de cache de 94%, remover o cache significa 16x mais consultas ao banco. A abordagem correta é cache mais inteligente, não ausência de cache."
+        },
+        {
+          "id": "fix-4",
+          "text": "Adicionar um botão manual de 'limpar cache' para administradores usarem após exclusões",
+          "correct": false,
+          "feedback": "Limpeza manual de cache é propensa a erros e não escala. Humanos vão esquecer. A invalidação de cache deve ser automatizada e acionada por operações de escrita no banco de dados, não por processos manuais."
+        }
+      ]
+    }
+  },
+  "conceptId": "cache-invalidation",
+  "badge": {
+    "name": "Caçador de Cache",
+    "icon": "👻"
+  }
+}

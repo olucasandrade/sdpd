@@ -1,0 +1,201 @@
+{
+  "id": "case-13",
+  "number": 13,
+  "title": "A Situação Grudenta",
+  "subtitle": "Queda de servidor apaga centenas de sessões ativas de policiais",
+  "brief": {
+    "narrative": "A Polícia de Distributia recentemente implantou um load balancer para o sistema de despacho — três servidores dividindo a carga. Parecia ótimo, exceto que configuraram sticky sessions: o navegador de cada policial é permanentemente vinculado a um servidor específico. O Servidor 2 acabou de cair, e 340 policiais que estavam no meio do turno foram deslogados de repente. Suas anotações de casos em andamento, relatórios não salvos e designações de despacho — tudo perdido. Enquanto isso, os Servidores 1 e 3 estão bem, mas não fazem ideia do que aqueles 340 policiais estavam fazendo. Os dados de sessão existiam apenas na memória do Servidor 2. O Chefe Partition está furioso, Detetive.",
+    "symptoms": [
+      "340 policiais deslogados simultaneamente após queda do Servidor 2",
+      "Anotações de casos em andamento e dados de despacho não salvos perdidos para os policiais afetados",
+      "Servidores 1 e 3 operando normalmente, mas não conseguem restaurar as sessões perdidas",
+      "Policiais precisam fazer login novamente e refazer todo o trabalho em andamento"
+    ],
+    "objective": "Identificar por que a queda do servidor causou perda de sessão para um terço dos usuários, e recomendar uma arquitetura que desacople as sessões de servidores individuais."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "load-balancer",
+        "type": "server",
+        "label": "Load Balancer",
+        "status": "healthy",
+        "position": { "x": 350, "y": 30 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Load Balancer (Sticky Sessions)",
+          "logs": [
+            "[14:30:00] INFO: Sticky session routing enabled",
+            "[14:45:12] ERROR: Server 2 health check failed",
+            "[14:45:13] WARN: 340 sticky sessions orphaned — no failover for session state",
+            "[14:45:14] INFO: New requests routed to Server 1 and Server 3"
+          ],
+          "data": {
+            "Mode": "Sticky Sessions (cookie-based)",
+            "Server 1 Sessions": "310 (active)",
+            "Server 2 Sessions": "340 (LOST)",
+            "Server 3 Sessions": "295 (active)",
+            "Session Failover": "None — state is server-local"
+          },
+          "status": "Sticky sessions habilitadas. Nenhum armazenamento compartilhado de sessões configurado."
+        }
+      },
+      {
+        "id": "server-1",
+        "type": "server",
+        "label": "Dispatch Server 1",
+        "status": "healthy",
+        "position": { "x": 100, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Servidor de Despacho 1",
+          "logs": [
+            "[14:45:15] INFO: Operating normally",
+            "[14:45:20] INFO: Receiving redirected traffic from LB"
+          ],
+          "data": {
+            "Status": "HEALTHY",
+            "Local Sessions": "310",
+            "Memory Session Store": "In-process only"
+          },
+          "status": "Saudável, mas sessões armazenadas apenas na memória local."
+        }
+      },
+      {
+        "id": "server-2",
+        "type": "server",
+        "label": "Dispatch Server 2",
+        "status": "failed",
+        "position": { "x": 350, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Servidor de Despacho 2",
+          "logs": [
+            "[14:44:58] ERROR: Out of memory — process killed",
+            "[14:44:59] FATAL: Server process terminated",
+            "[14:45:00] INFO: 340 in-memory sessions destroyed"
+          ],
+          "data": {
+            "Status": "CRASHED",
+            "Local Sessions": "0 (all lost)",
+            "Crash Reason": "OOM kill"
+          },
+          "status": "Caiu. Todas as 340 sessões armazenadas localmente perdidas permanentemente."
+        }
+      },
+      {
+        "id": "server-3",
+        "type": "server",
+        "label": "Dispatch Server 3",
+        "status": "healthy",
+        "position": { "x": 600, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Servidor de Despacho 3",
+          "logs": [
+            "[14:45:15] INFO: Operating normally",
+            "[14:45:22] INFO: Receiving redirected traffic from LB"
+          ],
+          "data": {
+            "Status": "HEALTHY",
+            "Local Sessions": "295",
+            "Memory Session Store": "In-process only"
+          },
+          "status": "Saudável, mas sessões armazenadas apenas na memória local."
+        }
+      },
+      {
+        "id": "officers",
+        "type": "client",
+        "label": "Officer Terminals",
+        "status": "degraded",
+        "position": { "x": 350, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminais dos Policiais",
+          "logs": [
+            "[14:45:13] ERROR: 340 terminals received 'Session Expired'",
+            "[14:45:30] WARN: Officers reporting lost case notes and dispatch data"
+          ],
+          "data": {
+            "Total Officers Online": "945",
+            "Sessions Lost": "340",
+            "Unsaved Reports Lost": "~127"
+          },
+          "status": "340 policiais perderam todo o estado da sessão e precisam fazer login novamente."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-lb-s1", "source": "load-balancer", "target": "server-1", "label": "sticky route", "animated": true, "style": "normal" },
+      { "id": "e-lb-s2", "source": "load-balancer", "target": "server-2", "label": "sticky route", "animated": false, "style": "broken" },
+      { "id": "e-lb-s3", "source": "load-balancer", "target": "server-3", "label": "sticky route", "animated": true, "style": "normal" },
+      { "id": "e-officers-lb", "source": "officers", "target": "load-balancer", "label": "requests", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz de 340 policiais perderem suas sessões?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O load balancer falhou em redistribuir as sessões para servidores saudáveis após a queda",
+          "correct": false,
+          "feedback": "O load balancer redirecionou novas requisições, mas os dados de sessão existiam apenas na memória do Servidor 2. Não há nada para redistribuir — os dados se foram. O problema é onde as sessões são armazenadas, não como o tráfego é roteado."
+        },
+        {
+          "id": "rc-2",
+          "text": "Sticky sessions vincularam o estado do usuário a um servidor específico — quando aquele servidor morreu, o estado morreu com ele",
+          "correct": true,
+          "feedback": "Correto! Sticky sessions vinculam usuários a servidores específicos e armazenam o estado da sessão na memória local daquele servidor. Isso cria um serviço com estado (stateful) — se o servidor cai, todos os dados de sessão são perdidos. Serviços sem estado (stateless) armazenam dados de sessão externamente para que qualquer servidor possa atender qualquer requisição."
+        },
+        {
+          "id": "rc-3",
+          "text": "O Servidor 2 ficou sem memória porque estava lidando com sessões demais comparado aos outros",
+          "correct": false,
+          "feedback": "Embora o OOM kill tenha disparado a queda, o verdadeiro problema arquitetural é que sessões são armazenadas na memória do servidor. Mesmo com sessões perfeitamente balanceadas, qualquer queda de servidor destruiria todas as sessões armazenadas localmente."
+        },
+        {
+          "id": "rc-4",
+          "text": "Os servidores não tinham um mecanismo adequado de backup e recuperação para dados de sessão",
+          "correct": false,
+          "feedback": "Fazer backup de sessões em memória é impraticável e não resolve o problema central. O problema é o padrão de design com estado (stateful) — sessões devem ser externalizadas para que os servidores não guardem estado crítico em primeiro lugar."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor solução para prevenir perda de sessão quando um servidor cai?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Adicionar mais servidores para que cada um lide com menos sessões, reduzindo o impacto de uma queda",
+          "correct": false,
+          "feedback": "Mais servidores com sticky sessions apenas significa que cada queda afeta menos usuários — mas quedas ainda destroem sessões. O problema não é quantos servidores você tem; é que o estado da sessão vive dentro de servidores individuais."
+        },
+        {
+          "id": "fix-2",
+          "text": "Tornar os serviços stateless armazenando sessões em um store externo compartilhado (ex.: Redis) para que qualquer servidor possa atender qualquer requisição",
+          "correct": true,
+          "feedback": "Correto! Ao externalizar o estado da sessão para um store compartilhado como Redis, os servidores se tornam stateless e intercambiáveis. Qualquer servidor pode atender a requisição de qualquer usuário, sticky sessions se tornam desnecessárias, e uma queda de servidor não perde nenhum dado de sessão."
+        },
+        {
+          "id": "fix-3",
+          "text": "Replicar dados de sessão entre os três servidores em tempo real",
+          "correct": false,
+          "feedback": "Replicação de sessão entre servidores é complexa e cara. Não escala bem — cada novo servidor aumenta o tráfego de replicação. Um store externo de sessões é mais simples e escalável."
+        },
+        {
+          "id": "fix-4",
+          "text": "Implementar reinício automático de servidor para que servidores que caíram voltem rapidamente",
+          "correct": false,
+          "feedback": "Reinícios rápidos ajudam a disponibilidade, mas sessões em memória ainda são perdidas quando um processo morre. O servidor volta vazio. A verdadeira solução é não armazenar sessões na memória do servidor."
+        }
+      ]
+    }
+  },
+  "conceptId": "stateless-services",
+  "badge": {
+    "name": "Libertador de Estado",
+    "icon": "🔓"
+  }
+}

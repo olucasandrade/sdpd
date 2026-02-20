@@ -1,0 +1,216 @@
+{
+  "id": "case-04",
+  "number": 4,
+  "title": "The Split Brain",
+  "subtitle": "Two precincts, two truths, one broken network",
+  "brief": {
+    "narrative": "Chaos erupts at Distributia PD headquarters. A fiber cut between the East and West data centers has severed the network link between the two database replicas. Both replicas have automatically promoted themselves to leader, and now East Precinct and West Precinct are writing conflicting records to their respective databases. Officer Martinez just released a suspect that West Precinct had flagged for arrest — because East's database shows the suspect as cleared. Chief Partition is furious. Two databases, two versions of the truth, and nobody knows which one is right.",
+    "symptoms": [
+      "East and West database replicas both report themselves as the primary leader",
+      "Conflicting criminal records between the two precincts",
+      "A suspect flagged for arrest in West was marked as cleared in East",
+      "Network link between the two data centers is down"
+    ],
+    "objective": "Identify how a network partition caused a split-brain scenario and determine the correct strategy to resolve and prevent conflicting writes."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "db-east",
+        "type": "database",
+        "label": "East DB (Leader)",
+        "status": "degraded",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "East Database Replica",
+          "logs": [
+            "[03:14:01] WARN: Lost heartbeat from West DB replica",
+            "[03:14:04] WARN: No response after 3 retries",
+            "[03:14:05] INFO: Failover timeout reached — promoting self to leader",
+            "[03:14:05] INFO: Now accepting writes as PRIMARY",
+            "[03:14:22] INFO: WRITE — Suspect #4412 status changed to CLEARED",
+            "[03:15:01] WARN: Still no contact with West DB"
+          ],
+          "data": {
+            "Role": "PRIMARY (self-promoted)",
+            "Replication Link": "DISCONNECTED",
+            "Writes Since Partition": "34",
+            "Last Sync With West": "03:13:58",
+            "Suspect #4412 Status": "CLEARED"
+          },
+          "status": "Self-promoted to leader after losing contact with West DB. Accepting writes independently."
+        }
+      },
+      {
+        "id": "db-west",
+        "type": "database",
+        "label": "West DB (Leader)",
+        "status": "degraded",
+        "position": { "x": 550, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "West Database Replica",
+          "logs": [
+            "[03:14:02] WARN: Lost heartbeat from East DB replica",
+            "[03:14:05] WARN: No response after 3 retries",
+            "[03:14:06] INFO: Failover timeout reached — promoting self to leader",
+            "[03:14:06] INFO: Now accepting writes as PRIMARY",
+            "[03:14:18] INFO: WRITE — Suspect #4412 status changed to ARREST WARRANT ACTIVE",
+            "[03:15:02] WARN: Still no contact with East DB"
+          ],
+          "data": {
+            "Role": "PRIMARY (self-promoted)",
+            "Replication Link": "DISCONNECTED",
+            "Writes Since Partition": "28",
+            "Last Sync With East": "03:13:58",
+            "Suspect #4412 Status": "ARREST WARRANT ACTIVE"
+          },
+          "status": "Self-promoted to leader after losing contact with East DB. Accepting writes independently."
+        }
+      },
+      {
+        "id": "precinct-east",
+        "type": "client",
+        "label": "East Precinct",
+        "status": "degraded",
+        "position": { "x": 100, "y": 280 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "East Precinct Terminal",
+          "logs": [
+            "[03:14:10] INFO: Connected to East DB (primary)",
+            "[03:14:22] INFO: Updated suspect #4412 — marked CLEARED per DA office",
+            "[03:15:30] WARN: Officer Martinez released suspect #4412 based on CLEARED status"
+          ],
+          "data": {
+            "Connected To": "East DB",
+            "DB Role Reported": "PRIMARY",
+            "Active Officers": "14",
+            "Suspect #4412": "CLEARED"
+          },
+          "status": "Operating normally against East DB, unaware of conflicting data in West."
+        }
+      },
+      {
+        "id": "precinct-west",
+        "type": "client",
+        "label": "West Precinct",
+        "status": "degraded",
+        "position": { "x": 550, "y": 280 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "West Precinct Terminal",
+          "logs": [
+            "[03:14:10] INFO: Connected to West DB (primary)",
+            "[03:14:18] INFO: Filed arrest warrant for suspect #4412 — new evidence from forensics",
+            "[03:16:00] ERROR: Suspect #4412 was released by East Precinct — CONFLICTING STATUS"
+          ],
+          "data": {
+            "Connected To": "West DB",
+            "DB Role Reported": "PRIMARY",
+            "Active Officers": "11",
+            "Suspect #4412": "ARREST WARRANT ACTIVE"
+          },
+          "status": "Operating normally against West DB, unaware suspect was released by East."
+        }
+      },
+      {
+        "id": "network-link",
+        "type": "server",
+        "label": "Inter-DC Network",
+        "status": "failed",
+        "position": { "x": 325, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Inter-Datacenter Network Link",
+          "logs": [
+            "[03:13:59] INFO: Fiber optic link healthy — 1ms latency",
+            "[03:14:00] ERROR: Physical link failure detected on fiber segment DC-E-7",
+            "[03:14:00] ERROR: All packets dropped between East DC and West DC",
+            "[03:14:01] WARN: No redundant path available"
+          ],
+          "data": {
+            "Link Status": "DOWN",
+            "Cause": "Fiber cut — construction crew on 5th Avenue",
+            "Packets Dropped": "100%",
+            "Redundant Path": "None configured",
+            "Estimated Repair": "4-6 hours"
+          },
+          "status": "Physical fiber cut. No redundant network path between data centers."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-east-db-link", "source": "db-east", "target": "network-link", "label": "replication", "animated": false, "style": "broken" },
+      { "id": "e-link-west-db", "source": "network-link", "target": "db-west", "label": "replication", "animated": false, "style": "broken" },
+      { "id": "e-east-precinct", "source": "db-east", "target": "precinct-east", "label": "queries/writes", "animated": true, "style": "normal" },
+      { "id": "e-west-precinct", "source": "db-west", "target": "precinct-west", "label": "queries/writes", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the conflicting suspect records?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "A software bug caused the databases to corrupt suspect #4412's record",
+          "correct": false,
+          "feedback": "The databases are functioning correctly individually. The problem is that a network partition caused both replicas to independently promote themselves to leader, creating a split-brain scenario where each accepts conflicting writes."
+        },
+        {
+          "id": "rc-2",
+          "text": "A network partition caused a split-brain — both databases promoted themselves to leader and accepted conflicting writes independently",
+          "correct": true,
+          "feedback": "Correct! When the network link between the two data centers failed, each replica lost contact with the other. Without a proper quorum or fencing mechanism, both promoted themselves to leader. This is the classic 'split-brain' problem in distributed systems — a network partition leads to two independent leaders accepting conflicting writes."
+        },
+        {
+          "id": "rc-3",
+          "text": "East Precinct's officer made an unauthorized change to the suspect's status",
+          "correct": false,
+          "feedback": "The East Precinct officer followed proper procedure — the DA's office cleared the suspect. The problem is that West Precinct simultaneously filed an arrest warrant, and the two databases weren't communicating due to the network partition. Both writes were legitimate but conflicting."
+        },
+        {
+          "id": "rc-4",
+          "text": "The failover timeout was set too low, causing premature leader promotion",
+          "correct": false,
+          "feedback": "While a longer timeout might delay the split-brain, it wouldn't prevent it. The core issue is the lack of a proper consensus mechanism or quorum requirement. Without these, any timeout value eventually leads to the same problem during a sustained partition."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best approach to prevent split-brain scenarios?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Implement a quorum-based consensus protocol — require a majority of nodes to agree before a leader is elected",
+          "correct": true,
+          "feedback": "Correct! With a quorum (e.g., 3 nodes where 2 must agree), a single partition cannot produce two leaders. The side with the majority continues serving, while the minority side refuses writes. This is the foundation of consensus protocols like Raft and Paxos, and it's why production clusters use an odd number of nodes."
+        },
+        {
+          "id": "fix-2",
+          "text": "Add a second network link between data centers for redundancy",
+          "correct": false,
+          "feedback": "A redundant network link reduces the chance of a partition but doesn't eliminate it. Both links could fail (same cable trench, same ISP). You still need a proper consensus mechanism for when partitions inevitably occur — network redundancy is a complement, not a replacement."
+        },
+        {
+          "id": "fix-3",
+          "text": "Set one database as the permanent primary and never allow automatic failover",
+          "correct": false,
+          "feedback": "This prevents split-brain but sacrifices availability entirely — if the permanent primary fails, the whole system goes down (back to single point of failure). A quorum-based approach gives you both safety and availability."
+        },
+        {
+          "id": "fix-4",
+          "text": "Use timestamps to automatically resolve conflicts by keeping the latest write",
+          "correct": false,
+          "feedback": "Last-write-wins (LWW) is a conflict resolution strategy, but it doesn't prevent the split-brain. It silently discards one write, which could mean silently dropping an arrest warrant. For critical data like criminal records, you want to prevent conflicting writes in the first place, not resolve them after the fact."
+        }
+      ]
+    }
+  },
+  "conceptId": "network-partitions",
+  "badge": {
+    "name": "Partition Patrol",
+    "icon": "🧩"
+  }
+}

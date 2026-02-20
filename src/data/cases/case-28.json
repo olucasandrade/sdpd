@@ -1,0 +1,190 @@
+{
+  "id": "case-28",
+  "number": 28,
+  "title": "The Circuit Breaker",
+  "subtitle": "One fallen domino topples the entire dispatch center",
+  "brief": {
+    "narrative": "The Distributia PD 911 Dispatch System is a marvel of microservice architecture — or so they thought. When the Address Validation Service went down for routine maintenance, nobody expected the cascade that followed. The Dispatch Service calls Address Validation for every incoming 911 call. Without a circuit breaker, each call attempt hangs for 30 seconds waiting for a response that never comes. The Dispatch Service thread pool fills up with blocked threads. Then the Call Routing Service, which depends on Dispatch, starts timing out too. Then the Officer Assignment Service. Within three minutes, a single maintenance window on a non-critical service has taken down the entire emergency dispatch pipeline. Lieutenant Cascade is watching real 911 calls go unanswered because every service is stuck waiting on a service that's been deliberately turned off.",
+    "symptoms": [
+      "Address Validation Service is offline (planned maintenance)",
+      "Dispatch Service threads all blocked waiting on Address Validation — 100% thread utilization",
+      "Call Routing Service timing out because Dispatch Service is unresponsive",
+      "911 calls going unanswered — entire dispatch pipeline frozen"
+    ],
+    "objective": "Identify how the failure of one microservice cascaded through the entire system, and determine the correct pattern to isolate failures and prevent cascading outages."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "call-routing",
+        "type": "client",
+        "label": "Call Routing Service",
+        "status": "failed",
+        "position": { "x": 80, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Call Routing Service",
+          "logs": [
+            "[09:00:15] INFO: Incoming 911 call — routing to Dispatch Service",
+            "[09:00:45] ERROR: Dispatch Service timeout after 30s",
+            "[09:01:16] ERROR: Dispatch Service timeout after 30s — call #2 lost",
+            "[09:01:50] ERROR: All outbound connections to Dispatch blocked",
+            "[09:02:00] ERROR: 14 calls in queue — no dispatch capacity available"
+          ],
+          "data": {
+            "Status": "FAILING",
+            "Pending Calls": "14 (all blocked)",
+            "Timeout to Dispatch": "30s",
+            "Calls Dropped": "9 in last 3 minutes",
+            "Circuit Breaker": "NOT IMPLEMENTED"
+          },
+          "status": "Cannot route calls because Dispatch Service is unresponsive. No fallback behavior configured."
+        }
+      },
+      {
+        "id": "dispatch-service",
+        "type": "server",
+        "label": "Dispatch Service",
+        "status": "failed",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Dispatch Service",
+          "logs": [
+            "[09:00:01] INFO: Processing 911 call — validating address via Address Validation Service",
+            "[09:00:31] ERROR: Address Validation timeout after 30s",
+            "[09:00:31] INFO: Retrying address validation...",
+            "[09:01:01] ERROR: Address Validation timeout — retry failed",
+            "[09:01:05] WARN: Thread pool exhausted — 50/50 threads blocked on Address Validation",
+            "[09:01:05] ERROR: Cannot accept new requests — all threads occupied"
+          ],
+          "data": {
+            "Thread Pool": "50/50 (all blocked)",
+            "Blocked On": "Address Validation Service",
+            "Timeout Setting": "30s per request",
+            "Circuit Breaker": "NOT IMPLEMENTED",
+            "Fallback": "NONE — address validation required for all dispatches"
+          },
+          "status": "All threads blocked waiting for Address Validation responses that will never arrive."
+        }
+      },
+      {
+        "id": "address-validation",
+        "type": "server",
+        "label": "Address Validation",
+        "status": "failed",
+        "position": { "x": 620, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Address Validation Service",
+          "logs": [
+            "[08:59:00] INFO: Shutting down for scheduled maintenance",
+            "[08:59:01] INFO: Service stopped — maintenance window: 09:00 - 09:30",
+            "[09:00:01] INFO: Incoming connection refused — service offline"
+          ],
+          "data": {
+            "Status": "OFFLINE (planned maintenance)",
+            "Maintenance Window": "09:00 - 09:30",
+            "Notification Sent": "Yes — email sent to ops team 24h ago",
+            "Expected Downtime": "30 minutes"
+          },
+          "status": "Intentionally offline for scheduled maintenance. Not accepting connections."
+        }
+      },
+      {
+        "id": "officer-assignment",
+        "type": "server",
+        "label": "Officer Assignment",
+        "status": "failed",
+        "position": { "x": 350, "y": 320 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Officer Assignment Service",
+          "logs": [
+            "[09:01:10] INFO: Waiting for dispatch instructions...",
+            "[09:01:40] WARN: No dispatches received in 90s — unusual",
+            "[09:02:00] ERROR: Dispatch Service connection timed out",
+            "[09:02:05] ERROR: Cannot assign officers — no dispatch data available"
+          ],
+          "data": {
+            "Status": "STARVED",
+            "Dispatches Received": "0 (last 3 min)",
+            "Officers Available": "34 (idle, waiting for assignments)",
+            "Depends On": "Dispatch Service"
+          },
+          "status": "No officers being dispatched because Dispatch Service is frozen. Officers sitting idle during active emergency calls."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-routing-dispatch", "source": "call-routing", "target": "dispatch-service", "label": "blocked (30s timeout)", "animated": false, "style": "broken" },
+      { "id": "e-dispatch-address", "source": "dispatch-service", "target": "address-validation", "label": "connection refused", "animated": false, "style": "broken" },
+      { "id": "e-dispatch-officer", "source": "dispatch-service", "target": "officer-assignment", "label": "no dispatches", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the entire dispatch system going down?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The maintenance team took down Address Validation without proper change management",
+          "correct": false,
+          "feedback": "The maintenance was planned and communicated. Services go down — that's expected in distributed systems. The problem isn't that Address Validation went offline, it's that no service in the chain could gracefully handle its absence. A well-designed system should tolerate individual service failures."
+        },
+        {
+          "id": "rc-2",
+          "text": "The Dispatch Service has no circuit breaker, so it blocks all threads waiting on a dead service, cascading the failure upstream and downstream",
+          "correct": true,
+          "feedback": "Correct! Without a circuit breaker, the Dispatch Service keeps trying to call Address Validation with a 30-second timeout per attempt. This ties up every thread, making the Dispatch Service itself unresponsive. The failure then cascades to Call Routing and Officer Assignment. A circuit breaker would have detected the failures quickly, stopped calling the dead service, and either returned a fallback response or a fast failure — keeping the rest of the system alive."
+        },
+        {
+          "id": "rc-3",
+          "text": "The 30-second timeout is too long, causing threads to be blocked for too long",
+          "correct": false,
+          "feedback": "A shorter timeout would help threads free up faster, but without a circuit breaker, you'd still exhaust the thread pool — just slightly more slowly. The fundamental issue is that the system keeps calling a service it knows is down, request after request. A circuit breaker stops the bleeding entirely."
+        },
+        {
+          "id": "rc-4",
+          "text": "The Dispatch Service thread pool is too small to handle the request load",
+          "correct": false,
+          "feedback": "A larger thread pool would only delay the inevitable. If every thread blocks for 30 seconds on a dead service, even 500 threads would eventually fill up. The fix isn't more threads — it's stopping the futile calls to the dead service via a circuit breaker."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best approach to prevent cascading failures?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Implement a circuit breaker that opens after detecting repeated failures, returning fast failures or fallback responses instead of blocking",
+          "correct": true,
+          "feedback": "Correct! A circuit breaker monitors calls to a downstream service. After a threshold of failures (e.g., 5 in 10 seconds), it 'trips' and stops calling the dead service entirely. Subsequent requests immediately get a fast failure or a fallback response (like dispatching without address validation). Periodically, it lets a test request through to check if the service has recovered. This prevents one service's failure from consuming all resources in the calling service."
+        },
+        {
+          "id": "fix-2",
+          "text": "Make Address Validation highly available with zero-downtime deployments so it never goes offline",
+          "correct": false,
+          "feedback": "Zero-downtime deployments reduce planned outages, but services can still fail unexpectedly (bugs, resource exhaustion, network issues). Your system must handle downstream failures gracefully regardless. A circuit breaker is essential defense for any microservice architecture."
+        },
+        {
+          "id": "fix-3",
+          "text": "Remove the dependency on Address Validation by embedding address data directly in the Dispatch Service",
+          "correct": false,
+          "feedback": "Reducing unnecessary dependencies is good practice, but in a microservice architecture you'll always have inter-service calls. The same cascading failure pattern would occur with any dependency. You need a general solution (circuit breaker) that works for all downstream calls."
+        },
+        {
+          "id": "fix-4",
+          "text": "Add a message queue between all services so they communicate asynchronously instead of synchronously",
+          "correct": false,
+          "feedback": "Async communication via queues helps decouple services, but 911 dispatch requires real-time responses — you can't queue a 911 call and process it later. For synchronous call chains, circuit breakers are the standard pattern to prevent cascading failures."
+        }
+      ]
+    }
+  },
+  "conceptId": "circuit-breakers",
+  "badge": {
+    "name": "Circuit Breaker",
+    "icon": "⚡"
+  }
+}

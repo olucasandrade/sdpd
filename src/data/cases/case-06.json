@@ -1,0 +1,190 @@
+{
+  "id": "case-06",
+  "number": 6,
+  "title": "The Conflicting Orders",
+  "subtitle": "Two leaders, two assignments, one very confused officer",
+  "brief": {
+    "narrative": "Distributia PD runs a multi-leader replication setup so that both the Downtown and Harbor precincts can independently assign cases even when the network between them is slow. Tonight, Detective Reyes at Downtown and Sergeant Okonkwo at Harbor both assigned Case #2290 — a high-profile jewelry heist — to different officers. Officer Park was assigned the case Downtown, while Officer Chen got it at Harbor. Both officers showed up at the crime scene and started separate, contradictory investigations. Witnesses are confused, evidence chains are tangled, and the Captain wants to know how this happened.",
+    "symptoms": [
+      "Case #2290 was assigned to two different officers by two different precincts",
+      "Both officers arrived at the crime scene with conflicting investigation plans",
+      "The case management system shows different assignees depending on which precinct you query",
+      "Replication lag between Downtown and Harbor databases is 45 seconds"
+    ],
+    "objective": "Understand how multi-leader replication caused a write conflict and determine the best strategy for handling conflicts in this system."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "db-downtown",
+        "type": "database",
+        "label": "Downtown DB (Leader)",
+        "status": "degraded",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Downtown Database (Leader)",
+          "logs": [
+            "[19:42:10] INFO: WRITE — Case #2290 assigned to Officer Park by Det. Reyes",
+            "[19:42:10] INFO: Write accepted locally, queued for replication to Harbor",
+            "[19:42:55] INFO: Received replication event from Harbor: Case #2290 assigned to Officer Chen",
+            "[19:42:55] ERROR: WRITE CONFLICT — Case #2290 has two different assignees",
+            "[19:42:55] WARN: Conflict resolution policy: LAST-WRITE-WINS (by timestamp)",
+            "[19:42:56] INFO: Harbor write timestamp 19:42:12 > Downtown write timestamp 19:42:10 — Harbor write wins",
+            "[19:42:56] WARN: Officer Park's assignment silently dropped"
+          ],
+          "data": {
+            "Role": "LEADER (multi-leader setup)",
+            "Case #2290 Assignee (local)": "Officer Park (OVERWRITTEN)",
+            "Case #2290 Assignee (after conflict resolution)": "Officer Chen",
+            "Conflict Resolution": "Last-Write-Wins (timestamp)",
+            "Replication Lag to Harbor": "45 seconds",
+            "Conflicts Today": "7"
+          },
+          "status": "Write conflict detected. LWW resolution silently dropped the Downtown assignment."
+        }
+      },
+      {
+        "id": "db-harbor",
+        "type": "database",
+        "label": "Harbor DB (Leader)",
+        "status": "degraded",
+        "position": { "x": 550, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Harbor Database (Leader)",
+          "logs": [
+            "[19:42:12] INFO: WRITE — Case #2290 assigned to Officer Chen by Sgt. Okonkwo",
+            "[19:42:12] INFO: Write accepted locally, queued for replication to Downtown",
+            "[19:42:57] INFO: Received replication event from Downtown: Case #2290 assigned to Officer Park",
+            "[19:42:57] ERROR: WRITE CONFLICT — Case #2290 has two different assignees",
+            "[19:42:57] WARN: Conflict resolution policy: LAST-WRITE-WINS (by timestamp)",
+            "[19:42:58] INFO: Harbor write timestamp 19:42:12 > Downtown write timestamp 19:42:10 — Harbor write wins"
+          ],
+          "data": {
+            "Role": "LEADER (multi-leader setup)",
+            "Case #2290 Assignee": "Officer Chen",
+            "Conflict Resolution": "Last-Write-Wins (timestamp)",
+            "Replication Lag to Downtown": "45 seconds",
+            "Conflicts Today": "7"
+          },
+          "status": "Write conflict resolved via LWW. Harbor write preserved, Downtown write discarded."
+        }
+      },
+      {
+        "id": "precinct-downtown",
+        "type": "client",
+        "label": "Downtown Precinct",
+        "status": "degraded",
+        "position": { "x": 100, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Downtown Precinct Terminal",
+          "logs": [
+            "[19:42:10] INFO: Det. Reyes assigned Case #2290 to Officer Park — confirmed",
+            "[19:42:15] INFO: Officer Park dispatched to crime scene",
+            "[19:43:00] WARN: Case #2290 assignee changed to Officer Chen (conflict resolution)",
+            "[19:43:00] ERROR: Officer Park already en route — no notification sent"
+          ],
+          "data": {
+            "Case #2290 Displayed Assignee": "Officer Chen (changed from Park)",
+            "Officer Park Status": "En route to crime scene (unaware of reassignment)",
+            "Det. Reyes Notified": "NO — silent overwrite"
+          },
+          "status": "Det. Reyes's assignment was silently overwritten by conflict resolution. No alert was raised."
+        }
+      },
+      {
+        "id": "precinct-harbor",
+        "type": "client",
+        "label": "Harbor Precinct",
+        "status": "healthy",
+        "position": { "x": 550, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Harbor Precinct Terminal",
+          "logs": [
+            "[19:42:12] INFO: Sgt. Okonkwo assigned Case #2290 to Officer Chen — confirmed",
+            "[19:42:18] INFO: Officer Chen dispatched to crime scene"
+          ],
+          "data": {
+            "Case #2290 Displayed Assignee": "Officer Chen",
+            "Officer Chen Status": "En route to crime scene"
+          },
+          "status": "Harbor's assignment was preserved by LWW conflict resolution."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-dt-harbor-repl", "source": "db-downtown", "target": "db-harbor", "label": "async replication", "animated": true, "style": "slow" },
+      { "id": "e-harbor-dt-repl", "source": "db-harbor", "target": "db-downtown", "label": "async replication", "animated": true, "style": "slow" },
+      { "id": "e-dt-precinct", "source": "db-downtown", "target": "precinct-downtown", "label": "reads/writes", "animated": true, "style": "normal" },
+      { "id": "e-harbor-precinct", "source": "db-harbor", "target": "precinct-harbor", "label": "reads/writes", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the conflicting case assignments?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The replication lag of 45 seconds is too high and should be reduced to zero",
+          "correct": false,
+          "feedback": "Reducing replication lag helps, but with multi-leader replication, any non-zero lag can produce conflicts. Even at 1ms lag, two writes happening within that window will conflict. The fundamental issue is that multi-leader replication inherently allows concurrent conflicting writes."
+        },
+        {
+          "id": "rc-2",
+          "text": "Multi-leader replication allows both databases to accept writes independently, so concurrent writes to the same record create conflicts that must be resolved after the fact",
+          "correct": true,
+          "feedback": "Correct! In multi-leader replication, each leader independently accepts writes and asynchronously replicates them to other leaders. When two leaders modify the same record before replication catches up, a write conflict occurs. This is the inherent trade-off of multi-leader setups: you gain availability and lower latency for writes, but you must handle conflicts. The LWW strategy silently dropped Det. Reyes's assignment — a dangerous outcome for critical data."
+        },
+        {
+          "id": "rc-3",
+          "text": "Det. Reyes and Sgt. Okonkwo should have coordinated before making assignments",
+          "correct": false,
+          "feedback": "Human coordination is not a reliable solution at scale. The system should prevent or properly handle concurrent writes. If the system allowed conflicting writes silently, it's a system design problem, not a human error."
+        },
+        {
+          "id": "rc-4",
+          "text": "The last-write-wins conflict resolution strategy has a bug in its timestamp comparison",
+          "correct": false,
+          "feedback": "LWW worked as designed — it picked the write with the later timestamp. The problem is that LWW itself is a lossy strategy: it silently discards one write without alerting anyone. For case assignments, losing a write means losing an officer's assignment without notification."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best approach to handle write conflicts in this multi-leader system?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Switch to single-leader replication for case assignments so only one precinct can write at a time",
+          "correct": false,
+          "feedback": "Single-leader eliminates write conflicts but sacrifices the availability that multi-leader provides. If the leader's network goes down, no precinct can assign cases. A better approach preserves the multi-leader benefit while handling conflicts properly."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implement application-level conflict resolution that detects conflicts and presents them to a supervisor for manual resolution",
+          "correct": true,
+          "feedback": "Correct! For critical data like case assignments, the best approach is to detect conflicts and surface them to users rather than silently resolving them. When a conflict is detected, the system should flag it and present both versions to a supervisor who can make the right decision. This is how CRDTs and custom merge functions work in practice — the application logic decides how to handle conflicts based on domain knowledge."
+        },
+        {
+          "id": "fix-3",
+          "text": "Use last-write-wins but with more accurate timestamps from an NTP server",
+          "correct": false,
+          "feedback": "Better timestamps make LWW more deterministic, but the core problem remains: one write is silently discarded. For critical data like case assignments, silently dropping a write is unacceptable regardless of which write wins."
+        },
+        {
+          "id": "fix-4",
+          "text": "Add a global lock so only one precinct can modify a case record at a time",
+          "correct": false,
+          "feedback": "A global lock across data centers defeats the purpose of multi-leader replication — it reintroduces the latency and availability problems you were trying to avoid. If the lock service itself goes down, no one can write. Conflict detection and resolution is a better approach that preserves the benefits of multi-leader."
+        }
+      ]
+    }
+  },
+  "conceptId": "multi-leader-replication",
+  "badge": {
+    "name": "Conflict Resolver",
+    "icon": "⚔️"
+  }
+}

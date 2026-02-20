@@ -1,0 +1,207 @@
+{
+  "id": "case-22",
+  "number": 22,
+  "title": "The Missing Shard",
+  "subtitle": "An entire letter range of criminals vanishes from the database",
+  "brief": {
+    "narrative": "Detectives in Distributia are searching for a suspect named Marcus Torres, but the system returns 'No records found.' That's impossible — Torres has a rap sheet a mile long. Other searches are failing too: anyone with a last name starting M through R is invisible. The criminal records database was sharded alphabetically across four database servers to handle the growing data volume. But one of those shards just went dark, and with it, every record in its range. Chief Partition demands to know why losing one shard means losing a quarter of all criminals.",
+    "symptoms": [
+      "Searches for last names M through R return zero results",
+      "Searches for names A-L and S-Z work perfectly fine",
+      "One of the four database shards is unreachable",
+      "No failover or replica is serving the missing range"
+    ],
+    "objective": "Understand why a single shard failure makes an entire data range inaccessible and recommend a resilient sharding strategy."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "query-router",
+        "type": "server",
+        "label": "Query Router",
+        "status": "degraded",
+        "position": { "x": 350, "y": 30 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Query Router",
+          "logs": [
+            "[14:20:01] INFO: Query 'Torres' → routed to Shard-MR",
+            "[14:20:01] ERROR: Shard-MR connection refused",
+            "[14:20:02] ERROR: No replica available for range M-R",
+            "[14:20:02] WARN: Returning empty result set for 'Torres'",
+            "[14:20:15] INFO: Query 'Adams' → routed to Shard-AF (success)",
+            "[14:20:16] INFO: Query 'Williams' → routed to Shard-SZ (success)"
+          ],
+          "data": {
+            "Status": "PARTIALLY OPERATIONAL",
+            "Shards Online": "3 of 4",
+            "Failed Shard": "Shard-MR (range M-R)",
+            "Shard Replicas": "None configured",
+            "Failed Queries (last hour)": "2,847"
+          },
+          "status": "Router correctly identifies shard for each query but Shard-MR is down with no failover."
+        }
+      },
+      {
+        "id": "shard-af",
+        "type": "database",
+        "label": "Shard A-F",
+        "status": "healthy",
+        "position": { "x": 80, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Shard A-F",
+          "logs": [
+            "[14:20:15] INFO: Query 'Adams' — 1 result returned",
+            "[14:20:20] INFO: Query 'Clark' — 3 results returned"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Records": "580,000",
+            "Range": "A-F",
+            "Replicas": "0"
+          },
+          "status": "Operating normally. Serving all A-F queries."
+        }
+      },
+      {
+        "id": "shard-gl",
+        "type": "database",
+        "label": "Shard G-L",
+        "status": "healthy",
+        "position": { "x": 280, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Shard G-L",
+          "logs": [
+            "[14:20:18] INFO: Query 'Johnson' — 5 results returned"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Records": "610,000",
+            "Range": "G-L",
+            "Replicas": "0"
+          },
+          "status": "Operating normally. Serving all G-L queries."
+        }
+      },
+      {
+        "id": "shard-mr",
+        "type": "database",
+        "label": "Shard M-R",
+        "status": "failed",
+        "position": { "x": 480, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Shard M-R",
+          "logs": [
+            "[13:45:00] WARN: Disk latency spike detected",
+            "[13:45:30] ERROR: Storage controller failure",
+            "[13:45:31] FATAL: Database shutting down — data files inaccessible",
+            "[13:45:31] INFO: No replica configured for failover"
+          ],
+          "data": {
+            "Status": "OFFLINE",
+            "Records": "640,000 (inaccessible)",
+            "Range": "M-R",
+            "Replicas": "0",
+            "Downtime": "35 minutes"
+          },
+          "status": "Hardware failure. Entire M-R range is inaccessible. No replica exists."
+        }
+      },
+      {
+        "id": "shard-sz",
+        "type": "database",
+        "label": "Shard S-Z",
+        "status": "healthy",
+        "position": { "x": 680, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Shard S-Z",
+          "logs": [
+            "[14:20:16] INFO: Query 'Williams' — 2 results returned"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Records": "570,000",
+            "Range": "S-Z",
+            "Replicas": "0"
+          },
+          "status": "Operating normally. Serving all S-Z queries."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-router-af", "source": "query-router", "target": "shard-af", "label": "A-F queries", "animated": true, "style": "normal" },
+      { "id": "e-router-gl", "source": "query-router", "target": "shard-gl", "label": "G-L queries", "animated": true, "style": "normal" },
+      { "id": "e-router-mr", "source": "query-router", "target": "shard-mr", "label": "M-R queries", "animated": false, "style": "broken" },
+      { "id": "e-router-sz", "source": "query-router", "target": "shard-sz", "label": "S-Z queries", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Why does losing one database shard make an entire range of criminals inaccessible?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The query router has a bug that sends all queries to the failed shard",
+          "correct": false,
+          "feedback": "The router is working correctly — it routes A-F, G-L, and S-Z queries to their respective shards successfully. Only M-R queries fail because that specific shard is down."
+        },
+        {
+          "id": "rc-2",
+          "text": "Each shard holds an exclusive range of data with no replication, so when Shard M-R fails, that entire data range has zero copies available",
+          "correct": true,
+          "feedback": "Correct! Sharding splits data into exclusive ranges across servers. Shard M-R is the only server holding records for last names M through R. With no replicas configured, losing that single shard means losing access to 640,000 records. Sharding improves scalability but requires per-shard replication for fault tolerance."
+        },
+        {
+          "id": "rc-3",
+          "text": "The alphabetical sharding key is poorly chosen and created uneven data distribution",
+          "correct": false,
+          "feedback": "While the shard sizes vary slightly (570K-640K), the distribution is reasonably even. The problem isn't the shard key — it's the lack of replication for each shard."
+        },
+        {
+          "id": "rc-4",
+          "text": "The other shards should be able to serve M-R queries as a fallback",
+          "correct": false,
+          "feedback": "The other shards don't have M-R data — that's the whole point of sharding. Each shard holds an exclusive range. They can't answer queries for data they don't have."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to prevent a single shard failure from causing data loss?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Stop sharding and put all data back on a single large server",
+          "correct": false,
+          "feedback": "This eliminates the sharding failure mode but reintroduces the single point of failure from Case 1 and removes the scalability benefits of sharding."
+        },
+        {
+          "id": "fix-2",
+          "text": "Add at least one replica for each shard so the router can failover when a primary shard goes down",
+          "correct": true,
+          "feedback": "Correct! Each shard should have at least one replica. When Shard M-R's primary fails, the router can redirect queries to its replica. This combines sharding's scalability with replication's fault tolerance — the standard production pattern."
+        },
+        {
+          "id": "fix-3",
+          "text": "Store a complete copy of all data on every shard so any shard can answer any query",
+          "correct": false,
+          "feedback": "If every shard has all the data, you've eliminated the benefit of sharding (distributing data to scale). You'd essentially have replication, not sharding. The correct approach is shard for scale plus replicate each shard for resilience."
+        },
+        {
+          "id": "fix-4",
+          "text": "Change the shard key from alphabetical to hash-based so failures affect random records instead of a contiguous range",
+          "correct": false,
+          "feedback": "Hash-based sharding spreads the impact but doesn't solve it — you'd still lose whichever records were hashed to the failed shard. The fix is replication per shard, regardless of shard key strategy."
+        }
+      ]
+    }
+  },
+  "conceptId": "sharding",
+  "badge": {
+    "name": "Shard Master",
+    "icon": "💎"
+  }
+}

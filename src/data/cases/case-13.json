@@ -1,0 +1,201 @@
+{
+  "id": "case-13",
+  "number": 13,
+  "title": "The Sticky Situation",
+  "subtitle": "Server crash wipes out hundreds of active officer sessions",
+  "brief": {
+    "narrative": "Distributia PD recently deployed a load balancer for their dispatch system — three servers sharing the load. Sounds great, except they configured sticky sessions: each officer's browser is permanently bound to one specific server. Server 2 just crashed, and 340 officers who were mid-shift suddenly got logged out. Their active case notes, unsaved reports, and dispatch assignments — all gone. Meanwhile, Servers 1 and 3 are fine but have no idea what those 340 officers were working on. The session data lived only in Server 2's memory. Chief Partition is furious, Detective.",
+    "symptoms": [
+      "340 officers simultaneously logged out after Server 2 crash",
+      "Active case notes and unsaved dispatch data lost for affected officers",
+      "Servers 1 and 3 operating normally but cannot restore lost sessions",
+      "Officers must re-login and redo all in-progress work"
+    ],
+    "objective": "Identify why the server crash caused session loss for a third of all users, and recommend an architecture that decouples sessions from individual servers."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "load-balancer",
+        "type": "server",
+        "label": "Load Balancer",
+        "status": "healthy",
+        "position": { "x": 350, "y": 30 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Load Balancer (Sticky Sessions)",
+          "logs": [
+            "[14:30:00] INFO: Sticky session routing enabled",
+            "[14:45:12] ERROR: Server 2 health check failed",
+            "[14:45:13] WARN: 340 sticky sessions orphaned — no failover for session state",
+            "[14:45:14] INFO: New requests routed to Server 1 and Server 3"
+          ],
+          "data": {
+            "Mode": "Sticky Sessions (cookie-based)",
+            "Server 1 Sessions": "310 (active)",
+            "Server 2 Sessions": "340 (LOST)",
+            "Server 3 Sessions": "295 (active)",
+            "Session Failover": "None — state is server-local"
+          },
+          "status": "Sticky sessions enabled. No shared session store configured."
+        }
+      },
+      {
+        "id": "server-1",
+        "type": "server",
+        "label": "Dispatch Server 1",
+        "status": "healthy",
+        "position": { "x": 100, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Dispatch Server 1",
+          "logs": [
+            "[14:45:15] INFO: Operating normally",
+            "[14:45:20] INFO: Receiving redirected traffic from LB"
+          ],
+          "data": {
+            "Status": "HEALTHY",
+            "Local Sessions": "310",
+            "Memory Session Store": "In-process only"
+          },
+          "status": "Healthy but sessions stored only in local memory."
+        }
+      },
+      {
+        "id": "server-2",
+        "type": "server",
+        "label": "Dispatch Server 2",
+        "status": "failed",
+        "position": { "x": 350, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Dispatch Server 2",
+          "logs": [
+            "[14:44:58] ERROR: Out of memory — process killed",
+            "[14:44:59] FATAL: Server process terminated",
+            "[14:45:00] INFO: 340 in-memory sessions destroyed"
+          ],
+          "data": {
+            "Status": "CRASHED",
+            "Local Sessions": "0 (all lost)",
+            "Crash Reason": "OOM kill"
+          },
+          "status": "Crashed. All 340 locally-stored sessions permanently lost."
+        }
+      },
+      {
+        "id": "server-3",
+        "type": "server",
+        "label": "Dispatch Server 3",
+        "status": "healthy",
+        "position": { "x": 600, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Dispatch Server 3",
+          "logs": [
+            "[14:45:15] INFO: Operating normally",
+            "[14:45:22] INFO: Receiving redirected traffic from LB"
+          ],
+          "data": {
+            "Status": "HEALTHY",
+            "Local Sessions": "295",
+            "Memory Session Store": "In-process only"
+          },
+          "status": "Healthy but sessions stored only in local memory."
+        }
+      },
+      {
+        "id": "officers",
+        "type": "client",
+        "label": "Officer Terminals",
+        "status": "degraded",
+        "position": { "x": 350, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Officer Terminals",
+          "logs": [
+            "[14:45:13] ERROR: 340 terminals received 'Session Expired'",
+            "[14:45:30] WARN: Officers reporting lost case notes and dispatch data"
+          ],
+          "data": {
+            "Total Officers Online": "945",
+            "Sessions Lost": "340",
+            "Unsaved Reports Lost": "~127"
+          },
+          "status": "340 officers lost all session state and must re-login."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-lb-s1", "source": "load-balancer", "target": "server-1", "label": "sticky route", "animated": true, "style": "normal" },
+      { "id": "e-lb-s2", "source": "load-balancer", "target": "server-2", "label": "sticky route", "animated": false, "style": "broken" },
+      { "id": "e-lb-s3", "source": "load-balancer", "target": "server-3", "label": "sticky route", "animated": true, "style": "normal" },
+      { "id": "e-officers-lb", "source": "officers", "target": "load-balancer", "label": "requests", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of 340 officers losing their sessions?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The load balancer failed to redistribute sessions to healthy servers after the crash",
+          "correct": false,
+          "feedback": "The load balancer did redirect new requests, but the session data only existed in Server 2's memory. There's nothing to redistribute — the data is gone. The problem is where sessions are stored, not how traffic is routed."
+        },
+        {
+          "id": "rc-2",
+          "text": "Sticky sessions coupled user state to a specific server — when that server died, the state died with it",
+          "correct": true,
+          "feedback": "Correct! Sticky sessions bind users to specific servers and store session state in that server's local memory. This creates a stateful service — if the server crashes, all session data is lost. Stateless services store session data externally so any server can handle any request."
+        },
+        {
+          "id": "rc-3",
+          "text": "Server 2 ran out of memory because it was handling too many sessions compared to the others",
+          "correct": false,
+          "feedback": "While the OOM kill triggered the crash, the real architectural problem is that sessions are stored in server memory at all. Even with perfectly balanced sessions, any server crash would destroy all its locally-stored sessions."
+        },
+        {
+          "id": "rc-4",
+          "text": "The servers lacked a proper backup and recovery mechanism for session data",
+          "correct": false,
+          "feedback": "Backing up in-memory sessions is impractical and doesn't address the core issue. The problem is the stateful design pattern — sessions should be externalized so servers don't hold critical state in the first place."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to prevent session loss when a server crashes?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Add more servers so each one handles fewer sessions, reducing crash impact",
+          "correct": false,
+          "feedback": "More servers with sticky sessions just means each crash affects fewer users — but crashes still destroy sessions. The problem isn't how many servers you have; it's that session state lives inside individual servers."
+        },
+        {
+          "id": "fix-2",
+          "text": "Make services stateless by storing sessions in an external shared store (e.g., Redis) so any server can handle any request",
+          "correct": true,
+          "feedback": "Correct! By externalizing session state to a shared store like Redis, servers become stateless and interchangeable. Any server can handle any user's request, sticky sessions become unnecessary, and a server crash doesn't lose any session data."
+        },
+        {
+          "id": "fix-3",
+          "text": "Replicate session data between all three servers in real-time",
+          "correct": false,
+          "feedback": "Server-to-server session replication is complex and expensive. It doesn't scale well — every new server increases replication traffic. An external session store is simpler and more scalable."
+        },
+        {
+          "id": "fix-4",
+          "text": "Implement automatic server restart so crashed servers come back quickly",
+          "correct": false,
+          "feedback": "Fast restarts help availability, but in-memory sessions are still lost when a process dies. The server comes back empty. The real fix is to not store sessions in server memory at all."
+        }
+      ]
+    }
+  },
+  "conceptId": "stateless-services",
+  "badge": {
+    "name": "State Liberator",
+    "icon": "🔓"
+  }
+}

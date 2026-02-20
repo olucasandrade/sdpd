@@ -1,0 +1,196 @@
+{
+  "id": "case-33",
+  "number": 33,
+  "title": "The Rate Limiter",
+  "subtitle": "One integration floods the system, drowning everyone else",
+  "brief": {
+    "narrative": "Distributia PD recently integrated with the Federal Warrant Database — a huge win for cross-jurisdictional cooperation. The integration works through the Warrant Gateway API, which all five precincts use to check federal warrants during traffic stops and arrests. Everything was fine during testing with a handful of requests. But this morning, Precinct 3 deployed an automated background check system that queries the Warrant Gateway for every single person in their records — all 140,000 of them — in a batch job that fires 500 requests per second. The Warrant Gateway has no rate limiting. Within minutes, the API is so overwhelmed that Precincts 1, 2, 4, and 5 can't run warrant checks at all. Officers in the field are making traffic stops and arrests without knowing if the person has a federal warrant. Officer Shield from Precinct 1 just released a suspect during a routine stop who, unknown to her, has an active federal warrant for armed robbery. The batch job from one precinct has monopolized a shared resource, starving every other precinct.",
+    "symptoms": [
+      "Warrant Gateway API response times exceed 30 seconds (normally 200ms)",
+      "Precincts 1, 2, 4, and 5 report warrant check failures — timeouts on all requests",
+      "Precinct 3 is sending 500 requests/second via automated batch job",
+      "Total API throughput collapsed — serving fewer requests than before the batch job started"
+    ],
+    "objective": "Identify how the absence of rate limiting allowed one consumer to monopolize a shared API, and determine the correct rate limiting strategy to ensure fair access."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "precinct-3",
+        "type": "client",
+        "label": "Precinct 3 (batch job)",
+        "status": "degraded",
+        "position": { "x": 80, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Precinct 3 — Automated Background Check System",
+          "logs": [
+            "[08:00:00] INFO: Starting batch warrant check — 140,000 records queued",
+            "[08:00:01] INFO: Sending 500 requests/second to Warrant Gateway",
+            "[08:00:30] INFO: 15,000 records checked — 0 throttle errors",
+            "[08:01:00] WARN: Response times increasing — 2s average (was 200ms)",
+            "[08:02:00] WARN: Response times now 15s — but no rate limit errors received",
+            "[08:03:00] INFO: 45,000 records checked — continuing at full speed"
+          ],
+          "data": {
+            "Request Rate": "500/sec (unlimited)",
+            "Records To Process": "140,000",
+            "Rate Limit Received": "NONE — no limits enforced",
+            "Job Priority": "Background batch — not time-sensitive",
+            "Impact Awareness": "None — no feedback that other precincts are affected"
+          },
+          "status": "Batch job running at full speed with no rate limiting feedback. Unaware it's starving other precincts."
+        }
+      },
+      {
+        "id": "other-precincts",
+        "type": "client",
+        "label": "Precincts 1,2,4,5",
+        "status": "failed",
+        "position": { "x": 80, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Precincts 1, 2, 4, 5 — Field Operations",
+          "logs": [
+            "[08:01:15] INFO: [P1] Officer Shield — warrant check for traffic stop suspect",
+            "[08:01:45] ERROR: [P1] Warrant Gateway timeout — 30s — returning NO DATA",
+            "[08:01:46] WARN: [P1] Officer Shield releasing suspect — no warrant data available",
+            "[08:02:00] ERROR: [P2] Warrant check failed — timeout",
+            "[08:02:10] ERROR: [P4] Warrant check failed — timeout",
+            "[08:02:30] ERROR: [P5] Warrant check failed — 3 consecutive timeouts"
+          ],
+          "data": {
+            "Combined Request Rate": "~20/sec (normal field operations)",
+            "Success Rate": "0% (all timing out)",
+            "Officers In Field": "340 (across 4 precincts)",
+            "Warrant Checks Failed": "127 in last 5 minutes",
+            "Safety Risk": "HIGH — suspects released without warrant data"
+          },
+          "status": "All four precincts unable to run warrant checks. Officers making stops without critical safety information."
+        }
+      },
+      {
+        "id": "warrant-gateway",
+        "type": "server",
+        "label": "Warrant Gateway API",
+        "status": "failed",
+        "position": { "x": 400, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Warrant Gateway API",
+          "logs": [
+            "[08:00:00] INFO: Incoming request rate: ~20/sec (normal)",
+            "[08:00:01] WARN: Request rate spike — 520/sec",
+            "[08:00:30] WARN: Thread pool 95% utilized — 190/200 threads busy",
+            "[08:01:00] ERROR: Thread pool exhausted — 200/200 threads busy",
+            "[08:01:00] ERROR: Request queue overflow — dropping requests",
+            "[08:01:00] WARN: Rate limiting: NOT CONFIGURED"
+          ],
+          "data": {
+            "Max Throughput": "200 req/sec",
+            "Current Inbound": "520 req/sec",
+            "Rate Limiting": "NONE",
+            "Per-Client Quotas": "NONE",
+            "Priority Queues": "NONE",
+            "Precinct 3 Share": "96% of all requests",
+            "Other Precincts Share": "4% of all requests"
+          },
+          "status": "API overwhelmed. No rate limiting, no per-client quotas, no priority differentiation."
+        }
+      },
+      {
+        "id": "federal-db",
+        "type": "database",
+        "label": "Federal Warrant DB",
+        "status": "degraded",
+        "position": { "x": 650, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Federal Warrant Database",
+          "logs": [
+            "[08:00:30] WARN: Query rate exceeding recommended threshold",
+            "[08:01:00] WARN: Connection pool 90% utilized",
+            "[08:01:30] ERROR: Query latency 5x normal — resource contention"
+          ],
+          "data": {
+            "Connection Pool": "180/200 (90% — mostly Precinct 3 queries)",
+            "Query Latency": "1.2s (normal: 50ms)",
+            "Recommended Rate": "100 queries/sec",
+            "Actual Rate": "500+ queries/sec"
+          },
+          "status": "Database under heavy load from unthrottled batch queries."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-p3-gateway", "source": "precinct-3", "target": "warrant-gateway", "label": "500 req/sec (no limit)", "animated": true, "style": "slow" },
+      { "id": "e-others-gateway", "source": "other-precincts", "target": "warrant-gateway", "label": "20 req/sec (starved)", "animated": false, "style": "broken" },
+      { "id": "e-gateway-db", "source": "warrant-gateway", "target": "federal-db", "label": "overwhelmed", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of four precincts losing access to warrant checks?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "Precinct 3's batch job is malicious and should not have been deployed without approval",
+          "correct": false,
+          "feedback": "Precinct 3's batch job is a legitimate use case — background checks against federal warrants. The job isn't malicious; it's simply consuming an unlimited resource without constraints. Without rate limits, any client can unintentionally monopolize the API. The system should protect itself from this, not rely on clients being well-behaved."
+        },
+        {
+          "id": "rc-2",
+          "text": "The Federal Warrant Database is too slow to handle the request volume",
+          "correct": false,
+          "feedback": "The database would handle the normal load of 20 requests/second just fine. Even Precinct 3's 500 req/sec might be manageable if properly queued and throttled. The issue is that the API gateway has no mechanism to control the flow, so the raw unthrottled volume crushes both the gateway and the database."
+        },
+        {
+          "id": "rc-3",
+          "text": "The Warrant Gateway has no rate limiting or per-client quotas, allowing one consumer to monopolize the shared API and starve all others",
+          "correct": true,
+          "feedback": "Correct! Without rate limiting, the Warrant Gateway treats all requests equally on a first-come, first-served basis. Precinct 3's 500 req/sec flood consumes 96% of the API's capacity, leaving crumbs for the other four precincts. This is the 'noisy neighbor' problem — one tenant's usage degrades service for all others. Rate limiting with per-client quotas ensures fair access to shared resources."
+        },
+        {
+          "id": "rc-4",
+          "text": "The Warrant Gateway thread pool is too small and should be increased to handle peak load",
+          "correct": false,
+          "feedback": "A larger thread pool would increase raw capacity, but without rate limiting, Precinct 3 would simply consume the extra capacity too. If you add 1000 threads, the batch job would happily use all 1000. Rate limiting is essential to ensure fair distribution of whatever capacity exists."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best approach to prevent one consumer from monopolizing the API?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Block Precinct 3's batch job and require all warrant checks to be manual, one at a time",
+          "correct": false,
+          "feedback": "Blocking legitimate use cases isn't the answer. Batch warrant checks are valuable — you just need to throttle them. A good rate limiting strategy allows batch jobs to run at a controlled rate without impacting real-time operations."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implement per-client rate limiting with quotas — each precinct gets a fair share, with higher priority for real-time field requests over batch operations",
+          "correct": true,
+          "feedback": "Correct! Per-client rate limiting (e.g., using a token bucket or sliding window algorithm) ensures each precinct gets a fair quota. Priority tiers add another dimension: real-time field requests (officer safety) get higher priority than background batch jobs. This way, Precinct 3's batch job runs at a sustainable rate (e.g., 50 req/sec instead of 500), while field officers across all precincts get sub-second responses. Rate limiting protects shared resources from the noisy neighbor problem."
+        },
+        {
+          "id": "fix-3",
+          "text": "Scale the Warrant Gateway horizontally to handle any request volume from any client",
+          "correct": false,
+          "feedback": "Scaling helps with capacity, but without rate limiting, a single client could always scale their requests to match. Plus, the Federal Warrant Database has its own limits you can't control. Rate limiting is essential regardless of how much you scale — it's about fairness and protection, not just capacity."
+        },
+        {
+          "id": "fix-4",
+          "text": "Add a queue in front of the Warrant Gateway that processes requests in FIFO order",
+          "correct": false,
+          "feedback": "A FIFO queue without rate limiting still lets Precinct 3 fill the queue with 500 req/sec, pushing other precincts' requests to the back. Queue depth would grow unboundedly, and field officers would wait behind tens of thousands of batch requests. You need per-client quotas to ensure fair access."
+        }
+      ]
+    }
+  },
+  "conceptId": "rate-limiting",
+  "badge": {
+    "name": "Rate Guardian",
+    "icon": "🚦"
+  }
+}

@@ -1,0 +1,213 @@
+{
+  "id": "case-21",
+  "number": 21,
+  "title": "The Out of Order",
+  "subtitle": "Crime reports arrive jumbled as parallel consumers scramble the sequence",
+  "brief": {
+    "narrative": "The Distributia District Attorney's office is in chaos. They're building a timeline for a major organized crime case, but the crime reports are arriving completely out of sequence. A robbery that happened at 10 PM is showing up after a witness statement from 2 AM the next day. The evidence chain makes no sense. The reporting system uses a message queue with three parallel consumers to speed up processing — but it seems like the speed came at a terrible cost. Chief Partition needs the timeline reconstructed before the trial tomorrow morning.",
+    "symptoms": [
+      "Crime reports in the DA's case file are out of chronological order",
+      "Events from different hours are interleaved randomly",
+      "The system has three consumer workers processing the same queue",
+      "Individual reports are correct, but their ordering is wrong"
+    ],
+    "objective": "Determine why crime reports are arriving out of order and recommend an architecture that guarantees correct sequencing."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "report-ingestion",
+        "type": "client",
+        "label": "Report Ingestion API",
+        "status": "healthy",
+        "position": { "x": 100, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Report Ingestion API",
+          "logs": [
+            "[09:00:01] INFO: Report #501 (Case-77, timestamp 22:00) enqueued",
+            "[09:00:01] INFO: Report #502 (Case-77, timestamp 22:15) enqueued",
+            "[09:00:02] INFO: Report #503 (Case-77, timestamp 23:30) enqueued",
+            "[09:00:02] INFO: Report #504 (Case-77, timestamp 02:00) enqueued",
+            "[09:00:02] INFO: All reports enqueued in chronological order"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Reports Enqueued Today": "1,204",
+            "Ordering at Enqueue": "Chronological (correct)"
+          },
+          "status": "Reports are being enqueued in the correct chronological order."
+        }
+      },
+      {
+        "id": "message-queue",
+        "type": "server",
+        "label": "Report Processing Queue",
+        "status": "healthy",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Report Processing Queue",
+          "logs": [
+            "[09:00:01] INFO: Report #501 delivered to Consumer-A",
+            "[09:00:01] INFO: Report #502 delivered to Consumer-B",
+            "[09:00:02] INFO: Report #503 delivered to Consumer-C",
+            "[09:00:02] INFO: Report #504 delivered to Consumer-A",
+            "[09:00:03] INFO: Consumer-B ACK report #502 (processed in 45ms)",
+            "[09:00:03] INFO: Consumer-C ACK report #503 (processed in 30ms)",
+            "[09:00:04] INFO: Consumer-A ACK report #501 (processed in 210ms)",
+            "[09:00:04] INFO: Consumer-A ACK report #504 (processed in 50ms)"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Consumer Count": "3",
+            "Delivery Mode": "Round-robin",
+            "Partition Key": "None configured",
+            "Ordering Guarantee": "Per-consumer only"
+          },
+          "status": "Queue distributes messages round-robin across 3 consumers. No partition key configured for case-based routing."
+        }
+      },
+      {
+        "id": "consumer-a",
+        "type": "server",
+        "label": "Consumer A",
+        "status": "healthy",
+        "position": { "x": 550, "y": 30 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Consumer Worker A",
+          "logs": [
+            "[09:00:01] INFO: Processing report #501 (Case-77, ts 22:00)",
+            "[09:00:04] INFO: Report #501 written to DA system — took 210ms",
+            "[09:00:04] INFO: Processing report #504 (Case-77, ts 02:00)",
+            "[09:00:04] INFO: Report #504 written to DA system — took 50ms"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Avg Processing Time": "130ms",
+            "Reports Processed": "412"
+          },
+          "status": "Processing normally but report #501 took longer, causing #504 to be written after #502 and #503."
+        }
+      },
+      {
+        "id": "consumer-b",
+        "type": "server",
+        "label": "Consumer B",
+        "status": "healthy",
+        "position": { "x": 550, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Consumer Worker B",
+          "logs": [
+            "[09:00:01] INFO: Processing report #502 (Case-77, ts 22:15)",
+            "[09:00:03] INFO: Report #502 written to DA system — took 45ms"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Avg Processing Time": "48ms",
+            "Reports Processed": "398"
+          },
+          "status": "Fast consumer — finished report #502 before Consumer A finished #501."
+        }
+      },
+      {
+        "id": "da-system",
+        "type": "database",
+        "label": "DA Case File DB",
+        "status": "degraded",
+        "position": { "x": 550, "y": 340 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "DA Case File Database",
+          "logs": [
+            "[09:00:03] INFO: Report #502 (ts 22:15) inserted at position 1",
+            "[09:00:03] INFO: Report #503 (ts 23:30) inserted at position 2",
+            "[09:00:04] INFO: Report #501 (ts 22:00) inserted at position 3",
+            "[09:00:04] INFO: Report #504 (ts 02:00) inserted at position 4"
+          ],
+          "data": {
+            "Status": "DATA INTEGRITY ISSUE",
+            "Case-77 Report Order": "#502, #503, #501, #504",
+            "Expected Order": "#501, #502, #503, #504",
+            "Total Cases Affected": "187"
+          },
+          "status": "Reports are stored in arrival order, not chronological order. 187 cases have jumbled timelines."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-ingest-queue", "source": "report-ingestion", "target": "message-queue", "label": "enqueue reports", "animated": true, "style": "normal" },
+      { "id": "e-queue-a", "source": "message-queue", "target": "consumer-a", "label": "round-robin", "animated": true, "style": "normal" },
+      { "id": "e-queue-b", "source": "message-queue", "target": "consumer-b", "label": "round-robin", "animated": true, "style": "normal" },
+      { "id": "e-a-da", "source": "consumer-a", "target": "da-system", "label": "write reports", "animated": true, "style": "slow" },
+      { "id": "e-b-da", "source": "consumer-b", "target": "da-system", "label": "write reports", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Why are the crime reports arriving out of order in the DA's system?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The ingestion API is enqueuing reports in the wrong order",
+          "correct": false,
+          "feedback": "The ingestion API logs clearly show reports being enqueued in correct chronological order. The scrambling happens downstream."
+        },
+        {
+          "id": "rc-2",
+          "text": "Multiple parallel consumers process messages at different speeds, so faster consumers write later messages before slower consumers finish earlier ones",
+          "correct": true,
+          "feedback": "Correct! With round-robin delivery across 3 consumers and no partition key, messages for the same case go to different consumers. Since each consumer has different processing times, a fast consumer can finish message N+1 before a slow consumer finishes message N, destroying the original ordering."
+        },
+        {
+          "id": "rc-3",
+          "text": "The DA database is sorting records incorrectly",
+          "correct": false,
+          "feedback": "The database is storing records in the order they arrive, which is standard. The problem is that they arrive out of order because of the parallel consumer architecture."
+        },
+        {
+          "id": "rc-4",
+          "text": "The message queue has a bug that delivers messages out of sequence",
+          "correct": false,
+          "feedback": "The queue delivers messages in FIFO order to each consumer. The issue is that round-robin distribution across multiple consumers doesn't preserve global ordering when processing times vary."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to guarantee crime reports arrive in the correct order?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Reduce to a single consumer so all messages are processed sequentially",
+          "correct": false,
+          "feedback": "This would fix ordering but destroys throughput. A single consumer becomes a bottleneck. There's a better solution that preserves both parallelism and ordering."
+        },
+        {
+          "id": "fix-2",
+          "text": "Use partition keys (case ID) so all reports for the same case go to the same consumer, preserving per-case ordering",
+          "correct": true,
+          "feedback": "Correct! By partitioning on case ID, all reports for Case-77 go to the same consumer and are processed sequentially. Different cases can still be processed in parallel across consumers. This gives you both ordering guarantees and parallel throughput."
+        },
+        {
+          "id": "fix-3",
+          "text": "Add timestamps to each report and sort them in the database after insertion",
+          "correct": false,
+          "feedback": "Post-hoc sorting is fragile — you'd need to know when all reports for a time window have arrived before sorting. It adds complexity and latency. Partition-based ordering is simpler and more reliable."
+        },
+        {
+          "id": "fix-4",
+          "text": "Make all consumers process at exactly the same speed by standardizing hardware",
+          "correct": false,
+          "feedback": "Processing time varies based on message content, not just hardware. Network jitter, garbage collection pauses, and I/O all cause variable latency. You can't guarantee equal processing times — you need an architectural solution."
+        }
+      ]
+    }
+  },
+  "conceptId": "message-ordering",
+  "badge": {
+    "name": "Order Keeper",
+    "icon": "📋"
+  }
+}

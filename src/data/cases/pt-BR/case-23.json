@@ -1,0 +1,185 @@
+{
+  "id": "case-23",
+  "number": 23,
+  "title": "A Identificação Inconsistente",
+  "subtitle": "Duas delegacias veem versões diferentes do mesmo suspeito ao mesmo tempo",
+  "brief": {
+    "narrative": "Distributia tem um grande problema. A Delegacia Norte acabou de liberar o suspeito Viktor Reznikov porque o sistema deles mostra seu status como 'Inocentado — sem acusações'. Enquanto isso, a Delegacia Sul está ativamente preparando um mandado de prisão para o mesmo Viktor Reznikov, cujo status no sistema deles mostra 'Suspeito Principal — armado e perigoso'. Mesma pessoa, mesmo momento, dois perfis completamente diferentes. O banco de dados de suspeitos foi recentemente distribuído entre dois data centers para disponibilidade, mas parece que as duas cópias não contam a mesma história. O Chefe Partition precisa entender como duas delegacias podem ver dados contraditórios simultaneamente.",
+    "symptoms": [
+      "Delegacia Norte mostra Viktor Reznikov como 'Inocentado' enquanto Delegacia Sul o mostra como 'Suspeito Principal'",
+      "O perfil do suspeito foi atualizado 10 minutos atrás no data center Sul",
+      "A atualização ainda não propagou para o data center Norte",
+      "Ambas as delegacias podem ler e escrever no banco de dados sem erros"
+    ],
+    "objective": "Entender por que duas delegacias veem dados diferentes e recomendar uma estratégia de consistência que equilibre disponibilidade e correção."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "north-precinct",
+        "type": "client",
+        "label": "North Precinct",
+        "status": "healthy",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal da Delegacia Norte",
+          "logs": [
+            "[16:30:00] INFO: Query suspect 'Reznikov' — reading from DC-North",
+            "[16:30:00] INFO: Result: Status='Cleared', Last Updated='15:50:00'",
+            "[16:30:05] INFO: Officer released suspect based on 'Cleared' status"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Data Center": "DC-North",
+            "Read Consistency": "Local (eventual)",
+            "Reznikov Status Seen": "Cleared — no charges"
+          },
+          "status": "Lendo dados desatualizados da réplica local DC-North. Não vê a atualização feita no DC-South."
+        }
+      },
+      {
+        "id": "dc-north",
+        "type": "database",
+        "label": "DC-North (Replica)",
+        "status": "degraded",
+        "position": { "x": 100, "y": 230 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Data Center Norte — Réplica do Banco de Dados",
+          "logs": [
+            "[15:50:00] INFO: Reznikov record: Status='Cleared'",
+            "[16:20:00] WARN: Replication lag from DC-South: 10 minutes",
+            "[16:30:00] WARN: Still awaiting replication of Reznikov update from DC-South"
+          ],
+          "data": {
+            "Status": "ONLINE (stale data)",
+            "Replication Mode": "Async from DC-South",
+            "Replication Lag": "10+ minutes",
+            "Reznikov Record Version": "v3 (outdated)",
+            "Consistency Level": "Eventual"
+          },
+          "status": "Servindo leituras de dados locais desatualizados. Replicação assíncrona não entregou a última atualização do Reznikov."
+        }
+      },
+      {
+        "id": "south-precinct",
+        "type": "client",
+        "label": "South Precinct",
+        "status": "healthy",
+        "position": { "x": 600, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal da Delegacia Sul",
+          "logs": [
+            "[16:20:00] INFO: Updated suspect 'Reznikov' status to 'Prime Suspect'",
+            "[16:30:00] INFO: Query suspect 'Reznikov' — reading from DC-South",
+            "[16:30:00] INFO: Result: Status='Prime Suspect', Last Updated='16:20:00'",
+            "[16:30:10] INFO: Preparing arrest warrant for Reznikov"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Data Center": "DC-South",
+            "Read Consistency": "Local (eventual)",
+            "Reznikov Status Seen": "Prime Suspect — armed and dangerous"
+          },
+          "status": "Lendo dados atualizados da réplica local DC-South onde a escrita aconteceu."
+        }
+      },
+      {
+        "id": "dc-south",
+        "type": "database",
+        "label": "DC-South (Primary)",
+        "status": "healthy",
+        "position": { "x": 600, "y": 230 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Data Center Sul — Banco de Dados Primário",
+          "logs": [
+            "[16:20:00] INFO: Write: Reznikov status updated to 'Prime Suspect' (v4)",
+            "[16:20:01] INFO: Queuing async replication to DC-North",
+            "[16:30:00] WARN: Replication to DC-North delayed — network congestion"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Role": "Primary (accepts writes)",
+            "Reznikov Record Version": "v4 (current)",
+            "Pending Replications": "47 records",
+            "Replication Mode": "Asynchronous"
+          },
+          "status": "Banco de dados primário com dados mais recentes. Replicação assíncrona para DC-North está atrasada."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-north-dcn", "source": "north-precinct", "target": "dc-north", "label": "read (stale)", "animated": true, "style": "slow" },
+      { "id": "e-south-dcs", "source": "south-precinct", "target": "dc-south", "label": "read/write", "animated": true, "style": "normal" },
+      { "id": "e-dcs-dcn", "source": "dc-south", "target": "dc-north", "label": "async replication (lagging)", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Por que as duas delegacias veem versões diferentes do perfil do Reznikov?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "Um hacker modificou o registro em um data center, mas não no outro",
+          "correct": false,
+          "feedback": "Os logs mostram uma atualização legítima no DC-South que simplesmente ainda não replicou para o DC-North. Isso é um problema de consistência, não uma violação de segurança."
+        },
+        {
+          "id": "rc-2",
+          "text": "O sistema usa replicação assíncrona com consistência eventual, então o DC-North serve dados desatualizados até a replicação se atualizar — um clássico tradeoff do Teorema CAP",
+          "correct": true,
+          "feedback": "Correto! O sistema escolheu Disponibilidade e tolerância a Partições (AP) em vez de Consistência. Com replicação assíncrona, ambos os data centers permanecem disponíveis para leituras e escritas, mas podem servir versões diferentes dos mesmos dados. Este é o Teorema CAP em ação: em um sistema distribuído, não é possível ter consistência perfeita, disponibilidade e tolerância a partições simultaneamente."
+        },
+        {
+          "id": "rc-3",
+          "text": "O banco de dados do DC-North corrompeu o registro do Reznikov",
+          "correct": false,
+          "feedback": "Os dados do DC-North não estão corrompidos — é simplesmente uma versão mais antiga (v3 vs v4). O registro estava correto quando foi escrito; apenas não foi atualizado com a última alteração do DC-South."
+        },
+        {
+          "id": "rc-4",
+          "text": "As duas delegacias estão consultando tabelas diferentes que por acaso têm o mesmo nome de suspeito",
+          "correct": false,
+          "feedback": "Ambas as delegacias consultam o mesmo banco de dados lógico, apenas réplicas físicas diferentes. São os mesmos dados — o problema é o atraso de replicação entre as duas cópias."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor abordagem para prevenir inconsistências perigosas em dados críticos de suspeitos?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Mudar para replicação síncrona para todos os dados para que ambos os data centers sempre concordem",
+          "correct": false,
+          "feedback": "Replicação síncrona para todos os dados adiciona latência a cada escrita e reduz disponibilidade se qualquer DC estiver lento ou inacessível. Isso é excessivo — nem todos os dados são igualmente críticos."
+        },
+        {
+          "id": "fix-2",
+          "text": "Usar consistência forte (replicação síncrona ou leituras por quórum) para campos críticos como status do suspeito, mantendo consistência eventual para dados menos críticos",
+          "correct": true,
+          "feedback": "Correto! Uma abordagem de consistência ajustável permite exigir consistência forte para dados críticos de segurança (status do suspeito, informações de mandados) enquanto permite consistência eventual para dados menos críticos (notas do caso, estatísticas). Isso equilibra o tradeoff CAP de forma inteligente — você paga o custo de latência da consistência apenas onde realmente importa."
+        },
+        {
+          "id": "fix-3",
+          "text": "Remover o DC-North e fazer todas as delegacias lerem apenas do DC-South",
+          "correct": false,
+          "feedback": "Isso elimina o problema de consistência, mas também elimina o benefício de disponibilidade de ter dois data centers. Se o DC-South cair, todos perdem acesso."
+        },
+        {
+          "id": "fix-4",
+          "text": "Adicionar um atraso de 15 minutos antes que oficiais possam agir com base nos resultados de consultas ao banco de dados",
+          "correct": false,
+          "feedback": "Fazer oficiais esperarem derrota o propósito de ter um banco de dados. O atraso de replicação é o problema — adicionar atrasos artificiais por cima não resolve, apenas desacelera todo mundo igualmente."
+        }
+      ]
+    }
+  },
+  "conceptId": "cap-theorem",
+  "badge": {
+    "name": "Navegador CAP",
+    "icon": "🧭"
+  }
+}

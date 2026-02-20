@@ -1,0 +1,195 @@
+{
+  "id": "case-03",
+  "number": 3,
+  "title": "The Lost Evidence",
+  "subtitle": "16 crime scene photos vanish into thin air",
+  "brief": {
+    "narrative": "Forensics team uploaded 47 crime scene photos from a triple homicide on 5th Avenue. The evidence management system confirmed all 47 uploads. But when Detective Latency went to review the evidence this morning, only 31 photos are in the system. 16 photos are gone — including the critical blood spatter analysis shots. The leader server crashed last night at 3 AM, and the follower was promoted to take over. Something happened in between. This is a murder case, Detective. We can't lose evidence.",
+    "symptoms": [
+      "47 photos were uploaded and acknowledged by the leader database",
+      "Leader server crashed at 3:00 AM due to a power failure",
+      "Follower was automatically promoted to new leader at 3:01 AM",
+      "New leader (former follower) only has 31 of the 47 photos",
+      "16 photos are permanently lost — not on any server"
+    ],
+    "objective": "Determine why 16 photos were lost during the failover and recommend how to prevent data loss in future leader failures."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "forensics",
+        "type": "client",
+        "label": "Forensics Team",
+        "status": "healthy",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Forensics Upload Terminal",
+          "logs": [
+            "[22:00:00] INFO: Uploading 47 evidence photos...",
+            "[22:00:15] INFO: Photo 1/47 — acknowledged by leader",
+            "[22:01:30] INFO: Photo 31/47 — acknowledged by leader",
+            "[22:01:45] INFO: Photo 32/47 — acknowledged by leader",
+            "[22:03:00] INFO: Photo 47/47 — acknowledged by leader",
+            "[22:03:01] INFO: All 47 photos uploaded successfully ✓"
+          ],
+          "data": {
+            "Total Uploaded": "47 photos",
+            "All Acknowledged": "Yes",
+            "Upload Completed": "22:03:01"
+          },
+          "status": "All 47 photos were uploaded and acknowledged by the leader."
+        }
+      },
+      {
+        "id": "db-leader",
+        "type": "database",
+        "label": "Leader DB (crashed)",
+        "status": "failed",
+        "position": { "x": 400, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Former Leader Database",
+          "logs": [
+            "[22:00:15] INFO: Received photo 1, writing to disk, replicating async",
+            "[22:01:30] INFO: Received photo 31, writing to disk, replicating async",
+            "[22:01:45] INFO: Received photo 32, writing to disk — replication QUEUED",
+            "[22:03:00] INFO: Received photo 47, writing to disk — replication QUEUED",
+            "[22:03:01] INFO: All 47 photos stored locally",
+            "[03:00:00] FATAL: Power failure detected",
+            "[03:00:00] FATAL: Server shutting down — 16 photos not yet replicated"
+          ],
+          "data": {
+            "Status": "OFFLINE (power failure)",
+            "Photos Stored Locally": "47",
+            "Photos Replicated to Follower": "31",
+            "Photos NOT Replicated": "16 (photos 32-47)",
+            "Replication Mode": "ASYNCHRONOUS"
+          },
+          "status": "Crashed before replicating photos 32-47 to the follower."
+        }
+      },
+      {
+        "id": "db-follower",
+        "type": "database",
+        "label": "Follower → New Leader",
+        "status": "degraded",
+        "position": { "x": 400, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Follower (Promoted to Leader)",
+          "logs": [
+            "[22:00:16] INFO: Replicated photo 1 from leader",
+            "[22:01:31] INFO: Replicated photo 31 from leader",
+            "[22:01:32] INFO: Waiting for more replication events...",
+            "[03:00:01] WARN: Leader heartbeat lost",
+            "[03:00:01] INFO: Initiating automatic failover",
+            "[03:00:02] INFO: Promoted to LEADER role",
+            "[03:00:02] WARN: Last replicated photo: #31. Photos 32-47 never received."
+          ],
+          "data": {
+            "Status": "ONLINE (promoted to leader)",
+            "Photos Available": "31 of 47",
+            "Missing Photos": "16 (photos 32-47)",
+            "Replication Mode Was": "ASYNCHRONOUS",
+            "Data Loss": "YES — 16 items permanently lost"
+          },
+          "status": "Promoted to leader but missing 16 photos that were never replicated."
+        }
+      },
+      {
+        "id": "detective",
+        "type": "client",
+        "label": "Det. Latency",
+        "status": "degraded",
+        "position": { "x": 650, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Detective Latency's Terminal",
+          "logs": [
+            "[08:00:00] INFO: Querying evidence for Case #5AVE-2024",
+            "[08:00:01] INFO: Connected to new leader (former follower)",
+            "[08:00:01] WARN: Only 31 photos found. Expected 47.",
+            "[08:00:02] ERROR: Missing photos include blood spatter analysis shots"
+          ],
+          "data": {
+            "Expected Photos": "47",
+            "Available Photos": "31",
+            "Missing": "16 critical evidence photos"
+          },
+          "status": "Evidence incomplete. 16 photos lost during failover."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-forensics-leader", "source": "forensics", "target": "db-leader", "label": "upload (47 photos)", "animated": false, "style": "normal" },
+      { "id": "e-leader-follower", "source": "db-leader", "target": "db-follower", "label": "async replication (31 of 47)", "animated": false, "style": "slow" },
+      { "id": "e-follower-detective", "source": "db-follower", "target": "detective", "label": "query (31 photos)", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Why were 16 of the 47 photos lost?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The forensics team's upload was interrupted before all photos were sent",
+          "correct": false,
+          "feedback": "The upload logs clearly show all 47 photos were uploaded and acknowledged by the leader. The uploads completed successfully at 22:03."
+        },
+        {
+          "id": "rc-2",
+          "text": "The follower database rejected the photos due to storage limits",
+          "correct": false,
+          "feedback": "The follower successfully stored the 31 photos it received. The issue is that 16 photos were never sent to it — they were still queued for replication on the leader when it crashed."
+        },
+        {
+          "id": "rc-3",
+          "text": "Asynchronous replication allowed the leader to acknowledge writes before replicating them — when the leader crashed, unreplicated data was lost",
+          "correct": true,
+          "feedback": "Correct! With async replication, the leader acknowledges a write as soon as it's stored locally, without waiting for the follower to confirm. Photos 32-47 were stored on the leader and acknowledged to the client, but hadn't been sent to the follower yet. When the leader crashed, those 16 photos existed only on the failed server — gone forever."
+        },
+        {
+          "id": "rc-4",
+          "text": "A network partition between leader and follower blocked replication",
+          "correct": false,
+          "feedback": "The replication logs show photos 1-31 were successfully replicated. The remaining photos were queued — the leader simply hadn't sent them yet before crashing. This is the nature of async replication, not a network issue."
+        }
+      ]
+    },
+    "fix": {
+      "question": "How should the evidence system be changed to prevent data loss during failover?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Use synchronous replication for critical data — the leader waits for the follower to confirm before acknowledging the write",
+          "correct": true,
+          "feedback": "Correct! With synchronous (sync) replication, the leader doesn't acknowledge a write until at least one follower confirms it has received the data. This guarantees that if the leader crashes, the follower has all acknowledged data. The trade-off is higher write latency, but for critical evidence data, durability is more important than speed."
+        },
+        {
+          "id": "fix-2",
+          "text": "Add a second follower to increase the chances of replication",
+          "correct": false,
+          "feedback": "If both followers use async replication, a second follower doesn't guarantee the data gets replicated before a crash. You might just have two followers missing the same data. The solution is synchronous replication, not more async followers."
+        },
+        {
+          "id": "fix-3",
+          "text": "Increase the replication speed so it happens faster",
+          "correct": false,
+          "feedback": "Faster async replication reduces the window of potential data loss but doesn't eliminate it. Even with a 1-second lag, if the leader crashes at the wrong moment, you lose data. For critical data, you need a guarantee — that's what synchronous replication provides."
+        },
+        {
+          "id": "fix-4",
+          "text": "Don't allow automatic failover — wait for the leader to come back online",
+          "correct": false,
+          "feedback": "This would recover the data (if the disk survived), but at the cost of availability. The system would be offline until the leader is repaired, which could take hours or days. The better approach is sync replication, which ensures the follower always has the data AND can take over immediately."
+        }
+      ]
+    }
+  },
+  "conceptId": "sync-vs-async-replication",
+  "badge": {
+    "name": "Data Guardian",
+    "icon": "🔒"
+  }
+}

@@ -1,0 +1,209 @@
+{
+  "id": "case-19",
+  "number": 19,
+  "title": "A Prisão Duplicada",
+  "subtitle": "Entrega duplicada de mensagens faz o mesmo mandado ser processado duas vezes",
+  "brief": {
+    "narrative": "O Oficial Martinez acabou de prender o suspeito James Kowalski pelo mandado #W-8834 na esquina da 4ª com a Main. Cinco minutos depois, o Oficial Chen prendeu o mesmo James Kowalski pelo mesmo mandado #W-8834 em outro local — porque a fila de despacho entregou a mensagem do mandado de prisão duas vezes. O sistema de processamento de mandados criou dois registros de prisão, despachou duas unidades, e agora há uma queixa de detenção indevida. A garantia de entrega 'at-least-once' da fila de mensagens significa que ela às vezes re-entrega mensagens após um timeout, e o processador de mandados executa cegamente cada mensagem que recebe sem verificar duplicatas. O Chefe Partition quer saber por que o sistema não consegue lidar com uma simples re-entrega sem fazer a mesma prisão duas vezes, Detetive.",
+    "symptoms": [
+      "Mesmo mandado de prisão #W-8834 processado e despachado duas vezes",
+      "Dois oficiais prenderam o mesmo suspeito independentemente",
+      "Registro de prisão duplicado criado no sistema de autuação",
+      "Fila de mensagens re-entregou a mensagem do mandado após timeout do consumidor"
+    ],
+    "objective": "Identificar por que a entrega duplicada de mensagens causou processamento duplicado e recomendar uma estratégia de idempotência."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "warrant-system",
+        "type": "server",
+        "label": "Warrant Issuing System",
+        "status": "healthy",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Sistema de Emissão de Mandados",
+          "logs": [
+            "[16:00:00] INFO: Warrant #W-8834 issued for James Kowalski",
+            "[16:00:01] INFO: Message published to dispatch queue (message-id: msg-7721)"
+          ],
+          "data": {
+            "Warrant": "#W-8834",
+            "Suspect": "James Kowalski",
+            "Messages Published": "1 (single publish)",
+            "Status": "HEALTHY"
+          },
+          "status": "Publicou exatamente uma mensagem. A duplicação aconteceu adiante no fluxo."
+        }
+      },
+      {
+        "id": "message-queue",
+        "type": "server",
+        "label": "Dispatch Queue",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Fila de Mensagens de Despacho",
+          "logs": [
+            "[16:00:01] INFO: Message msg-7721 received and queued",
+            "[16:00:02] INFO: Message msg-7721 delivered to consumer (attempt 1)",
+            "[16:00:32] WARN: No ACK received within 30s timeout — assuming consumer failed",
+            "[16:00:33] INFO: Message msg-7721 re-delivered to consumer (attempt 2)",
+            "[16:00:35] INFO: ACK received for msg-7721 (from attempt 1, delayed)"
+          ],
+          "data": {
+            "Delivery Guarantee": "At-least-once",
+            "Message ID": "msg-7721",
+            "Deliveries": "2 (original + re-delivery)",
+            "ACK Timeout": "30 seconds",
+            "Status": "WORKING AS DESIGNED (at-least-once)"
+          },
+          "status": "Fila re-entregou mensagem após timeout de ACK. Este é o comportamento esperado de at-least-once."
+        }
+      },
+      {
+        "id": "warrant-processor",
+        "type": "server",
+        "label": "Warrant Processor",
+        "status": "degraded",
+        "position": { "x": 600, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço Processador de Mandados",
+          "logs": [
+            "[16:00:02] INFO: Processing warrant #W-8834 (message attempt 1)",
+            "[16:00:05] INFO: Arrest record created — booking #BK-1190",
+            "[16:00:06] INFO: Unit dispatched to execute warrant #W-8834",
+            "[16:00:33] INFO: Processing warrant #W-8834 (message attempt 2 — DUPLICATE)",
+            "[16:00:35] INFO: Arrest record created — booking #BK-1191 (DUPLICATE)",
+            "[16:00:36] INFO: Second unit dispatched for same warrant #W-8834"
+          ],
+          "data": {
+            "Idempotency Check": "NONE",
+            "Processed Message IDs": "Not tracked",
+            "Duplicate Detection": "Not implemented",
+            "Bookings Created": "2 (should be 1)",
+            "Units Dispatched": "2 (should be 1)"
+          },
+          "status": "Processou ambas as entregas como novas — sem detecção de duplicatas."
+        }
+      },
+      {
+        "id": "booking-db",
+        "type": "database",
+        "label": "Booking Database",
+        "status": "degraded",
+        "position": { "x": 350, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados de Autuações",
+          "logs": [
+            "[16:00:05] INFO: INSERT booking #BK-1190 (warrant #W-8834)",
+            "[16:00:35] INFO: INSERT booking #BK-1191 (warrant #W-8834) — DUPLICATE"
+          ],
+          "data": {
+            "Booking #BK-1190": "Warrant #W-8834 — James Kowalski",
+            "Booking #BK-1191": "Warrant #W-8834 — James Kowalski (DUPLICATE)",
+            "Unique Constraint on Warrant": "NOT CONFIGURED",
+            "Total Duplicate Records": "1 pair"
+          },
+          "status": "Dois registros de autuação para o mesmo mandado. Sem constraint de unicidade."
+        }
+      },
+      {
+        "id": "officers",
+        "type": "client",
+        "label": "Patrol Officers",
+        "status": "degraded",
+        "position": { "x": 600, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Oficiais de Patrulha",
+          "logs": [
+            "[16:05:00] INFO: Officer Martinez arrested J. Kowalski at 4th & Main",
+            "[16:10:00] INFO: Officer Chen arrested J. Kowalski at 7th & Oak (DUPLICATE)"
+          ],
+          "data": {
+            "Arrests for #W-8834": "2 (should be 1)",
+            "Officers Dispatched": "2 (should be 1)",
+            "Wrongful Detention Complaint": "Filed"
+          },
+          "status": "Dois oficiais prenderam independentemente a mesma pessoa pelo mesmo mandado."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-warrant-queue", "source": "warrant-system", "target": "message-queue", "label": "publish (1x)", "animated": true, "style": "normal" },
+      { "id": "e-queue-processor", "source": "message-queue", "target": "warrant-processor", "label": "delivered 2x", "animated": true, "style": "slow" },
+      { "id": "e-processor-db", "source": "warrant-processor", "target": "booking-db", "label": "duplicate writes", "animated": true, "style": "slow" },
+      { "id": "e-processor-officers", "source": "warrant-processor", "target": "officers", "label": "duplicate dispatch", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz da prisão duplicada?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O sistema de emissão de mandados publicou a mensagem duas vezes acidentalmente",
+          "correct": false,
+          "feedback": "O sistema de mandados publicou exatamente uma mensagem. A duplicação aconteceu porque a fila re-entregou a mensagem após um timeout de ACK — o que é comportamento normal de entrega 'at-least-once'."
+        },
+        {
+          "id": "rc-2",
+          "text": "O processador de mandados não possui idempotência — ele processa cada mensagem como nova sem verificar se já tratou aquele mandado",
+          "correct": true,
+          "feedback": "Correto! O processador de mandados processa cegamente cada mensagem que recebe sem rastrear quais mandados já foram tratados. Em um sistema de entrega at-least-once, entregas duplicadas são esperadas. Consumidores devem ser idempotentes — devem detectar e tratar com segurança mensagens duplicadas para produzir o mesmo resultado independentemente de quantas vezes uma mensagem é entregue."
+        },
+        {
+          "id": "rc-3",
+          "text": "A fila de mensagens tem um bug que causa entrega duplicada de mensagens",
+          "correct": false,
+          "feedback": "A fila está funcionando conforme projetado. A garantia at-least-once assegura que mensagens nunca são perdidas, mas significa que podem ser entregues mais de uma vez (por exemplo, após timeouts de ACK). Este é um tradeoff conhecido, e os consumidores devem ser projetados para lidar com isso."
+        },
+        {
+          "id": "rc-4",
+          "text": "O timeout de ACK de 30 segundos é curto demais, causando re-entrega prematura",
+          "correct": false,
+          "feedback": "Um timeout maior reduziria a frequência de re-entregas, mas não pode eliminá-las. Problemas de rede, reinícios de consumidores e outras falhas podem disparar re-entregas. O consumidor deve ser idempotente independentemente das configurações de timeout."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor correção para evitar processamento duplicado de mensagens re-entregues?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Mudar para entrega exactly-once na fila de mensagens",
+          "correct": false,
+          "feedback": "Entrega truly exactly-once é extremamente difícil de alcançar em sistemas distribuídos e a maioria das implementações de filas não a suporta. A abordagem padrão é entrega at-least-once combinada com consumidores idempotentes. É mais simples e mais confiável."
+        },
+        {
+          "id": "fix-2",
+          "text": "Tornar o processador de mandados idempotente — rastrear IDs de mensagens/mandados processados e ignorar duplicatas",
+          "correct": true,
+          "feedback": "Correto! Um consumidor idempotente rastreia quais mensagens (ou chaves de negócio como IDs de mandados) já foram processadas. Quando uma duplicata chega, ele a reconhece e pula o processamento. Isso pode ser feito com uma tabela de mensagens processadas, uma constraint de unicidade no ID do mandado no banco de dados de autuações, ou uma chave de idempotência. O resultado é o mesmo independentemente de a mensagem ser entregue uma ou dez vezes."
+        },
+        {
+          "id": "fix-3",
+          "text": "Aumentar o timeout de ACK para 5 minutos para evitar re-entrega prematura",
+          "correct": false,
+          "feedback": "Um timeout maior reduz re-entregas, mas introduz um problema pior: se um consumidor genuinamente falhar, a mensagem não será re-entregue por 5 minutos. E duplicatas ainda podem acontecer por outras causas (partições de rede, reinícios de consumidores). Idempotência é a solução robusta."
+        },
+        {
+          "id": "fix-4",
+          "text": "Adicionar uma camada de deduplicação na fila de mensagens para filtrar entregas duplicadas",
+          "correct": false,
+          "feedback": "Deduplicação no nível da fila pode ajudar, mas só captura re-entregas da mesma mensagem exata. Não protege contra duplicatas no nível da aplicação ou mensagens diferentes para a mesma entidade de negócio. Idempotência no lado do consumidor é a abordagem mais abrangente e confiável."
+        }
+      ]
+    }
+  },
+  "conceptId": "idempotency",
+  "badge": {
+    "name": "Detetive de Duplicatas",
+    "icon": "🔍"
+  }
+}

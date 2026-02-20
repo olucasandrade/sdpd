@@ -1,0 +1,193 @@
+{
+  "id": "case-07",
+  "number": 7,
+  "title": "The Time Traveler's Dilemma",
+  "subtitle": "Evidence timestamps defy the laws of physics",
+  "brief": {
+    "narrative": "Something strange is happening in Distributia's forensic evidence system. A blood sample collected at 10:15 PM has a lab analysis timestamp of 10:10 PM — five minutes before it was collected. The defense attorney is arguing that the evidence was fabricated because 'you can't analyze something before it exists.' But the forensics team swears they followed procedure. The real problem? The evidence collection server and the lab analysis server have clocks that are 8 minutes apart. Their NTP synchronization failed three days ago and nobody noticed. Now hundreds of evidence records have impossible timestamps, and cases are at risk of being thrown out.",
+    "symptoms": [
+      "Evidence analysis timestamps appear before collection timestamps",
+      "The forensic lab server's clock is 8 minutes behind the collection server",
+      "NTP synchronization has been failing silently for 3 days",
+      "Defense attorneys are challenging evidence integrity based on timestamp inconsistencies"
+    ],
+    "objective": "Understand how clock skew between servers corrupts event ordering and determine how to establish reliable ordering in a distributed system."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "collection-server",
+        "type": "server",
+        "label": "Evidence Collection",
+        "status": "degraded",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Evidence Collection Server",
+          "logs": [
+            "[22:15:00] INFO: Evidence #E-9934 (blood sample) collected by Officer Tanaka",
+            "[22:15:00] INFO: Timestamp assigned: 22:15:00 (local clock)",
+            "[22:15:01] INFO: Sent to Forensic Lab for analysis",
+            "[22:15:02] WARN: NTP sync status: FAILED (last sync 3 days ago)",
+            "[22:15:02] INFO: Local clock source: hardware RTC (drifting)"
+          ],
+          "data": {
+            "Server Clock": "22:15:00",
+            "Actual UTC Time": "22:12:00",
+            "Clock Drift": "+3 minutes ahead of UTC",
+            "NTP Status": "FAILED — last sync 72 hours ago",
+            "NTP Server": "ntp.distributia.gov (unreachable)",
+            "Evidence #E-9934 Timestamp": "22:15:00 (local)"
+          },
+          "status": "Clock is 3 minutes AHEAD of UTC. NTP sync broken for 3 days."
+        }
+      },
+      {
+        "id": "lab-server",
+        "type": "server",
+        "label": "Forensic Lab Server",
+        "status": "degraded",
+        "position": { "x": 550, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Forensic Lab Analysis Server",
+          "logs": [
+            "[22:07:01] INFO: Received Evidence #E-9934 for analysis",
+            "[22:10:00] INFO: Analysis complete for Evidence #E-9934",
+            "[22:10:00] INFO: Timestamp assigned: 22:10:00 (local clock)",
+            "[22:10:01] WARN: NTP sync status: FAILED (last sync 3 days ago)"
+          ],
+          "data": {
+            "Server Clock": "22:10:00",
+            "Actual UTC Time": "22:15:00",
+            "Clock Drift": "-5 minutes behind UTC",
+            "NTP Status": "FAILED — last sync 72 hours ago",
+            "Evidence #E-9934 Analysis Timestamp": "22:10:00 (local)",
+            "Total Clock Skew vs Collection Server": "8 minutes"
+          },
+          "status": "Clock is 5 minutes BEHIND UTC. Combined skew of 8 minutes vs Collection server."
+        }
+      },
+      {
+        "id": "evidence-db",
+        "type": "database",
+        "label": "Evidence Database",
+        "status": "degraded",
+        "position": { "x": 325, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Central Evidence Database",
+          "logs": [
+            "[22:15:01] INFO: INSERT Evidence #E-9934 — collected at 22:15:00",
+            "[22:15:05] INFO: UPDATE Evidence #E-9934 — analysis complete at 22:10:00",
+            "[22:15:05] WARN: TEMPORAL ANOMALY — analysis (22:10:00) before collection (22:15:00)",
+            "[22:15:05] WARN: 147 records with temporal anomalies in the last 72 hours"
+          ],
+          "data": {
+            "Evidence #E-9934 Collected": "22:15:00",
+            "Evidence #E-9934 Analyzed": "22:10:00",
+            "Time Paradox": "Analysis appears 5 minutes BEFORE collection",
+            "Records With Anomalies": "147 (last 72 hours)",
+            "Cases Potentially Affected": "23"
+          },
+          "status": "Temporal anomalies detected in evidence records due to clock skew between source servers."
+        }
+      },
+      {
+        "id": "ntp-server",
+        "type": "server",
+        "label": "NTP Server",
+        "status": "failed",
+        "position": { "x": 325, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "NTP Time Server (ntp.distributia.gov)",
+          "logs": [
+            "[3 days ago] INFO: Serving time to 12 clients",
+            "[3 days ago] ERROR: Network interface failure",
+            "[3 days ago] FATAL: NTP service unreachable",
+            "[3 days ago] WARN: No alerting configured for NTP outage"
+          ],
+          "data": {
+            "Status": "OFFLINE",
+            "Downtime": "72 hours",
+            "Clients Affected": "12 servers",
+            "Alert Sent": "NONE — no monitoring configured"
+          },
+          "status": "NTP server offline for 72 hours. No alerting configured for this critical service."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-collect-db", "source": "collection-server", "target": "evidence-db", "label": "timestamps", "animated": true, "style": "normal" },
+      { "id": "e-lab-db", "source": "lab-server", "target": "evidence-db", "label": "timestamps", "animated": true, "style": "normal" },
+      { "id": "e-ntp-collect", "source": "ntp-server", "target": "collection-server", "label": "time sync", "animated": false, "style": "broken" },
+      { "id": "e-ntp-lab", "source": "ntp-server", "target": "lab-server", "label": "time sync", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the impossible evidence timestamps?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The evidence was actually fabricated — the timestamps prove it",
+          "correct": false,
+          "feedback": "The timestamps don't prove fabrication — they prove clock skew. The Collection server's clock is 3 minutes ahead of UTC while the Lab server's clock is 5 minutes behind UTC, creating an 8-minute total skew. Events that actually happened in the correct order appear reversed because each server stamped events with its own drifted local clock."
+        },
+        {
+          "id": "rc-2",
+          "text": "Clock skew between servers — the NTP service failed, causing server clocks to drift apart, so timestamps from different servers are not comparable",
+          "correct": true,
+          "feedback": "Correct! In distributed systems, each machine has its own physical clock, and these clocks drift at different rates. NTP normally keeps them synchronized within milliseconds, but when NTP failed, the clocks drifted apart by 8 minutes total. This is why using wall-clock timestamps to order events across different machines is fundamentally unreliable — physical clocks are not perfectly synchronized and can never be."
+        },
+        {
+          "id": "rc-3",
+          "text": "The database is inserting records in the wrong order due to a bug",
+          "correct": false,
+          "feedback": "The database is correctly recording the timestamps it receives. The problem is upstream — the timestamps themselves are wrong because the servers' clocks are out of sync. The database has no way to know the timestamps are skewed."
+        },
+        {
+          "id": "rc-4",
+          "text": "Network latency is causing events to arrive at the database in the wrong order",
+          "correct": false,
+          "feedback": "Network latency can cause events to arrive out of order, but that's not the issue here. The timestamps themselves are wrong — even if the events arrived in the correct order, the timestamps would still show analysis before collection because the Lab server's clock is behind."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best way to establish reliable event ordering across servers?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Fix the NTP server and ensure all clocks are perfectly synchronized",
+          "correct": false,
+          "feedback": "Fixing NTP is necessary but not sufficient. Even with NTP, clocks can drift between sync intervals, and NTP accuracy is typically 1-10ms at best. For critical ordering requirements, you cannot rely solely on physical clock synchronization. You need a logical ordering mechanism as well."
+        },
+        {
+          "id": "fix-2",
+          "text": "Use logical clocks (like Lamport timestamps or vector clocks) to track causal ordering of events across servers",
+          "correct": true,
+          "feedback": "Correct! Logical clocks don't depend on physical time at all. A Lamport timestamp is a counter that increments with each event and is passed between servers with every message. If event A causally precedes event B, then A's logical timestamp is guaranteed to be less than B's. Vector clocks extend this to track causality per-node. Combined with NTP for approximate wall-clock time, logical clocks give you reliable causal ordering regardless of clock skew."
+        },
+        {
+          "id": "fix-3",
+          "text": "Have all events timestamped by a single central time server",
+          "correct": false,
+          "feedback": "A central timestamp server creates a single point of failure and a performance bottleneck — every event across the entire system must wait for a response from this one server. It also adds network latency to every operation. Logical clocks achieve reliable ordering without any central coordination."
+        },
+        {
+          "id": "fix-4",
+          "text": "Add a buffer delay before recording timestamps to account for clock skew",
+          "correct": false,
+          "feedback": "An arbitrary buffer doesn't solve the problem — you'd need to know the exact skew in advance, which varies over time. And it adds unnecessary latency to every operation. Logical clocks solve ordering without adding delays or requiring knowledge of clock skew."
+        }
+      ]
+    }
+  },
+  "conceptId": "clock-synchronization",
+  "badge": {
+    "name": "Time Keeper",
+    "icon": "⏰"
+  }
+}

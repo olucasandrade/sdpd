@@ -1,0 +1,563 @@
+[
+  {
+    "id": "replication-basics",
+    "title": "Replicação e Redundância",
+    "summary": "Mantenha cópias dos dados em múltiplas máquinas para que o sistema sobreviva a falhas individuais.",
+    "explanation": [
+      "Um Ponto Único de Falha (SPOF) é qualquer componente cuja falha derruba o sistema inteiro. Se o seu único servidor de banco de dados falhar, todos os clientes perdem acesso.",
+      "A replicação resolve isso mantendo cópias idênticas dos dados em múltiplos servidores. Se um falhar, os outros podem continuar atendendo requisições.",
+      "A forma mais simples é a replicação líder-seguidor: um servidor (o líder) processa escritas, e um ou mais seguidores mantêm cópias. Se o líder falhar, um seguidor pode ser promovido.",
+      "Redundância é o princípio geral: nunca dependa de apenas um de qualquer componente crítico. Aplique a bancos de dados, redes, fontes de energia — qualquer ponto único de falha."
+    ],
+    "keyTerms": [
+      { "term": "Ponto Único de Falha (SPOF)", "definition": "Um componente que, se falhar, faz o sistema inteiro parar de funcionar." },
+      { "term": "Replicação (Replication)", "definition": "Manutenção de cópias dos dados em múltiplas máquinas para redundância e disponibilidade." },
+      { "term": "Failover", "definition": "O processo de alternar automaticamente para um sistema de backup quando o primário falha." },
+      { "term": "Réplica (Replica)", "definition": "Um servidor que mantém uma cópia dos dados de outro servidor." }
+    ]
+  },
+  {
+    "id": "leader-follower-replication",
+    "title": "Replicação Líder-Seguidor",
+    "summary": "Um servidor processa escritas; seguidores replicam e servem leituras — mas podem ficar atrasados.",
+    "explanation": [
+      "Na replicação líder-seguidor, um servidor (o líder) aceita todas as operações de escrita. Um ou mais seguidores recebem um fluxo de alterações do líder e as aplicam em suas próprias cópias.",
+      "Seguidores podem atender consultas de leitura, o que distribui a carga. Mas existe um porém: a replicação leva tempo. Um seguidor pode estar segundos, minutos ou até horas atrás do líder.",
+      "Esse atraso é chamado de atraso de replicação. Se um cliente lê de um seguidor atrasado, pode ver dados obsoletos — dados que já foram atualizados no líder.",
+      "Para leituras críticas onde a atualidade importa, aplicações podem direcionar essas consultas diretamente ao líder. Esse padrão é chamado de consistência 'leia suas escritas' ou 'leia do líder'."
+    ],
+    "keyTerms": [
+      { "term": "Líder (Primary/Master)", "definition": "O servidor que aceita operações de escrita e envia alterações aos seguidores." },
+      { "term": "Seguidor (Replica/Slave)", "definition": "Um servidor que recebe e aplica alterações do líder, atendendo consultas de leitura." },
+      { "term": "Atraso de Replicação (Replication Lag)", "definition": "O atraso entre uma escrita no líder e quando ela aparece em um seguidor." },
+      { "term": "Leitura Obsoleta (Stale Read)", "definition": "Ler dados desatualizados de um seguidor que ainda não alcançou o líder." }
+    ]
+  },
+  {
+    "id": "sync-vs-async-replication",
+    "title": "Replicação Síncrona vs Assíncrona",
+    "summary": "Replicação síncrona garante durabilidade mas é mais lenta; assíncrona é rápida mas arrisca perda de dados.",
+    "explanation": [
+      "Com replicação assíncrona, o líder confirma uma escrita imediatamente após armazená-la localmente, sem esperar que qualquer seguidor confirme. Isso é rápido, mas se o líder falhar antes de replicar, esses dados são perdidos.",
+      "Com replicação síncrona, o líder espera que pelo menos um seguidor confirme o recebimento dos dados antes de confirmar a escrita ao cliente. Isso é mais lento, mas garante que os dados existam em múltiplas máquinas.",
+      "A maioria dos sistemas usa uma abordagem híbrida: um seguidor é síncrono (garantidamente atualizado), enquanto os outros são assíncronos (para desempenho). Isso é chamado de replicação 'semi-síncrona'.",
+      "O trade-off é fundamental em sistemas distribuídos: durabilidade vs. desempenho. Para dados críticos (transações financeiras, evidências), a replicação síncrona vale o custo de latência."
+    ],
+    "keyTerms": [
+      { "term": "Replicação Assíncrona (Asynchronous Replication)", "definition": "O líder confirma escritas sem esperar a confirmação dos seguidores. Rápida, mas arrisca perda de dados." },
+      { "term": "Replicação Síncrona (Synchronous Replication)", "definition": "O líder espera a confirmação do seguidor antes de confirmar. Mais lenta, mas garante durabilidade." },
+      { "term": "Durabilidade (Durability)", "definition": "A garantia de que, uma vez que os dados são confirmados, eles não serão perdidos — mesmo que servidores falhem." },
+      { "term": "Semi-Síncrona (Semi-Synchronous)", "definition": "Abordagem híbrida onde um seguidor é síncrono e os outros são assíncronos." }
+    ]
+  },
+  {
+    "id": "network-partitions",
+    "title": "Partições de Rede e Split Brain",
+    "summary": "Quando falhas de rede dividem um cluster, os nós podem divergir — levando a dados conflitantes.",
+    "explanation": [
+      "Uma partição de rede ocorre quando nós em um sistema distribuído não conseguem se comunicar entre si, mesmo que cada nó ainda esteja funcionando. O cluster se divide em grupos isolados.",
+      "Split brain é a consequência perigosa: se ambos os lados de uma partição acham que são o líder, ambos aceitarão escritas independentemente, criando dados conflitantes muito difíceis de reconciliar.",
+      "Para prevenir split brain, sistemas usam abordagens baseadas em quórum: um nó só pode atuar como líder se conseguir se comunicar com a maioria (quórum) dos nós. A minoria de uma partição não consegue eleger um novo líder.",
+      "O teorema CAP nos diz que durante uma partição de rede, um sistema deve escolher entre consistência (rejeitar operações) e disponibilidade (servir dados potencialmente obsoletos). Não é possível ter ambos."
+    ],
+    "keyTerms": [
+      { "term": "Partição de Rede (Network Partition)", "definition": "Uma falha onde alguns nós não conseguem se comunicar com outros, dividindo o cluster." },
+      { "term": "Split Brain", "definition": "Um estado perigoso onde ambos os lados de uma partição acham que são o líder." },
+      { "term": "Quórum (Quorum)", "definition": "O número mínimo de nós que devem concordar para uma operação prosseguir (geralmente maioria)." },
+      { "term": "Fencing", "definition": "Um mecanismo para garantir que apenas um nó atue como líder, tipicamente revogando o acesso do líder antigo." }
+    ]
+  },
+  {
+    "id": "leader-election",
+    "title": "Eleição de Líder",
+    "summary": "Algoritmos que permitem que nós distribuídos concordem em um único líder sem um coordenador central.",
+    "explanation": [
+      "Em muitos sistemas distribuídos, um nó precisa atuar como líder — coordenando escritas, tomando decisões ou gerenciando recursos. Mas quem decide qual nó lidera?",
+      "Algoritmos de eleição de líder (como Raft, Paxos ou ZAB) resolvem isso. Os nós votam, e um candidato precisa de maioria para se tornar líder. Isso previne split brain.",
+      "Eleições acontecem quando o líder atual falha ou se torna inalcançável. Um timeout aciona os candidatos a solicitar votos dos pares.",
+      "Requisitos-chave: exatamente um líder por vez, detecção rápida de falha do líder e transferência suave. Protocolos de consenso tornam isso confiável mesmo com falhas."
+    ],
+    "keyTerms": [
+      { "term": "Eleição de Líder (Leader Election)", "definition": "O processo pelo qual os nós escolhem um único líder entre si." },
+      { "term": "Consenso (Consensus)", "definition": "Acordo entre nós distribuídos sobre um único valor ou decisão." },
+      { "term": "Termo/Época (Term/Epoch)", "definition": "Um relógio lógico que incrementa a cada novo líder, impedindo líderes obsoletos de atuar." },
+      { "term": "Heartbeat", "definition": "Mensagens periódicas enviadas pelo líder para provar que ainda está ativo." }
+    ]
+  },
+  {
+    "id": "multi-leader-replication",
+    "title": "Replicação Multi-Líder",
+    "summary": "Múltiplos nós aceitam escritas simultaneamente — ótimo para disponibilidade, complicado para conflitos.",
+    "explanation": [
+      "Na replicação multi-líder (multi-master), mais de um nó pode aceitar operações de escrita. Isso melhora a disponibilidade e reduz a latência para sistemas geograficamente distribuídos.",
+      "O problema: se dois líderes modificam os mesmos dados independentemente, você obtém um conflito de escrita. Diferente do líder único onde as escritas são ordenadas, o multi-líder cria escritas concorrentes e conflitantes.",
+      "Estratégias de resolução de conflitos incluem: último escritor vence (LWW), mesclar os valores, ou deixar a aplicação resolver. Cada uma tem seus trade-offs.",
+      "Multi-líder é comum em configurações multi-datacenter e edição colaborativa (como Google Docs). Use quando disponibilidade e latência importam mais que consistência estrita."
+    ],
+    "keyTerms": [
+      { "term": "Conflito de Escrita (Write Conflict)", "definition": "Dois líderes modificam os mesmos dados independentemente, criando versões incompatíveis." },
+      { "term": "Último Escritor Vence (LWW)", "definition": "Resolução de conflito onde a escrita mais recente (por timestamp) é mantida." },
+      { "term": "Resolução de Conflitos (Conflict Resolution)", "definition": "A estratégia para decidir qual versão dos dados conflitantes manter." },
+      { "term": "CRDTs", "definition": "Tipos de Dados Replicados Livres de Conflito — estruturas de dados que podem ser mescladas automaticamente." }
+    ]
+  },
+  {
+    "id": "clock-synchronization",
+    "title": "Sincronização de Relógios",
+    "summary": "Relógios físicos se dessincronizam; relógios lógicos fornecem ordenação sem depender do tempo real.",
+    "explanation": [
+      "Todo computador tem um relógio físico, mas eles se dessincronizam. Dois servidores podem discordar sobre o horário atual em milissegundos ou até segundos. O NTP ajuda, mas não pode garantir sincronização perfeita.",
+      "Isso é perigoso quando você usa timestamps para ordenar eventos. Se o relógio do Servidor A estiver adiantado, seus eventos parecem acontecer 'depois' dos do Servidor B — mesmo que na verdade tenham acontecido primeiro.",
+      "Relógios lógicos (relógios de Lamport, relógios vetoriais) resolvem isso rastreando a ordenação causal em vez do tempo físico. Eles dizem quais eventos aconteceram antes de outros.",
+      "Para sistemas distribuídos, prefira ordenação lógica a timestamps físicos. Se precisar usar tempo físico, use relógios sincronizados com erro limitado (como o TrueTime do Google)."
+    ],
+    "keyTerms": [
+      { "term": "Desvio de Relógio (Clock Skew)", "definition": "A diferença nas leituras de tempo entre dois relógios no mesmo instante." },
+      { "term": "NTP", "definition": "Network Time Protocol — sincroniza relógios pela rede, mas com precisão limitada." },
+      { "term": "Relógio de Lamport (Lamport Clock)", "definition": "Um relógio lógico que fornece uma ordem total de eventos baseada em causalidade." },
+      { "term": "Aconteceu-Antes (Happens-Before)", "definition": "Uma ordenação parcial onde o evento A aconteceu-antes de B se A pode ter influenciado B." }
+    ]
+  },
+  {
+    "id": "byzantine-faults",
+    "title": "Tolerância a Falhas Bizantinas",
+    "summary": "Lidando com nós que não apenas falham — eles mentem, enviando dados diferentes para diferentes pares.",
+    "explanation": [
+      "A maioria da tolerância a falhas assume falhas por parada — nós funcionam corretamente ou param completamente. Falhas bizantinas são piores: um nó pode enviar informações conflitantes para diferentes pares.",
+      "Nomeado a partir do Problema dos Generais Bizantinos: generais devem concordar em um plano de batalha, mas alguns podem ser traidores enviando mensagens contraditórias.",
+      "A tolerância a falhas bizantinas (BFT) requer pelo menos 3f+1 nós para tolerar f nós defeituosos. Isso significa que você precisa de 4 nós para lidar com 1 falha bizantina.",
+      "BFT é crucial em ambientes adversariais (blockchain, sistemas financeiros), mas caro em sistemas distribuídos normais. A maioria dos sistemas internos lida apenas com falhas por parada."
+    ],
+    "keyTerms": [
+      { "term": "Falha Bizantina (Byzantine Fault)", "definition": "Uma falha onde um nó envia dados diferentes e potencialmente contraditórios para diferentes pares." },
+      { "term": "Falha por Parada (Crash Fault)", "definition": "Um modelo de falha mais simples onde os nós funcionam corretamente ou param completamente." },
+      { "term": "Regra 3f+1", "definition": "O número mínimo de nós necessários para tolerar f falhas bizantinas." },
+      { "term": "Assinaturas Digitais (Digital Signatures)", "definition": "Prova criptográfica de que uma mensagem veio de um nó específico e não foi adulterada." }
+    ]
+  },
+  {
+    "id": "load-balancing",
+    "title": "Balanceamento de Carga",
+    "summary": "Distribua requisições recebidas entre múltiplos servidores para evitar que um único servidor fique sobrecarregado.",
+    "explanation": [
+      "Um balanceador de carga fica entre clientes e servidores, distribuindo requisições recebidas entre um pool de servidores backend. Isso evita que qualquer servidor se torne um gargalo.",
+      "Algoritmos comuns: round-robin (rotacionar entre servidores), menos conexões (enviar ao menos ocupado), ponderado (preferir servidores mais potentes) e baseado em hash (roteamento consistente).",
+      "Sem balanceamento de carga, um único gateway se torna um ponto único de falha. Múltiplos balanceadores de carga com verificações de saúde garantem tanto a distribuição quanto a disponibilidade.",
+      "Balanceadores de Camada 4 (TCP) roteiam baseados em informações de conexão; balanceadores de Camada 7 (HTTP) podem tomar decisões mais inteligentes baseadas no conteúdo da requisição, cabeçalhos ou URLs."
+    ],
+    "keyTerms": [
+      { "term": "Balanceador de Carga (Load Balancer)", "definition": "Um componente que distribui tráfego entre múltiplos servidores backend." },
+      { "term": "Verificação de Saúde (Health Check)", "definition": "Sondagens periódicas para verificar se os servidores backend estão saudáveis e podem processar requisições." },
+      { "term": "Round Robin", "definition": "Um algoritmo simples que rotaciona entre os servidores em ordem." },
+      { "term": "Menos Conexões (Least Connections)", "definition": "Roteia novas requisições para o servidor com menos conexões ativas." }
+    ]
+  },
+  {
+    "id": "cache-stampede",
+    "title": "Cache Stampede (Efeito Manada)",
+    "summary": "Quando uma entrada popular do cache expira, muitas requisições atingem o banco de dados simultaneamente.",
+    "explanation": [
+      "Um cache stampede ocorre quando uma entrada de cache frequentemente acessada expira e muitas requisições concorrentes encontram-na ausente simultaneamente. Todas consultam o banco de dados ao mesmo tempo.",
+      "Isso cria um pico massivo na carga do banco de dados — potencialmente derrubando-o. A ironia: o cache que estava protegendo o banco de dados agora causa sua falha.",
+      "Soluções incluem: bloqueio de cache (apenas uma requisição reconstrói, as outras esperam), expiração antecipada (atualizar antes da expiração real) e stale-while-revalidate (servir dados obsoletos enquanto atualiza).",
+      "Prevenção é melhor que remediação: escalone os tempos de expiração com jitter aleatório, use atualização em segundo plano para chaves quentes e implemente coalescência de requisições."
+    ],
+    "keyTerms": [
+      { "term": "Cache Stampede", "definition": "Muitas requisições sobrecarregando simultaneamente o banco de dados quando uma entrada popular do cache expira." },
+      { "term": "Coalescência de Requisições (Request Coalescing)", "definition": "Combinar requisições concorrentes duplicadas em uma única consulta ao banco de dados." },
+      { "term": "Bloqueio de Cache (Cache Lock)", "definition": "Um bloqueio garantindo que apenas uma requisição reconstrói uma entrada do cache enquanto as outras esperam." },
+      { "term": "Jitter", "definition": "Adicionar variação aleatória aos tempos de expiração para evitar expirações simultâneas." }
+    ]
+  },
+  {
+    "id": "data-partitioning",
+    "title": "Particionamento de Dados (Sharding)",
+    "summary": "Divida os dados entre múltiplas máquinas por uma chave — mas escolha a chave de partição com sabedoria.",
+    "explanation": [
+      "Quando um único banco de dados não consegue lidar com todos os dados ou tráfego, o sharding divide-os entre múltiplas máquinas. Cada shard contém um subconjunto dos dados.",
+      "A chave de partição determina qual shard contém quais dados. Uma chave ruim cria hot spots — um shard recebe muito mais tráfego que os outros.",
+      "Boas chaves de partição distribuem dados uniformemente. Particionamento baseado em hash (aplicar hash na chave, módulo pela contagem de shards) dá distribuição uniforme mas perde a capacidade de consultas por intervalo.",
+      "Resharding (mudar o número de shards) é doloroso. Hashing consistente minimiza a movimentação de dados ao adicionar/remover shards."
+    ],
+    "keyTerms": [
+      { "term": "Shard", "definition": "Uma partição de dados armazenada em uma máquina separada em um banco de dados distribuído." },
+      { "term": "Chave de Partição (Partition Key)", "definition": "O campo usado para determinar qual shard armazena um determinado dado." },
+      { "term": "Hot Spot", "definition": "Um shard que recebe desproporcionalmente mais tráfego que os outros." },
+      { "term": "Hashing Consistente (Consistent Hashing)", "definition": "Uma técnica que minimiza a redistribuição de dados quando shards são adicionados ou removidos." }
+    ]
+  },
+  {
+    "id": "horizontal-scaling",
+    "title": "Escalabilidade Horizontal vs Vertical",
+    "summary": "Escalar verticalmente (máquina maior) tem limites; escalar horizontalmente (mais máquinas) é como sistemas distribuídos crescem.",
+    "explanation": [
+      "Escalabilidade vertical (scale up) significa adicionar mais CPU, RAM ou disco a uma única máquina. É simples, mas tem limites rígidos — você não pode comprar um servidor infinitamente poderoso.",
+      "Escalabilidade horizontal (scale out) significa adicionar mais máquinas. É teoricamente ilimitada, mas exige que sua aplicação funcione em múltiplos servidores.",
+      "Sistemas escalados horizontalmente precisam de balanceamento de carga, particionamento de dados e coordenação distribuída — significativamente mais complexo que um único servidor.",
+      "A abordagem moderna: projete para escalabilidade horizontal desde o início. Serviços stateless, armazenamento de dados externo e containerização tornam isso prático."
+    ],
+    "keyTerms": [
+      { "term": "Escalabilidade Vertical (Vertical Scaling)", "definition": "Adicionar mais recursos (CPU, RAM) a uma única máquina. Limitada pelos máximos do hardware." },
+      { "term": "Escalabilidade Horizontal (Horizontal Scaling)", "definition": "Adicionar mais máquinas para distribuir a carga de trabalho. Teoricamente ilimitada." },
+      { "term": "Serviço Stateless (Stateless Service)", "definition": "Um serviço que não armazena dados de sessão localmente, tornando qualquer instância intercambiável." },
+      { "term": "Elasticidade (Elasticity)", "definition": "A capacidade de escalar recursos automaticamente para cima ou para baixo conforme a demanda." }
+    ]
+  },
+  {
+    "id": "stateless-services",
+    "title": "Serviços Stateless",
+    "summary": "Serviços que não armazenam estado local são fáceis de escalar, substituir e balancear.",
+    "explanation": [
+      "Um serviço stateless não armazena nenhum dado de sessão ou de usuário localmente. Cada requisição contém todas as informações necessárias para processá-la.",
+      "Isso torna a escalabilidade trivial: qualquer instância pode processar qualquer requisição. Se uma falhar, as outras assumem sem perda de dados.",
+      "Sessões fixas (sticky sessions), que roteiam um usuário sempre para o mesmo servidor, anulam esse propósito. Se esse servidor morrer, o usuário perde sua sessão.",
+      "Armazene estado externamente: em um banco de dados, Redis ou um armazenamento de sessões. As instâncias do serviço se tornam workers intercambiáveis."
+    ],
+    "keyTerms": [
+      { "term": "Stateless", "definition": "Um serviço que não armazena dados de usuário ou sessão localmente entre requisições." },
+      { "term": "Sessões Fixas (Sticky Sessions)", "definition": "Rotear um usuário sempre para o mesmo servidor, criando dependência desse servidor." },
+      { "term": "Armazenamento de Sessão (Session Store)", "definition": "Um serviço externo (como Redis) que armazena dados de sessão acessíveis por qualquer instância." },
+      { "term": "Shared Nothing", "definition": "Uma arquitetura onde cada nó é independente e não compartilha estado com outros." }
+    ]
+  },
+  {
+    "id": "cache-invalidation",
+    "title": "Invalidação de Cache",
+    "summary": "O problema mais difícil da Ciência da Computação: saber quando os dados em cache estão obsoletos e precisam ser atualizados.",
+    "explanation": [
+      "O cache melhora o desempenho armazenando dados frequentemente acessados mais perto do consumidor. Mas quando os dados de origem mudam, o cache se torna obsoleto.",
+      "Estratégias de invalidação de cache: write-through (atualizar o cache a cada escrita), write-behind (atualização assíncrona do cache) e baseada em TTL (expirar após um tempo).",
+      "Os casos mais difíceis envolvem múltiplos caches em diferentes camadas (aplicação, CDN, navegador) — invalidar todos eles de forma consistente é muito difícil.",
+      "Como Phil Karlton disse: 'Existem apenas duas coisas difíceis na Ciência da Computação: invalidação de cache e dar nome às coisas.'"
+    ],
+    "keyTerms": [
+      { "term": "Invalidação de Cache (Cache Invalidation)", "definition": "O processo de remover ou atualizar entradas obsoletas em um cache." },
+      { "term": "Write-Through", "definition": "Escrever tanto no cache quanto no banco de dados simultaneamente a cada atualização." },
+      { "term": "TTL (Time To Live)", "definition": "A duração pela qual uma entrada de cache é considerada válida antes de expirar." },
+      { "term": "Cache-Aside", "definition": "A aplicação verifica o cache primeiro; em caso de miss, lê do banco de dados e popula o cache." }
+    ]
+  },
+  {
+    "id": "cache-expiry-strategies",
+    "title": "Estratégias de Expiração de Cache",
+    "summary": "Como e quando as entradas do cache expiram determina o comportamento do sistema sob carga.",
+    "explanation": [
+      "TTL fixo dá a cada entrada de cache o mesmo tempo de vida. Simples, mas se muitas entradas forem criadas ao mesmo tempo, todas expiram juntas — causando um stampede.",
+      "TTL com jitter adiciona variação aleatória aos tempos de expiração. Isso espalha as expirações ao longo do tempo, prevenindo expiração em massa sincronizada.",
+      "TTL com janela deslizante reinicia o temporizador a cada acesso, mantendo entradas populares em cache por mais tempo enquanto as raramente usadas expiram.",
+      "Atualização em segundo plano atualiza proativamente as entradas antes que expirem, garantindo que o cache sempre tenha dados frescos e os clientes nunca vejam um cache miss."
+    ],
+    "keyTerms": [
+      { "term": "TTL Fixo (Fixed TTL)", "definition": "Um tempo de expiração definido para todas as entradas do cache, simples mas propenso a stampedes." },
+      { "term": "TTL com Jitter (Jittered TTL)", "definition": "Adicionar tempo aleatório aos valores de TTL para prevenir expiração sincronizada." },
+      { "term": "Janela Deslizante (Sliding Window)", "definition": "O TTL é reiniciado a cada acesso, mantendo entradas frequentemente usadas em cache por mais tempo." },
+      { "term": "Atualização em Segundo Plano (Background Refresh)", "definition": "Atualizar proativamente as entradas do cache antes que expirem." }
+    ]
+  },
+  {
+    "id": "cache-locking",
+    "title": "Bloqueio de Cache e Coalescência de Requisições",
+    "summary": "Previna trabalho duplicado garantindo que apenas uma requisição reconstrua uma entrada de cache expirada.",
+    "explanation": [
+      "Quando uma entrada de cache expira, a primeira requisição deve adquirir um bloqueio, reconstruir a entrada e liberar o bloqueio. As outras requisições esperam pela reconstrução.",
+      "Sem bloqueio, N requisições concorrentes todas perdem o cache e todas consultam o banco de dados independentemente — fazendo N vezes o trabalho para o mesmo resultado.",
+      "A coalescência de requisições agrupa requisições idênticas em andamento. Apenas uma realmente executa; o resultado é compartilhado com todos os solicitantes em espera.",
+      "A expiração antecipada probabilística atualiza entradas antes de realmente expirarem, baseada em uma probabilidade que aumenta conforme a expiração se aproxima."
+    ],
+    "keyTerms": [
+      { "term": "Bloqueio de Cache (Cache Lock)", "definition": "Um mutex garantindo que apenas um processo reconstrua uma entrada de cache expirada por vez." },
+      { "term": "Coalescência de Requisições (Request Coalescing)", "definition": "Mesclar requisições concorrentes idênticas em uma única execução." },
+      { "term": "Expiração Antecipada Probabilística (Probabilistic Early Expiration)", "definition": "Atualizar entradas aleatoriamente antes do TTL, com probabilidade crescente próximo à expiração." },
+      { "term": "Singleflight", "definition": "Um padrão onde chamadas de função duplicadas são suprimidas, compartilhando um único resultado." }
+    ]
+  },
+  {
+    "id": "cdn-caching",
+    "title": "CDN e Cache na Borda",
+    "summary": "Armazene conteúdo em cache na borda da rede, perto dos usuários — mas cuidado com a propagação de conteúdo obsoleto.",
+    "explanation": [
+      "Redes de Distribuição de Conteúdo (CDNs) armazenam conteúdo em cache em localizações de borda ao redor do mundo. Os usuários são atendidos pela borda mais próxima, reduzindo a latência drasticamente.",
+      "O cache em CDN segue cabeçalhos HTTP de cache (Cache-Control, ETag, Last-Modified). Configurar esses cabeçalhos incorretamente significa servir conteúdo obsoleto globalmente.",
+      "Purgar caches de CDN não é instantâneo — pode levar minutos para propagar por todas as localizações de borda. Durante essa janela, diferentes usuários veem diferentes versões.",
+      "Estratégias: use URLs versionadas (file-v2.js) para atualizações instantâneas, defina TTLs curtos para conteúdo dinâmico e use tags de cache para purga direcionada."
+    ],
+    "keyTerms": [
+      { "term": "CDN", "definition": "Uma rede de servidores de borda que armazena em cache e serve conteúdo próximo dos usuários." },
+      { "term": "Cache-Control", "definition": "Cabeçalho HTTP que especifica o comportamento de cache (max-age, no-cache, etc.)." },
+      { "term": "Purga de Cache (Cache Purge)", "definition": "Remover explicitamente conteúdo dos caches da CDN antes da expiração do TTL." },
+      { "term": "Localização de Borda (Edge Location)", "definition": "Um servidor CDN geograficamente próximo dos usuários finais." }
+    ]
+  },
+  {
+    "id": "message-durability",
+    "title": "Durabilidade de Mensagens",
+    "summary": "Mensagens armazenadas apenas na memória são perdidas em caso de falha; filas persistentes sobrevivem a falhas.",
+    "explanation": [
+      "Uma fila de mensagens em memória é rápida, mas volátil. Se o broker falhar, todas as mensagens enfileiradas são permanentemente perdidas.",
+      "Filas de mensagens duráveis escrevem mensagens em disco antes de confirmar o recebimento. Isso sobrevive a falhas ao custo de latência de escrita.",
+      "A maioria dos sistemas em produção (Kafka, RabbitMQ com persistência) usa um log de escrita antecipada: mensagens são adicionadas ao disco sequencialmente, o que é rápido mesmo para discos rotativos.",
+      "A escolha depende da sua tolerância à perda de dados. Notificações transitórias podem usar filas em memória; transações financeiras precisam de armazenamento durável."
+    ],
+    "keyTerms": [
+      { "term": "Fila Durável (Durable Queue)", "definition": "Uma fila de mensagens que persiste mensagens em disco, sobrevivendo a falhas do broker." },
+      { "term": "Log de Escrita Antecipada (Write-Ahead Log)", "definition": "Um log sequencial, somente de adição, escrito em disco antes do processamento." },
+      { "term": "Entrega Pelo Menos Uma Vez (At-Least-Once Delivery)", "definition": "Garantia de que uma mensagem é entregue pelo menos uma vez (pode ser duplicada)." },
+      { "term": "Confirmação (Acknowledgment)", "definition": "Confirmação do consumidor de que uma mensagem foi processada." }
+    ]
+  },
+  {
+    "id": "idempotency",
+    "title": "Idempotência",
+    "summary": "Projete operações para que executá-las múltiplas vezes produza o mesmo resultado que uma vez.",
+    "explanation": [
+      "Em sistemas distribuídos, mensagens podem ser entregues mais de uma vez (tentativas, problemas de rede). Se processar uma mensagem duas vezes causar efeitos colaterais duplicados, você tem um problema.",
+      "Uma operação idempotente produz o mesmo resultado independentemente de quantas vezes é executada. 'Definir saldo como R$100' é idempotente; 'Adicionar R$100 ao saldo' não é.",
+      "Implemente idempotência com IDs de requisição únicos: armazene o ID de cada requisição processada e pule duplicatas. Este é o padrão de chave de idempotência.",
+      "A maioria das filas de mensagens fornece entrega pelo menos uma vez (não exatamente uma vez). Consumidores idempotentes tornam pelo menos uma vez efetivamente equivalente a exatamente uma vez."
+    ],
+    "keyTerms": [
+      { "term": "Idempotência (Idempotency)", "definition": "A propriedade onde executar uma operação múltiplas vezes tem o mesmo efeito que uma vez." },
+      { "term": "Chave de Idempotência (Idempotency Key)", "definition": "Um identificador único para cada requisição, usado para detectar e pular duplicatas." },
+      { "term": "Semântica de Exatamente Uma Vez (Exactly-Once Semantics)", "definition": "A garantia de que uma mensagem é processada exatamente uma vez — muito difícil de alcançar." },
+      { "term": "Deduplicação (Deduplication)", "definition": "O processo de identificar e remover mensagens ou requisições duplicadas." }
+    ]
+  },
+  {
+    "id": "backpressure",
+    "title": "Contrapressão (Backpressure)",
+    "summary": "Quando um sistema está sobrecarregado, ele precisa pressionar os produtores em vez de descartar dados.",
+    "explanation": [
+      "Backpressure ocorre quando um sistema downstream não consegue acompanhar a taxa de dados recebidos. Sem gerenciamento, as filas crescem indefinidamente até a memória se esgotar.",
+      "Estratégias incluem: filas limitadas (rejeitar quando cheia), limitação de taxa dos produtores, escalamento dos consumidores e sinais de controle de fluxo.",
+      "Um sistema bem projetado propaga backpressure upstream: se o banco de dados está lento, a fila deve desacelerar, o que deve desacelerar a API, o que deve desacelerar os clientes.",
+      "Filas ilimitadas são perigosas — elas mascaram problemas absorvendo todos os dados recebidos até o sistema falhar por esgotamento de memória."
+    ],
+    "keyTerms": [
+      { "term": "Contrapressão (Backpressure)", "definition": "Um mecanismo para sistemas sobrecarregados sinalizarem upstream para desacelerar." },
+      { "term": "Fila Limitada (Bounded Queue)", "definition": "Uma fila com tamanho máximo que rejeita ou bloqueia quando cheia." },
+      { "term": "Controle de Fluxo (Flow Control)", "definition": "Regular a taxa de transmissão de dados entre componentes." },
+      { "term": "Fila de Mensagens Mortas (Dead Letter Queue)", "definition": "Uma fila para mensagens que não puderam ser processadas após múltiplas tentativas." }
+    ]
+  },
+  {
+    "id": "message-ordering",
+    "title": "Ordenação de Mensagens",
+    "summary": "Manter a ordem das mensagens é difícil quando múltiplos consumidores as processam em paralelo.",
+    "explanation": [
+      "Quando um único consumidor processa mensagens sequencialmente, a ordem é preservada. Mas para throughput, você quer múltiplos consumidores processando em paralelo.",
+      "Consumidores paralelos podem processar mensagens fora de ordem: o Consumidor A recebe a mensagem 1 mas é lento; o Consumidor B recebe a mensagem 2 e termina primeiro.",
+      "Soluções: particionar mensagens por uma chave (mesma chave sempre vai para o mesmo consumidor), usar números de sequência para reordenação, ou projetar operações para serem independentes de ordem.",
+      "O Kafka resolve isso com partições: mensagens dentro de uma partição são ordenadas, e cada partição tem um consumidor. Você obtém paralelismo entre partições enquanto mantém a ordem dentro delas."
+    ],
+    "keyTerms": [
+      { "term": "FIFO", "definition": "First In, First Out — mensagens são processadas na ordem em que chegam." },
+      { "term": "Partição (Partition)", "definition": "Um subconjunto de um fluxo de mensagens, mantendo a ordem dentro de si." },
+      { "term": "Número de Sequência (Sequence Number)", "definition": "Um número monotonicamente crescente atribuído a cada mensagem para ordenação." },
+      { "term": "Ordenação Causal (Causal Ordering)", "definition": "Garantir que mensagens causalmente relacionadas sejam processadas na ordem correta." }
+    ]
+  },
+  {
+    "id": "sharding",
+    "title": "Sharding de Banco de Dados",
+    "summary": "Dividir um banco de dados entre máquinas por uma chave. Poderoso para escala, doloroso de gerenciar.",
+    "explanation": [
+      "Sharding distribui linhas entre múltiplos servidores de banco de dados. Cada shard é um banco de dados independente contendo um subconjunto dos dados totais.",
+      "Quando um shard cai, apenas seus dados ficam indisponíveis — mas esses dados ficam completamente inacessíveis até o shard se recuperar.",
+      "Cada shard também deve ser replicado para tolerância a falhas. Um shard sem réplicas é em si um ponto único de falha.",
+      "Consultas cross-shard (joins entre shards) são caras e complexas. Projete sua chave de shard para minimizar operações cross-shard."
+    ],
+    "keyTerms": [
+      { "term": "Shard", "definition": "Uma partição independente de banco de dados contendo um subconjunto dos dados totais." },
+      { "term": "Chave de Shard (Shard Key)", "definition": "O campo que determina qual shard armazena cada registro." },
+      { "term": "Consulta Cross-Shard (Cross-Shard Query)", "definition": "Uma consulta que precisa de dados de múltiplos shards, exigindo coordenação." },
+      { "term": "Resharding", "definition": "O processo de dividir ou mesclar shards, geralmente disruptivo." }
+    ]
+  },
+  {
+    "id": "cap-theorem",
+    "title": "O Teorema CAP",
+    "summary": "Durante uma partição, escolha consistência (todos os nós veem os mesmos dados) ou disponibilidade (todos os nós respondem).",
+    "explanation": [
+      "O teorema CAP afirma: um sistema distribuído pode fornecer no máximo duas de três garantias: Consistência, Disponibilidade e Tolerância a Partição.",
+      "Como partições de rede são inevitáveis em sistemas distribuídos, a verdadeira escolha é entre CP (consistente mas às vezes indisponível) e AP (disponível mas às vezes inconsistente).",
+      "Sistemas CP (como ZooKeeper) recusam requisições durante partições para manter a consistência. Sistemas AP (como Cassandra) atendem requisições mas podem retornar dados obsoletos.",
+      "Na prática, a maioria dos sistemas é ajustável: você pode escolher consistência para algumas operações e disponibilidade para outras. Não é tudo ou nada."
+    ],
+    "keyTerms": [
+      { "term": "Consistência (Consistency)", "definition": "Todos os nós veem os mesmos dados ao mesmo tempo." },
+      { "term": "Disponibilidade (Availability)", "definition": "Toda requisição recebe uma resposta (sucesso ou falha)." },
+      { "term": "Tolerância a Partição (Partition Tolerance)", "definition": "O sistema continua operando apesar de falhas na comunicação de rede." },
+      { "term": "Consistência Eventual (Eventual Consistency)", "definition": "Todas as réplicas convergirão para o mesmo estado, dado tempo suficiente sem atualizações." }
+    ]
+  },
+  {
+    "id": "data-integrity",
+    "title": "Integridade de Dados e Checksums",
+    "summary": "Verifique se os dados não foram corrompidos em trânsito ou armazenamento usando checksums e hashes.",
+    "explanation": [
+      "Os dados podem ser corrompidos em qualquer ponto: em trânsito pela rede, durante armazenamento em disco, ou durante processamento por bugs de software.",
+      "Checksums (CRC32, MD5, SHA-256) criam uma impressão digital dos dados. Se os dados mudarem, o checksum não corresponderá — detectando corrupção.",
+      "Checksums ponta a ponta são essenciais: verifique os dados em cada etapa do pipeline, não apenas nas bordas. Um checksum de rede válido não significa que a aplicação não os corrompeu.",
+      "Armazenamentos de dados imutáveis e logs somente de adição tornam a corrupção mais fácil de detectar e recuperar, já que os dados originais nunca são sobrescritos."
+    ],
+    "keyTerms": [
+      { "term": "Checksum", "definition": "Um valor de tamanho fixo calculado a partir dos dados, usado para detectar corrupção ou adulteração." },
+      { "term": "Integridade Ponta a Ponta (End-to-End Integrity)", "definition": "Verificar a integridade dos dados em cada etapa do produtor ao consumidor." },
+      { "term": "Função Hash (Hash Function)", "definition": "Uma função que mapeia dados para uma impressão digital de tamanho fixo." },
+      { "term": "Degradação de Bits (Bit Rot)", "definition": "Corrupção gradual de dados em mídias de armazenamento ao longo do tempo." }
+    ]
+  },
+  {
+    "id": "write-amplification",
+    "title": "Amplificação de Escrita",
+    "summary": "Uma única escrita lógica pode causar muitas escritas físicas em mecanismos de armazenamento, impactando o desempenho.",
+    "explanation": [
+      "A amplificação de escrita ocorre quando uma escrita no nível da aplicação resulta em múltiplas escritas físicas no armazenamento. Árvores LSM e B-trees sofrem disso de maneiras diferentes.",
+      "Árvores LSM escrevem em uma memtable primeiro (rápido), depois descarregam em arquivos ordenados. A compactação mescla esses arquivos, reescrevendo dados múltiplas vezes — alta amplificação de escrita.",
+      "B-trees escrevem diretamente em páginas no disco. Uma pequena atualização pode exigir a reescrita de uma página inteira mais o log de escrita antecipada — amplificação de escrita moderada.",
+      "Reduzindo a amplificação de escrita: ajuste estratégias de compactação, use tamanhos de página apropriados, agrupe escritas e escolha o mecanismo de armazenamento certo para sua carga de trabalho."
+    ],
+    "keyTerms": [
+      { "term": "Amplificação de Escrita (Write Amplification)", "definition": "A proporção de escritas físicas para escritas lógicas em um mecanismo de armazenamento." },
+      { "term": "Árvore LSM (LSM-Tree)", "definition": "Log-Structured Merge-tree — otimizada para escritas, usa compactação." },
+      { "term": "Compactação (Compaction)", "definition": "O processo de mesclar e reescrever arquivos de armazenamento para recuperar espaço e melhorar leituras." },
+      { "term": "Log de Escrita Antecipada (WAL)", "definition": "Um log sequencial escrito antes de modificar a estrutura de dados real." }
+    ]
+  },
+  {
+    "id": "cascading-timeouts",
+    "title": "Timeouts em Cascata",
+    "summary": "Um serviço lento causa cadeias de timeout que fazem o sistema inteiro parecer fora do ar.",
+    "explanation": [
+      "Quando o Serviço A chama o Serviço B que chama o Serviço C, um C lento faz B esperar, o que faz A esperar. Os três parecem lentos ou fora do ar.",
+      "Valores longos de timeout pioram isso: A espera por B por 30 segundos, B espera por C por 30 segundos — o cliente de A espera até 60 segundos.",
+      "Timeouts devem diminuir mais fundo na cadeia de chamadas. Se A tem um timeout de 5 segundos, B deve ter timeout de 3 segundos, e C de 1 segundo.",
+      "Circuit breakers, bulkheads e padrões de comunicação assíncrona previnem que um serviço lento derrube o sistema inteiro."
+    ],
+    "keyTerms": [
+      { "term": "Falha em Cascata (Cascading Failure)", "definition": "Uma falha em um componente desencadeando falhas em componentes dependentes." },
+      { "term": "Orçamento de Timeout (Timeout Budget)", "definition": "Alocar timeouts decrescentes ao longo da cadeia de chamadas." },
+      { "term": "Bulkhead", "definition": "Isolar componentes para que uma falha em um não afete os outros." },
+      { "term": "Falhar Rápido (Fail Fast)", "definition": "Retornar um erro imediatamente em vez de esperar por uma dependência lenta." }
+    ]
+  },
+  {
+    "id": "retry-strategies",
+    "title": "Estratégias de Retentativa",
+    "summary": "Retentar requisições falhas pode ajudar — ou amplificar o problema se feito de forma ingênua.",
+    "explanation": [
+      "Retentativas ajudam com falhas transitórias (instabilidades de rede, indisponibilidade breve). Mas retentar agressivamente contra um serviço em dificuldade adiciona carga e piora a situação.",
+      "Backoff exponencial aumenta o atraso entre retentativas: 1s, 2s, 4s, 8s. Isso dá ao serviço em falha tempo para se recuperar.",
+      "Adicione jitter para prevenir retentativas sincronizadas de muitos clientes (tempestades de retentativa). Sem jitter, todos os clientes retentam exatamente nos mesmos intervalos.",
+      "Defina uma contagem máxima de retentativas e implemente circuit breakers para parar de retentar completamente quando um serviço está claramente fora do ar."
+    ],
+    "keyTerms": [
+      { "term": "Backoff Exponencial (Exponential Backoff)", "definition": "Dobrar o tempo de espera entre cada tentativa de retentativa." },
+      { "term": "Tempestade de Retentativas (Retry Storm)", "definition": "Muitos clientes retentando simultaneamente, sobrecarregando o serviço em recuperação." },
+      { "term": "Jitter", "definition": "Variação aleatória adicionada ao tempo de retentativa para dessincronizar clientes." },
+      { "term": "Máximo de Retentativas (Max Retries)", "definition": "Um limite nas tentativas de retentativa para prevenir loops infinitos." }
+    ]
+  },
+  {
+    "id": "circuit-breakers",
+    "title": "Circuit Breakers",
+    "summary": "Pare de chamar um serviço em falha para deixá-lo se recuperar, em vez de acumular mais requisições.",
+    "explanation": [
+      "Um circuit breaker monitora chamadas a um serviço. Após um limite de falhas, ele 'abre' — falhando imediatamente requisições subsequentes sem realmente chamar o serviço.",
+      "Ele tem três estados: Fechado (normal, requisições passam), Aberto (disparado, requisições falham imediatamente) e Meio-Aberto (testando se o serviço se recuperou).",
+      "Sem circuit breakers, um serviço em falha fica sobrecarregado por retentativas e tráfego normal, impedindo a recuperação. O breaker dá espaço para respirar.",
+      "Combine com fallbacks: quando o circuito está aberto, retorne dados em cache, uma resposta padrão, ou uma experiência degradada em vez de um erro."
+    ],
+    "keyTerms": [
+      { "term": "Circuit Breaker", "definition": "Um padrão que para de chamar um serviço em falha após um limite de falhas." },
+      { "term": "Estado Fechado (Closed State)", "definition": "Operação normal — requisições passam para o serviço." },
+      { "term": "Estado Aberto (Open State)", "definition": "Disparado — requisições falham imediatamente sem chamar o serviço." },
+      { "term": "Estado Meio-Aberto (Half-Open State)", "definition": "Testando — um número limitado de requisições é enviado para verificar se o serviço se recuperou." }
+    ]
+  },
+  {
+    "id": "service-discovery",
+    "title": "Descoberta de Serviços",
+    "summary": "Serviços precisam se encontrar dinamicamente — endereços fixos no código quebram quando as coisas mudam.",
+    "explanation": [
+      "Em um ambiente dinâmico (nuvem, contêineres), serviços iniciam e param constantemente. Endereços IP e portas fixos no código quebram quando serviços se movem.",
+      "A descoberta de serviços fornece um registro onde serviços se registram e procuram outros. DNS, Consul, etcd e Kubernetes Services são implementações comuns.",
+      "Descoberta no lado do cliente: o cliente consulta o registro e escolhe uma instância do serviço. Descoberta no lado do servidor: um balanceador de carga consulta o registro em nome dos clientes.",
+      "Verificações de saúde garantem que o registro contenha apenas instâncias saudáveis. Entradas obsoletas (apontando para instâncias mortas) causam falhas."
+    ],
+    "keyTerms": [
+      { "term": "Registro de Serviços (Service Registry)", "definition": "Um banco de dados de instâncias de serviço disponíveis e suas localizações de rede." },
+      { "term": "Descoberta de Serviços (Service Discovery)", "definition": "O mecanismo pelo qual serviços se encontram e se comunicam." },
+      { "term": "Descoberta Baseada em DNS (DNS-Based Discovery)", "definition": "Usar registros DNS para resolver nomes de serviço em endereços IP." },
+      { "term": "Proxy Sidecar (Sidecar Proxy)", "definition": "Um proxy executando ao lado de cada serviço que gerencia descoberta e roteamento." }
+    ]
+  },
+  {
+    "id": "distributed-deadlocks",
+    "title": "Deadlocks Distribuídos",
+    "summary": "Dois serviços, cada um segurando um recurso que o outro precisa, fazendo ambos esperarem para sempre.",
+    "explanation": [
+      "Um deadlock ocorre quando dois ou mais processos, cada um segurando um recurso, esperam por um recurso mantido por outro. Nenhum pode prosseguir.",
+      "Em sistemas distribuídos, deadlocks são mais difíceis de detectar porque os detentores dos bloqueios estão em máquinas diferentes. Não há uma visão única de todos os bloqueios.",
+      "Estratégias de prevenção: sempre adquira bloqueios em uma ordem consistente, use timeouts na aquisição de bloqueios e implemente análise de grafo de espera.",
+      "Timeouts de bloqueio são a solução mais simples: se você não consegue adquirir um bloqueio em N segundos, libere seus bloqueios e tente novamente. Isso quebra o deadlock ao custo de algum trabalho desperdiçado."
+    ],
+    "keyTerms": [
+      { "term": "Deadlock", "definition": "Um estado onde dois ou mais processos estão bloqueados para sempre, cada um esperando pelo outro." },
+      { "term": "Grafo de Espera (Wait-For Graph)", "definition": "Um grafo direcionado de qual processo espera por qual, usado para detectar ciclos (deadlocks)." },
+      { "term": "Ordenação de Bloqueios (Lock Ordering)", "definition": "Sempre adquirir bloqueios em uma ordem global predefinida para prevenir esperas circulares." },
+      { "term": "Timeout de Bloqueio (Lock Timeout)", "definition": "Liberar bloqueios e tentar novamente se a aquisição demorar demais." }
+    ]
+  },
+  {
+    "id": "isolation-levels",
+    "title": "Níveis de Isolamento de Transações",
+    "summary": "Controle o quanto transações podem ver alterações não confirmadas de outras transações.",
+    "explanation": [
+      "Níveis de isolamento definem o que uma transação pode ver quando outras transações estão modificando dados concorrentemente. Isolamento maior previne mais anomalias, mas reduz a concorrência.",
+      "Read Uncommitted: vê tudo, inclusive alterações não confirmadas (leituras sujas). Read Committed: só vê dados confirmados. Repeatable Read: vê um snapshot consistente. Serializable: isolamento total.",
+      "Leituras fantasma ocorrem quando uma transação reexecuta uma consulta e encontra novas linhas que outra transação inseriu. Apenas Serializable previne isso.",
+      "A maioria dos bancos de dados usa Read Committed como padrão. Use níveis mais altos apenas quando necessário, pois reduzem o throughput através de bloqueios mais agressivos."
+    ],
+    "keyTerms": [
+      { "term": "Leitura Suja (Dirty Read)", "definition": "Ler dados que foram modificados por outra transação mas ainda não confirmados." },
+      { "term": "Leitura Fantasma (Phantom Read)", "definition": "Uma consulta retorna linhas diferentes porque outra transação inseriu ou deletou linhas." },
+      { "term": "Serializable", "definition": "O nível de isolamento mais alto — transações se comportam como se executadas uma por vez." },
+      { "term": "Isolamento por Snapshot (Snapshot Isolation)", "definition": "Cada transação vê um snapshot consistente do banco de dados no momento de seu início." }
+    ]
+  },
+  {
+    "id": "sagas",
+    "title": "Padrão Saga",
+    "summary": "Coordene transações distribuídas de múltiplas etapas com ações compensatórias em vez de rollbacks.",
+    "explanation": [
+      "Transações tradicionais de banco de dados usam propriedades ACID e rollback em caso de falha. Mas em sistemas distribuídos, uma única transação abrangendo múltiplos serviços é impraticável.",
+      "O padrão Saga divide uma transação distribuída em uma sequência de transações locais. Cada etapa tem uma ação compensatória que desfaz seu efeito se uma etapa posterior falhar.",
+      "Dois estilos de orquestração: coreografia (cada serviço dispara o próximo) e orquestração (um coordenador central gerencia a sequência).",
+      "Sagas fornecem consistência eventual, não consistência imediata. O sistema pode estar em um estado intermediário entre as etapas, o que sua aplicação deve tratar."
+    ],
+    "keyTerms": [
+      { "term": "Saga", "definition": "Uma sequência de transações locais com ações compensatórias para tratamento de falhas." },
+      { "term": "Ação Compensatória (Compensating Action)", "definition": "Uma operação que desfaz o efeito de uma etapa anterior na saga." },
+      { "term": "Coreografia (Choreography)", "definition": "Cada serviço na saga dispara a próxima etapa via eventos." },
+      { "term": "Orquestrador (Orchestrator)", "definition": "Um coordenador central que gerencia a sequência de etapas da saga." }
+    ]
+  },
+  {
+    "id": "rate-limiting",
+    "title": "Limitação de Taxa",
+    "summary": "Controle quantas requisições um cliente pode fazer para proteger seu sistema de sobrecarga.",
+    "explanation": [
+      "A limitação de taxa restringe o número de requisições que um cliente pode fazer dentro de uma janela de tempo. Ela protege serviços contra abuso, picos de tráfego e falhas em cascata.",
+      "Algoritmos comuns: janela fixa (N requisições por minuto), janela deslizante (mais suave), token bucket (permite rajadas) e leaky bucket (taxa constante).",
+      "Implemente limitação de taxa no nível do API gateway para proteger todos os serviços downstream. Retorne HTTP 429 (Too Many Requests) com cabeçalhos retry-after.",
+      "Limites diferentes para diferentes clientes: usuários autenticados recebem limites maiores, plano gratuito recebe limites menores, e serviços internos podem ter limites separados."
+    ],
+    "keyTerms": [
+      { "term": "Limite de Taxa (Rate Limit)", "definition": "Um número máximo de requisições permitidas dentro de um período de tempo." },
+      { "term": "Token Bucket", "definition": "Um algoritmo onde tokens se acumulam ao longo do tempo e cada requisição consome um." },
+      { "term": "HTTP 429", "definition": "O código de status 'Too Many Requests' indicando limitação de taxa." },
+      { "term": "Throttling", "definition": "Desacelerar ou rejeitar requisições que excedem a taxa permitida." }
+    ]
+  }
+]

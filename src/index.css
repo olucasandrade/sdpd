@@ -1,0 +1,253 @@
+@import "tailwindcss";
+
+@theme {
+    /* ── Deep Noir Palette ── */
+    --color-noir-950: #050810;
+    --color-noir-900: #0a0e1a;
+    --color-noir-800: #0f1424;
+    --color-noir-700: #161d30;
+    --color-noir-600: #1e273d;
+    --color-noir-500: #2a3550;
+
+    /* ── Amber / Gold (primary accent) ── */
+    --color-amber-300: #fcd34d;
+    --color-amber-400: #fbbf24;
+    --color-amber-500: #f59e0b;
+    --color-amber-600: #d97706;
+
+    /* ── Cyan / Tech (secondary accent) ── */
+    --color-cyan-300: #67e8f9;
+    --color-cyan-400: #22d3ee;
+    --color-cyan-500: #06b6d4;
+
+    /* ── Status Colors ── */
+    --color-status-healthy: #34d399;
+    --color-status-degraded: #fbbf24;
+    --color-status-failed: #f87171;
+
+    /* ── Typography ── */
+    --font-display: "Bebas Neue", "Impact", sans-serif;
+    --font-mono: "Space Mono", "Courier New", monospace;
+    --font-sans: "DM Sans", system-ui, sans-serif;
+}
+
+/* ── Base ── */
+body {
+    @apply bg-noir-950 text-white font-sans;
+    margin: 0;
+    overflow: hidden;
+}
+
+#root {
+    height: 100vh;
+    position: relative;
+}
+
+/* ── Scan-line Overlay ── */
+#root::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 4px
+    );
+}
+
+/* ── Noise Grain Texture ── */
+#root::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-size: 256px 256px;
+}
+
+/* ── Dot Grid Background ── */
+.bg-dotgrid {
+    background-image: radial-gradient(
+        circle,
+        rgba(251, 191, 36, 0.06) 1px,
+        transparent 1px
+    );
+    background-size: 24px 24px;
+}
+
+/* ── Display Headings ── */
+.font-display {
+    font-family: "Bebas Neue", "Impact", sans-serif;
+    letter-spacing: 0.05em;
+}
+
+/* ── React Flow ── */
+.react-flow__background {
+    background-color: #050810 !important;
+}
+
+.react-flow__controls button {
+    background-color: #161d30 !important;
+    color: #fbbf24 !important;
+    border-color: #1e273d !important;
+}
+
+.react-flow__controls button:hover {
+    background-color: #1e273d !important;
+}
+
+.react-flow__controls {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.1);
+}
+
+/* ── Inspectable Node Glow ── */
+@keyframes pulse-glow {
+    0%,
+    100% {
+        box-shadow:
+            0 0 8px rgba(251, 191, 36, 0.2),
+            inset 0 0 8px rgba(251, 191, 36, 0.05);
+    }
+    50% {
+        box-shadow:
+            0 0 24px rgba(251, 191, 36, 0.5),
+            inset 0 0 12px rgba(251, 191, 36, 0.1);
+    }
+}
+
+.node-inspectable {
+    animation: pulse-glow 2.5s ease-in-out infinite;
+    cursor: pointer;
+}
+
+/* ── Animated Dash Flow ── */
+@keyframes dash-flow {
+    to {
+        stroke-dashoffset: -20;
+    }
+}
+
+.edge-animated path {
+    stroke-dasharray: 5 5;
+    animation: dash-flow 1s linear infinite;
+}
+
+/* ── Neon Border Glow ── */
+.neon-border {
+    box-shadow:
+        0 0 0 1px rgba(251, 191, 36, 0.2),
+        0 0 15px rgba(251, 191, 36, 0.1),
+        inset 0 0 15px rgba(251, 191, 36, 0.03);
+}
+
+.neon-border-cyan {
+    box-shadow:
+        0 0 0 1px rgba(34, 211, 238, 0.2),
+        0 0 15px rgba(34, 211, 238, 0.08),
+        inset 0 0 15px rgba(34, 211, 238, 0.03);
+}
+
+/* ── Status Node Glow Effects ── */
+.node-glow-healthy {
+    box-shadow:
+        0 0 12px rgba(52, 211, 153, 0.3),
+        inset 0 0 8px rgba(52, 211, 153, 0.05);
+}
+
+.node-glow-degraded {
+    box-shadow:
+        0 0 12px rgba(251, 191, 36, 0.3),
+        inset 0 0 8px rgba(251, 191, 36, 0.05);
+}
+
+.node-glow-failed {
+    box-shadow:
+        0 0 12px rgba(248, 113, 113, 0.4),
+        inset 0 0 8px rgba(248, 113, 113, 0.08);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+    width: 5px;
+}
+::-webkit-scrollbar-track {
+    background: #0a0e1a;
+}
+::-webkit-scrollbar-thumb {
+    background: #1e273d;
+    border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #2a3550;
+}
+
+/* ── Shield Badge SVG styling ── */
+@keyframes shield-pulse {
+    0%,
+    100% {
+        filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.3));
+    }
+    50% {
+        filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.6));
+    }
+}
+
+.shield-glow {
+    animation: shield-pulse 3s ease-in-out infinite;
+    overflow: visible;
+}
+
+/* ── SVG Icon Overflow Fix ── */
+svg {
+    overflow: visible;
+}
+
+/* ── Icon/Emoji Container Fix ── */
+.flex.items-center.justify-center span {
+    line-height: 1;
+}
+
+/* ── Typing cursor blink ── */
+@keyframes blink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0;
+    }
+}
+
+.cursor-blink::after {
+    content: "▌";
+    animation: blink 1s step-end infinite;
+    color: #fbbf24;
+}
+
+/* ── Grid Sweep ── */
+@keyframes grid-sweep {
+    0% {
+        background-position: 0 0;
+    }
+    100% {
+        background-position: 0 24px;
+    }
+}
+
+.bg-dotgrid-animated {
+    background-image: radial-gradient(
+        circle,
+        rgba(251, 191, 36, 0.05) 1px,
+        transparent 1px
+    );
+    background-size: 24px 24px;
+    animation: grid-sweep 4s linear infinite;
+}

@@ -1,0 +1,214 @@
+{
+  "id": "case-26",
+  "number": 26,
+  "title": "A Armadilha do Timeout",
+  "subtitle": "Um serviço downstream lento provoca timeouts em cascata por todo o sistema",
+  "brief": {
+    "narrative": "Todos os sistemas de Distributia parecem estar fora do ar. O app móvel dos oficiais mostra 'Serviço Indisponível'. O console de despacho está congelado. A consulta de registros retorna erros de timeout. Mas o dashboard de monitoramento mostra que todos os servidores estão tecnicamente rodando — nada crashou. O problema é mais profundo: o Serviço de Análise Forense (Serviço C) está lento devido a um job de processamento em lote pesado. O Serviço de Despacho (B) chama o Forense e fica esperando. O Mobile Gateway (A) chama o Despacho e fica esperando. Cada requisição que entra no sistema inicia uma cadeia de espera que eventualmente resulta em timeout. O Chefe Partition está presenciando uma queda total do sistema com zero serviços crashados.",
+    "symptoms": [
+      "Todos os serviços voltados ao usuário retornam timeout ou erros de 'Serviço Indisponível'",
+      "Nenhum serviço realmente crashou — todos estão rodando e aceitando conexões",
+      "Os tempos de resposta subiram de 200ms para mais de 30 segundos em todos os endpoints",
+      "O serviço forense está processando requisições 100x mais devagar que o normal"
+    ],
+    "objective": "Identificar por que um único serviço lento está fazendo todo o sistema parecer fora do ar e recomendar uma estratégia para conter o raio de explosão."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "mobile-app",
+        "type": "client",
+        "label": "Officer Mobile App",
+        "status": "failed",
+        "position": { "x": 80, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "App Móvel dos Oficiais",
+          "logs": [
+            "[19:00:01] INFO: Request to Mobile Gateway — /api/dispatch",
+            "[19:00:31] ERROR: Request timed out after 30,000ms",
+            "[19:00:32] ERROR: Showing 'Service Unavailable' to user",
+            "[19:00:35] INFO: Retry attempt 1...",
+            "[19:01:05] ERROR: Retry timed out after 30,000ms"
+          ],
+          "data": {
+            "Status": "TIMEOUT ERRORS",
+            "Timeout Setting": "30 seconds",
+            "Requests in Flight": "0 (all timed out)",
+            "Error Rate": "100%"
+          },
+          "status": "Todas as requisições ao gateway estão dando timeout. Os oficiais não conseguem usar o app."
+        }
+      },
+      {
+        "id": "gateway",
+        "type": "server",
+        "label": "Mobile Gateway (Service A)",
+        "status": "degraded",
+        "position": { "x": 270, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Mobile Gateway (Serviço A)",
+          "logs": [
+            "[19:00:01] INFO: Received request — calling Dispatch Service",
+            "[19:00:01] INFO: Waiting for Dispatch Service response...",
+            "[19:00:26] ERROR: Dispatch Service response timeout (25,000ms)",
+            "[19:00:26] ERROR: Returning 504 Gateway Timeout to client",
+            "[19:00:26] WARN: Thread pool: 200/200 threads blocked waiting on Dispatch"
+          ],
+          "data": {
+            "Status": "DEGRADED (all threads blocked)",
+            "Thread Pool": "200/200 in use",
+            "Timeout to Service B": "25,000ms",
+            "Circuit Breaker": "Not configured",
+            "Avg Response Time": "25,000ms (normal: 150ms)"
+          },
+          "status": "Todas as 200 threads estão bloqueadas aguardando o Serviço de Despacho. Nenhum circuit breaker configurado para falhar rápido."
+        }
+      },
+      {
+        "id": "dispatch",
+        "type": "server",
+        "label": "Dispatch Service (Service B)",
+        "status": "degraded",
+        "position": { "x": 460, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Despacho (Serviço B)",
+          "logs": [
+            "[19:00:01] INFO: Received request — calling Forensics Service",
+            "[19:00:01] INFO: Waiting for Forensics Service response...",
+            "[19:00:21] ERROR: Forensics Service response timeout (20,000ms)",
+            "[19:00:21] ERROR: Returning 504 to Gateway",
+            "[19:00:21] WARN: Thread pool: 150/150 threads blocked waiting on Forensics"
+          ],
+          "data": {
+            "Status": "DEGRADED (all threads blocked)",
+            "Thread Pool": "150/150 in use",
+            "Timeout to Service C": "20,000ms",
+            "Circuit Breaker": "Not configured",
+            "Avg Response Time": "20,000ms (normal: 100ms)"
+          },
+          "status": "Todas as 150 threads bloqueadas aguardando o Forense. Propagando lentidão upstream para o Gateway."
+        }
+      },
+      {
+        "id": "forensics",
+        "type": "server",
+        "label": "Forensics Service (Service C)",
+        "status": "degraded",
+        "position": { "x": 650, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Análise Forense (Serviço C)",
+          "logs": [
+            "[18:45:00] INFO: Started batch DNA analysis job — 50,000 samples",
+            "[18:45:01] WARN: Batch job consuming 95% CPU",
+            "[19:00:01] WARN: API request received but processing at 1/100th normal speed",
+            "[19:00:18] INFO: Request processed in 18,200ms (normal: 50ms)"
+          ],
+          "data": {
+            "Status": "RUNNING (overloaded)",
+            "CPU Usage": "95% (batch job)",
+            "API Response Time": "18,200ms (normal: 50ms)",
+            "Batch Job": "DNA analysis — 50,000 samples",
+            "Request Queue": "847 pending"
+          },
+          "status": "Um job em lote está consumindo 95% da CPU, tornando as respostas da API 100x mais lentas. Ainda rodando — não crashou."
+        }
+      },
+      {
+        "id": "forensics-db",
+        "type": "database",
+        "label": "Forensics Database",
+        "status": "healthy",
+        "position": { "x": 650, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados Forense",
+          "logs": [
+            "[18:45:00] INFO: Batch query load increased",
+            "[19:00:00] INFO: Query response times normal"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Query Latency": "5ms (normal)",
+            "Connections": "50"
+          },
+          "status": "O banco de dados está bem. O gargalo é a CPU do serviço forense, não o banco de dados."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-app-gateway", "source": "mobile-app", "target": "gateway", "label": "HTTP (timeout 30s)", "animated": false, "style": "broken" },
+      { "id": "e-gateway-dispatch", "source": "gateway", "target": "dispatch", "label": "HTTP (timeout 25s)", "animated": true, "style": "slow" },
+      { "id": "e-dispatch-forensics", "source": "dispatch", "target": "forensics", "label": "HTTP (timeout 20s)", "animated": true, "style": "slow" },
+      { "id": "e-forensics-db", "source": "forensics", "target": "forensics-db", "label": "queries", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Por que um serviço forense lento faz o sistema inteiro parecer fora do ar?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O banco de dados forense está sobrecarregado e deixando todas as consultas lentas",
+          "correct": false,
+          "feedback": "O banco de dados forense está operando normalmente com latência de 5ms nas consultas. O gargalo é a CPU do serviço forense sendo consumida pelo job em lote."
+        },
+        {
+          "id": "rc-2",
+          "text": "A lentidão do Serviço C se propaga para cima: B bloqueia esperando C, A bloqueia esperando B, e todos os pools de threads ficam ocupados com requisições em espera — timeouts em cascata sem circuit breakers para falhar rápido",
+          "correct": true,
+          "feedback": "Correto! Esta é uma falha de timeout em cascata. O Serviço C está lento (não crashou), então todas as threads de B ficam bloqueadas esperando C. Depois, as threads de A ficam bloqueadas esperando B. Sem circuit breakers, cada serviço mantém suas threads presas pelo tempo total do timeout. Toda a cadeia de chamadas se torna uma cascata de threads bloqueadas e timeouts, fazendo o sistema parecer completamente fora do ar mesmo que todos os serviços estejam tecnicamente rodando."
+        },
+        {
+          "id": "rc-3",
+          "text": "Uma partição de rede está impedindo os serviços de se comunicarem",
+          "correct": false,
+          "feedback": "Os serviços conseguem se conectar e enviar requisições — só estão esperando muito tempo pelas respostas. Este é um problema de latência, não de conectividade."
+        },
+        {
+          "id": "rc-4",
+          "text": "O timeout de 30 segundos do app móvel é curto demais",
+          "correct": false,
+          "feedback": "30 segundos já é extremamente longo para uma requisição voltada ao usuário. O problema não é o valor do timeout — é que os serviços ficam bloqueados indefinidamente em chamadas downstream em vez de falharem rápido quando uma dependência está lenta."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor solução para evitar que um serviço lento derrube o sistema inteiro?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Aumentar todos os valores de timeout para que os serviços tenham mais tempo de esperar por respostas",
+          "correct": false,
+          "feedback": "Timeouts maiores pioram o problema — as threads ficam bloqueadas por ainda mais tempo, e os usuários esperam ainda mais. O sistema precisa falhar rápido, não esperar mais."
+        },
+        {
+          "id": "fix-2",
+          "text": "Adicionar circuit breakers que detectam dependências lentas e falham rápido, além de timeouts agressivos e bulkheads para isolar pools de threads por dependência",
+          "correct": true,
+          "feedback": "Correto! Circuit breakers detectam quando um serviço downstream está lento/falhando e curto-circuitam as chamadas imediatamente com uma resposta de fallback. Timeouts agressivos (ex.: 2 segundos, não 20) liberam threads rapidamente. Bulkheads isolam pools de threads para que uma dependência lenta não consuma todas as threads. Juntos, esses padrões contêm o raio de explosão de um serviço lento."
+        },
+        {
+          "id": "fix-3",
+          "text": "Impedir que jobs em lote rodem no serviço forense",
+          "correct": false,
+          "feedback": "Jobs em lote são um caso de uso válido. O problema não é que o serviço forense fique lento às vezes — é que os serviços upstream não têm como lidar graciosamente com uma dependência lenta. Qualquer serviço pode ficar lento por qualquer motivo."
+        },
+        {
+          "id": "fix-4",
+          "text": "Tornar todas as chamadas entre serviços assíncronas para que nada nunca bloqueie",
+          "correct": false,
+          "feedback": "Chamadas assíncronas ajudam na utilização de threads, mas não resolvem a cascata de timeouts sozinhas. Você ainda precisa de circuit breakers para parar de enviar requisições a um serviço lento e de timeouts para limitar quanto tempo você espera por uma resposta."
+        }
+      ]
+    }
+  },
+  "conceptId": "cascading-timeouts",
+  "badge": {
+    "name": "Domador de Timeouts",
+    "icon": "⏳"
+  }
+}

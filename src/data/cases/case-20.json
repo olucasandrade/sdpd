@@ -1,0 +1,189 @@
+{
+  "id": "case-20",
+  "number": 20,
+  "title": "The Backed Up Pipeline",
+  "subtitle": "Dispatch queue overflows as consumer service crashes silently",
+  "brief": {
+    "narrative": "Distributia's emergency dispatch system has ground to a halt. Officers are reporting that new crime assignments aren't coming through — patrol cars are sitting idle while 911 calls pile up. The dispatch queue, which normally processes hundreds of assignments per minute, has ballooned to over 50,000 pending messages. The producer side (call center) keeps pushing new dispatch orders, but nothing is being consumed on the other end. Chief Partition is furious — criminals are getting away while officers wait for assignments that never arrive.",
+    "symptoms": [
+      "Dispatch assignments stopped reaching patrol units 45 minutes ago",
+      "The message queue depth has grown from ~100 to over 50,000 messages",
+      "The call center can still submit new dispatch orders without errors",
+      "Memory usage on the queue broker is approaching critical levels"
+    ],
+    "objective": "Identify why the dispatch pipeline is backed up and recommend a fix to restore flow and prevent future backpressure crises."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "call-center",
+        "type": "client",
+        "label": "Call Center (Producer)",
+        "status": "healthy",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Call Center Producer",
+          "logs": [
+            "[03:15:01] INFO: Dispatch order #48,221 published to queue",
+            "[03:15:02] INFO: Dispatch order #48,222 published to queue",
+            "[03:15:02] INFO: Publish rate: 12 msgs/sec",
+            "[03:15:03] WARN: Queue broker reporting high memory usage"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Publish Rate": "12 msgs/sec",
+            "Messages Sent (last hour)": "43,200",
+            "Errors": "0"
+          },
+          "status": "Producer is operating normally. Messages are being accepted by the broker."
+        }
+      },
+      {
+        "id": "queue-broker",
+        "type": "server",
+        "label": "Dispatch Queue Broker",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Dispatch Queue Broker",
+          "logs": [
+            "[02:30:00] INFO: Consumer 'patrol-dispatcher' disconnected",
+            "[02:30:01] WARN: No active consumers on queue 'dispatch-orders'",
+            "[02:45:00] WARN: Queue depth exceeded 10,000 messages",
+            "[03:00:00] WARN: Queue depth exceeded 30,000 messages",
+            "[03:15:00] CRITICAL: Memory usage at 91% — queue depth 50,412",
+            "[03:15:01] WARN: Approaching max memory limit, may start dropping messages"
+          ],
+          "data": {
+            "Status": "DEGRADED",
+            "Queue Depth": "50,412 messages",
+            "Active Consumers": "0",
+            "Memory Usage": "91%",
+            "Max Memory": "4 GB",
+            "Backpressure Policy": "None configured"
+          },
+          "status": "Queue is filling up with no consumers draining it. No backpressure mechanism is configured."
+        }
+      },
+      {
+        "id": "consumer-service",
+        "type": "server",
+        "label": "Patrol Dispatcher (Consumer)",
+        "status": "failed",
+        "position": { "x": 600, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Patrol Dispatcher Consumer",
+          "logs": [
+            "[02:29:55] ERROR: OutOfMemoryError in message handler",
+            "[02:29:56] ERROR: Unhandled exception — process crashing",
+            "[02:29:57] FATAL: Consumer process terminated (exit code 137)",
+            "[02:29:57] INFO: No automatic restart policy configured"
+          ],
+          "data": {
+            "Status": "CRASHED",
+            "Last Active": "02:29:57",
+            "Restart Policy": "None",
+            "Messages Processed Before Crash": "5,102"
+          },
+          "status": "Consumer crashed due to OutOfMemoryError 45 minutes ago. No restart policy is in place."
+        }
+      },
+      {
+        "id": "patrol-units",
+        "type": "client",
+        "label": "Patrol Units",
+        "status": "degraded",
+        "position": { "x": 600, "y": 280 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Patrol Units",
+          "logs": [
+            "[02:30:05] WARN: No new dispatch orders received",
+            "[02:45:00] WARN: Still no dispatch orders — 15 min gap",
+            "[03:15:00] WARN: Officers idle for 45 minutes, no assignments"
+          ],
+          "data": {
+            "Status": "IDLE",
+            "Active Patrols": "24",
+            "Pending Assignments": "0",
+            "Last Assignment Received": "02:29:55"
+          },
+          "status": "No dispatch orders arriving. Officers are idle and unassigned."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-cc-broker", "source": "call-center", "target": "queue-broker", "label": "publish orders", "animated": true, "style": "normal" },
+      { "id": "e-broker-consumer", "source": "queue-broker", "target": "consumer-service", "label": "consume orders", "animated": false, "style": "broken" },
+      { "id": "e-consumer-patrols", "source": "consumer-service", "target": "patrol-units", "label": "assign patrols", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the dispatch pipeline backup?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The call center is producing messages too fast for the system to handle",
+          "correct": false,
+          "feedback": "The producer rate of 12 msgs/sec is normal. The problem is that zero consumers are draining the queue — the consumer service crashed and never restarted."
+        },
+        {
+          "id": "rc-2",
+          "text": "The consumer service crashed and has no restart policy, so messages pile up with nothing processing them — a backpressure failure",
+          "correct": true,
+          "feedback": "Correct! The patrol dispatcher consumer crashed 45 minutes ago and has no automatic restart policy. With the producer still publishing and zero consumers draining the queue, messages pile up unboundedly. The system lacks any backpressure mechanism to slow producers when consumers can't keep up."
+        },
+        {
+          "id": "rc-3",
+          "text": "The queue broker ran out of memory and stopped accepting messages",
+          "correct": false,
+          "feedback": "The broker is at 91% memory but hasn't stopped yet — it's still accepting messages. The real problem is that no consumer is draining the queue. The memory issue is a symptom of the backpressure problem, not the cause."
+        },
+        {
+          "id": "rc-4",
+          "text": "A network partition separated the broker from the patrol units",
+          "correct": false,
+          "feedback": "The patrol units don't connect directly to the broker — the consumer service does. The consumer's logs show it crashed from an OutOfMemoryError, not a network issue."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to prevent this pipeline backup in the future?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Implement backpressure controls: auto-restart consumers, set queue size limits, and slow producers when the queue is full",
+          "correct": true,
+          "feedback": "Correct! A proper backpressure strategy includes: (1) auto-restarting crashed consumers, (2) setting max queue depth to prevent unbounded growth, and (3) signaling producers to slow down when consumers can't keep up. This prevents the system from spiraling out of control."
+        },
+        {
+          "id": "fix-2",
+          "text": "Increase the broker's memory to 64 GB so it can hold more messages",
+          "correct": false,
+          "feedback": "More memory just delays the problem — if consumers are down, the queue will eventually fill any amount of memory. You need backpressure to stop unbounded growth and ensure consumers stay alive."
+        },
+        {
+          "id": "fix-3",
+          "text": "Have the call center write dispatch orders directly to the patrol units, bypassing the queue",
+          "correct": false,
+          "feedback": "Removing the queue eliminates the buffering that helps handle traffic spikes. The queue is a good architectural choice — it just needs proper backpressure controls and consumer resilience."
+        },
+        {
+          "id": "fix-4",
+          "text": "Set messages to expire after 5 minutes so old ones are automatically deleted",
+          "correct": false,
+          "feedback": "Dropping dispatch orders means emergency calls get lost entirely. You need backpressure to manage flow, not message expiration that silently discards critical assignments."
+        }
+      ]
+    }
+  },
+  "conceptId": "backpressure",
+  "badge": {
+    "name": "Pressure Valve",
+    "icon": "🔧"
+  }
+}

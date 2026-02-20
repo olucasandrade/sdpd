@@ -1,0 +1,192 @@
+{
+  "id": "case-32",
+  "number": 32,
+  "title": "The Saga Failure",
+  "subtitle": "A booking process that forgot how to undo its mistakes",
+  "brief": {
+    "narrative": "A major drug bust at Distributia PD brings in 15 suspects at once. The Booking System kicks into high gear, processing each arrest through a three-step pipeline: Step 1 — create an arrest record in the Arrest Service, Step 2 — generate a booking number in the Booking Service, Step 3 — assign a holding cell in the Cell Assignment Service. Suspect #7 makes it through Steps 1 and 2 just fine, but Step 3 fails — the Cell Assignment Service is out of available cells (capacity reached). The system throws an error and gives up. But here's the catastrophe: the arrest record from Step 1 still exists, and the booking number from Step 2 was already assigned. Suspect #7 is now a ghost in the system — officially arrested and booked, but assigned to no cell. The arrest cannot be re-processed because the booking number is already taken. The record can't be manually deleted because it's marked as an active arrest. Meanwhile, the cell count shows full capacity, but one of those 'occupied' cells was pre-allocated for Suspect #7 and is actually empty. Sergeant Saga is staring at a half-completed transaction with no rollback mechanism and no way forward.",
+    "symptoms": [
+      "Suspect #7 has an arrest record and booking number but no cell assignment",
+      "Re-running the booking fails — booking number already allocated",
+      "Cell capacity shows full, but one reserved cell is physically empty",
+      "No compensating actions or rollback occurred after Step 3 failure"
+    ],
+    "objective": "Identify why a multi-step distributed process left data in an inconsistent state, and determine the correct pattern for managing long-running distributed transactions."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "booking-orchestrator",
+        "type": "server",
+        "label": "Booking Orchestrator",
+        "status": "failed",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Booking Orchestrator",
+          "logs": [
+            "[21:15:00] INFO: Starting booking saga for Suspect #7 (Arrest ID: A-2847)",
+            "[21:15:01] INFO: Step 1 — Arrest Service → CREATE arrest record → SUCCESS",
+            "[21:15:02] INFO: Step 2 — Booking Service → ASSIGN booking number → SUCCESS (BK-90441)",
+            "[21:15:03] INFO: Step 3 — Cell Assignment → ASSIGN cell → FAILED (capacity exceeded)",
+            "[21:15:03] ERROR: Step 3 failed. No compensating transactions defined.",
+            "[21:15:03] ERROR: Saga aborted — system left in inconsistent state",
+            "[21:15:03] ERROR: Manual intervention required for Arrest A-2847, Booking BK-90441"
+          ],
+          "data": {
+            "Saga Status": "FAILED — INCONSISTENT STATE",
+            "Steps Completed": "2 of 3",
+            "Steps Rolled Back": "0 of 2 (NO COMPENSATING ACTIONS DEFINED)",
+            "Orphaned Records": "Arrest A-2847, Booking BK-90441",
+            "Rollback Strategy": "NONE IMPLEMENTED"
+          },
+          "status": "Saga failed at Step 3 but has no compensating transactions to undo Steps 1 and 2."
+        }
+      },
+      {
+        "id": "arrest-service",
+        "type": "server",
+        "label": "Arrest Service",
+        "status": "degraded",
+        "position": { "x": 80, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Arrest Service",
+          "logs": [
+            "[21:15:01] INFO: Created arrest record A-2847 for Suspect #7",
+            "[21:15:01] INFO: Status: ACTIVE — awaiting booking",
+            "[21:15:04] WARN: Arrest A-2847 still in ACTIVE state — no booking completion received",
+            "[21:20:00] WARN: Arrest A-2847 stuck in ACTIVE for 5 minutes — no rollback requested"
+          ],
+          "data": {
+            "Arrest ID": "A-2847",
+            "Suspect": "#7",
+            "Status": "ACTIVE (cannot be deleted or reprocessed)",
+            "Compensating Action": "NOT DEFINED",
+            "Expected Next Step": "Booking confirmation (never arrived)"
+          },
+          "status": "Arrest record exists and is marked ACTIVE. No compensating action to void it."
+        }
+      },
+      {
+        "id": "booking-service",
+        "type": "server",
+        "label": "Booking Service",
+        "status": "degraded",
+        "position": { "x": 350, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Booking Service",
+          "logs": [
+            "[21:15:02] INFO: Assigned booking number BK-90441 to Arrest A-2847",
+            "[21:15:02] INFO: Status: ALLOCATED — awaiting cell assignment",
+            "[21:15:05] WARN: Booking BK-90441 — no cell assignment confirmation received",
+            "[21:20:00] WARN: Booking BK-90441 stuck in ALLOCATED for 5 minutes"
+          ],
+          "data": {
+            "Booking Number": "BK-90441",
+            "Linked Arrest": "A-2847",
+            "Status": "ALLOCATED (blocks re-use of this number)",
+            "Compensating Action": "NOT DEFINED",
+            "Expected Next Step": "Cell assignment (never arrived)"
+          },
+          "status": "Booking number allocated but never completed. Number cannot be reused or released."
+        }
+      },
+      {
+        "id": "cell-assignment",
+        "type": "server",
+        "label": "Cell Assignment",
+        "status": "failed",
+        "position": { "x": 620, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Cell Assignment Service",
+          "logs": [
+            "[21:15:03] INFO: Cell assignment request for Booking BK-90441",
+            "[21:15:03] ERROR: All holding cells at capacity (48/48 occupied)",
+            "[21:15:03] ERROR: Cell assignment FAILED — no available cells",
+            "[21:15:03] INFO: Note: Cell #12 was pre-reserved for BK-90441 but reservation failed on final commit"
+          ],
+          "data": {
+            "Capacity": "48/48 (includes 1 ghost reservation)",
+            "Cell #12": "Reserved for BK-90441 but physically EMPTY",
+            "Assignment Status": "FAILED",
+            "Compensating Action": "NOT DEFINED"
+          },
+          "status": "Assignment failed but a pre-reservation exists that won't be released."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-orch-arrest", "source": "booking-orchestrator", "target": "arrest-service", "label": "Step 1: SUCCESS", "animated": false, "style": "normal" },
+      { "id": "e-orch-booking", "source": "booking-orchestrator", "target": "booking-service", "label": "Step 2: SUCCESS", "animated": false, "style": "normal" },
+      { "id": "e-orch-cell", "source": "booking-orchestrator", "target": "cell-assignment", "label": "Step 3: FAILED", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the inconsistent data after the booking failure?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The Cell Assignment Service has a bug that incorrectly reports full capacity",
+          "correct": false,
+          "feedback": "The capacity issue is a legitimate failure — the cells really are full (with one ghost reservation). The real problem isn't that Step 3 failed. Failures are expected in distributed systems. The problem is that no compensating actions exist to undo Steps 1 and 2 when Step 3 fails."
+        },
+        {
+          "id": "rc-2",
+          "text": "The multi-step distributed transaction has no compensating actions (saga rollback), so a failure midway leaves completed steps in an inconsistent state",
+          "correct": true,
+          "feedback": "Correct! In a distributed system, you can't use a traditional ACID transaction across multiple services. The Saga pattern solves this by defining compensating actions for each step: if Step 3 fails, execute 'undo Step 2' (release the booking number) and then 'undo Step 1' (void the arrest record). Without these compensating transactions, a failure anywhere in the chain leaves orphaned, inconsistent data that requires manual intervention."
+        },
+        {
+          "id": "rc-3",
+          "text": "The three services should share a single database so a traditional transaction could roll everything back",
+          "correct": false,
+          "feedback": "A shared database would allow a single ACID transaction, but it defeats the purpose of microservices (independent deployment, scaling, and ownership). In a microservice architecture, each service owns its data. The Saga pattern is the standard solution for maintaining consistency across service boundaries."
+        },
+        {
+          "id": "rc-4",
+          "text": "The Booking Orchestrator should have checked cell availability before starting the process",
+          "correct": false,
+          "feedback": "Pre-checking availability helps but doesn't solve the fundamental problem. A cell could fill up between the check and the assignment (a race condition). Any step in any distributed process can fail at any time. You must plan for failure and have compensating actions ready — that's the Saga pattern."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best approach to handle failures in multi-step distributed processes?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Implement the Saga pattern with compensating transactions — each step defines an undo action that executes if a later step fails",
+          "correct": true,
+          "feedback": "Correct! The Saga pattern breaks a distributed transaction into a sequence of local transactions, each with a compensating action. If Step 3 (cell assignment) fails, the orchestrator automatically triggers: 'compensate Step 2' (release booking number BK-90441) and 'compensate Step 1' (void arrest record A-2847). This ensures the system returns to a consistent state. Sagas can be orchestrated (central coordinator) or choreographed (event-driven), and they're the standard pattern for distributed transactions in microservice architectures."
+        },
+        {
+          "id": "fix-2",
+          "text": "Use a two-phase commit (2PC) protocol so all three services atomically commit or abort together",
+          "correct": false,
+          "feedback": "Two-phase commit provides atomicity but has serious drawbacks in microservices: it requires all participants to be available simultaneously, holds locks across services during the prepare phase (blocking), and a coordinator failure can leave participants stuck in a prepared state. Sagas are preferred in microservice architectures because they're more resilient and don't require cross-service locking."
+        },
+        {
+          "id": "fix-3",
+          "text": "Add automatic retry logic — if Step 3 fails, keep retrying until a cell becomes available",
+          "correct": false,
+          "feedback": "Retrying indefinitely is problematic — what if no cell becomes available for hours? Meanwhile, the arrest and booking records are in a limbo state. Retries are useful for transient failures, but for business logic failures (no capacity), you need compensating transactions to cleanly undo the partial work."
+        },
+        {
+          "id": "fix-4",
+          "text": "Reserve all resources (arrest slot, booking number, cell) upfront before executing any step",
+          "correct": false,
+          "feedback": "Reservation helps but doesn't eliminate the problem — a reservation can fail, a reserved resource can expire, or the process can fail between reservations. You still need compensating actions for when things go wrong. The Saga pattern handles all failure scenarios systematically."
+        }
+      ]
+    }
+  },
+  "conceptId": "sagas",
+  "badge": {
+    "name": "Saga Master",
+    "icon": "📜"
+  }
+}

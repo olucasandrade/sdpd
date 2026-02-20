@@ -1,0 +1,182 @@
+{
+  "id": "case-12",
+  "number": 12,
+  "title": "O Limite Vertical",
+  "subtitle": "O servidor de análise criminal atinge o teto do hardware",
+  "brief": {
+    "narrative": "A Divisão de Análise Criminal de Distributia está em crise. Seu servidor principal de análise — responsável por processar dados de padrões criminais de todos os distritos — foi atualizado com o hardware mais potente que o dinheiro pode comprar: 128 cores, 1TB de RAM, tudo do melhor. Mas ainda não é suficiente. Os tempos de resposta para consultas de tendências criminais dispararam para 45 segundos, e o processamento noturno em lote dos relatórios de incidentes agora leva 14 horas em vez de 3. O fornecedor diz que não existe máquina maior disponível. O Chefe Partition quer saber por que jogar mais hardware no problema não está funcionando e qual é a solução real, Detetive.",
+    "symptoms": [
+      "Consultas de análise criminal levam mais de 45 segundos apesar do hardware no limite máximo",
+      "Utilização de CPU fixada em 98% durante horários de pico",
+      "Processamento noturno em lote cresceu de 3 horas para 14 horas",
+      "Fornecedor de hardware confirma que não há mais upgrades verticais disponíveis"
+    ],
+    "objective": "Identificar por que a abordagem de servidor único atingiu seu limite e recomendar uma arquitetura que possa escalar além de uma máquina."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "analytics-server",
+        "type": "server",
+        "label": "Analytics Server",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Servidor de Análise Criminal",
+          "logs": [
+            "[08:15:01] WARN: CPU utilization at 98%",
+            "[08:15:02] WARN: Memory usage at 94% (961GB/1024GB)",
+            "[08:15:10] WARN: Query queue depth: 847 pending",
+            "[08:15:22] ERROR: Query timeout for district-7 trend analysis (>45s)",
+            "[08:15:30] INFO: No horizontal scaling configured — single node only"
+          ],
+          "data": {
+            "CPU Cores": "128 (all saturated)",
+            "RAM": "1024 GB (94% used)",
+            "Status": "MAXED OUT",
+            "Pending Queries": "847",
+            "Avg Query Time": "45.2s",
+            "Max Vertical Upgrade": "Already at maximum"
+          },
+          "status": "Hardware do servidor totalmente no limite. Nenhuma escalabilidade vertical adicional é possível."
+        }
+      },
+      {
+        "id": "district-api",
+        "type": "server",
+        "label": "District API Gateway",
+        "status": "degraded",
+        "position": { "x": 350, "y": 220 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Gateway de API Distrital",
+          "logs": [
+            "[08:15:05] WARN: Upstream analytics server response slow",
+            "[08:15:12] WARN: 312 requests queued waiting for analytics",
+            "[08:15:25] ERROR: Client timeouts increasing"
+          ],
+          "data": {
+            "Status": "SLOW",
+            "Queued Requests": "312",
+            "Upstream Targets": "1 (analytics-server only)"
+          },
+          "status": "Apenas um destino upstream de análise. Não é possível distribuir a carga."
+        }
+      },
+      {
+        "id": "precinct-dashboard",
+        "type": "client",
+        "label": "Precinct Dashboards",
+        "status": "degraded",
+        "position": { "x": 100, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Dashboards das Delegacias",
+          "logs": [
+            "[08:16:00] WARN: Dashboard loading time > 40s",
+            "[08:16:15] ERROR: Crime trend widget timed out"
+          ],
+          "data": {
+            "Active Users": "85",
+            "Avg Load Time": "42s",
+            "Timeout Rate": "34%"
+          },
+          "status": "Dashboards extremamente lentos devido ao gargalo no servidor de análise."
+        }
+      },
+      {
+        "id": "batch-processor",
+        "type": "client",
+        "label": "Batch Processor",
+        "status": "degraded",
+        "position": { "x": 600, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Processador de Lotes Noturno",
+          "logs": [
+            "[00:00:01] INFO: Nightly batch started",
+            "[14:12:33] WARN: Batch still running — expected completion in 3h",
+            "[14:12:34] WARN: Competing with daytime queries for CPU"
+          ],
+          "data": {
+            "Batch Duration": "14h 12m (target: 3h)",
+            "Records Processed": "12.4M",
+            "Status": "RUNNING BEHIND"
+          },
+          "status": "Job em lote competindo por recursos no servidor único."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-api-analytics", "source": "district-api", "target": "analytics-server", "label": "queries", "animated": true, "style": "slow" },
+      { "id": "e-dashboard-api", "source": "precinct-dashboard", "target": "district-api", "label": "requests", "animated": true, "style": "slow" },
+      { "id": "e-batch-analytics", "source": "batch-processor", "target": "analytics-server", "label": "batch jobs", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz do problema de desempenho do servidor de análise?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O hardware do servidor está com defeito e não está funcionando conforme as especificações",
+          "correct": false,
+          "feedback": "O hardware está funcionando corretamente — ele simplesmente está na capacidade máxima. O servidor está usando todos os 128 cores e quase todo o 1TB de RAM conforme projetado."
+        },
+        {
+          "id": "rc-2",
+          "text": "O sistema atingiu o limite de escalabilidade vertical — uma única máquina não pode mais ser atualizada para atender à demanda",
+          "correct": true,
+          "feedback": "Correto! A escalabilidade vertical (adicionar mais CPU/RAM a uma máquina) tem um teto rígido. Quando você esgotou o maior servidor disponível, o único caminho adiante é a escalabilidade horizontal — distribuir a carga de trabalho entre múltiplas máquinas."
+        },
+        {
+          "id": "rc-3",
+          "text": "As consultas ao banco de dados são mal otimizadas e precisam de ajuste de índices",
+          "correct": false,
+          "feedback": "Embora a otimização de consultas possa ajudar, o problema fundamental é que todo o trabalho está concentrado em uma única máquina que já está no limite do hardware. Mesmo consultas perfeitamente otimizadas ainda saturariam um servidor nessa escala."
+        },
+        {
+          "id": "rc-4",
+          "text": "O processador de lotes está executando durante o horário de pico e deveria ser reagendado",
+          "correct": false,
+          "feedback": "Reagendar o job em lote pode proporcionar alívio temporário, mas o problema central é que uma máquina não consegue lidar com a carga total. O job em lote cresceu de 3h para 14h — ele agora se sobrepõe ao tráfego diurno independentemente de quando começa."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor solução para escalar o sistema de análise além dos seus limites atuais?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Implementar escalabilidade horizontal — adicionar múltiplos servidores de análise atrás de um load balancer para distribuir a carga de trabalho",
+          "correct": true,
+          "feedback": "Correto! A escalabilidade horizontal (scaling out) adiciona mais máquinas para compartilhar a carga. Um load balancer distribui consultas entre múltiplos servidores de análise, e o processamento em lote pode rodar em nós dedicados. Diferente da escalabilidade vertical, a horizontal não tem teto rígido — você pode continuar adicionando máquinas."
+        },
+        {
+          "id": "fix-2",
+          "text": "Esperar pela próxima geração de hardware de servidor com mais cores e RAM",
+          "correct": false,
+          "feedback": "Isso é apenas empurrar o problema para frente. Mesmo que uma máquina maior fique disponível, a demanda eventualmente vai superá-la também. A escalabilidade horizontal oferece um caminho sustentável que não depende de gerações de hardware."
+        },
+        {
+          "id": "fix-3",
+          "text": "Reduzir a quantidade de dados criminais retidos para diminuir a carga de processamento",
+          "correct": false,
+          "feedback": "Deletar dados para caber dentro dos limites do hardware é uma solução ruim. A divisão de análise precisa de dados históricos para análise de tendências. A arquitetura deve escalar para atender às necessidades dos dados, não o contrário."
+        },
+        {
+          "id": "fix-4",
+          "text": "Migrar para uma linguagem de programação mais rápida para extrair mais desempenho do mesmo hardware",
+          "correct": false,
+          "feedback": "Mesmo um programa perfeitamente otimizado só pode usar 100% dos recursos de uma máquina — que é exatamente onde já estamos. O gargalo é a arquitetura de máquina única, não a eficiência do software."
+        }
+      ]
+    }
+  },
+  "conceptId": "horizontal-scaling",
+  "badge": {
+    "name": "Arquiteto de Escala",
+    "icon": "📐"
+  }
+}

@@ -1,0 +1,189 @@
+{
+  "id": "case-24",
+  "number": 24,
+  "title": "O Arquivo Corrompido",
+  "subtitle": "Evidência chega corrompida e ninguém sabe onde o dano aconteceu",
+  "brief": {
+    "narrative": "Uma peça crítica de evidência digital — um arquivo de vídeo de vigilância — foi submetida através do pipeline de processamento de evidências de Distributia. Passou pelo gateway de upload, pelo serviço de transcodificação e pelo cofre de armazenamento de evidências. Quando a equipe forense tentou abrir o arquivo, ele estava completamente corrompido — lixo ilegível. O oficial que submeteu jura que o arquivo estava íntegro quando fez o upload. Três serviços tocaram no arquivo, e nenhum deles realizou verificações de integridade. O julgamento é em 48 horas e a evidência principal da acusação está arruinada. O Chefe Partition precisa saber onde a corrupção aconteceu e como preveni-la.",
+    "symptoms": [
+      "O arquivo de vídeo de evidência está corrompido e não reproduz no cofre de armazenamento",
+      "O arquivo original foi verificado como funcional no momento do upload",
+      "Três serviços processaram o arquivo: gateway de upload, transcodificador e cofre de armazenamento",
+      "Nenhum serviço calculou ou verificou checksums durante a transferência"
+    ],
+    "objective": "Determinar onde no pipeline a evidência foi corrompida e recomendar controles de verificação de integridade."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "officer-upload",
+        "type": "client",
+        "label": "Officer Upload Terminal",
+        "status": "healthy",
+        "position": { "x": 80, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal de Upload do Oficial",
+          "logs": [
+            "[11:00:00] INFO: Officer uploaded evidence file 'surveillance_cam7.mp4'",
+            "[11:00:00] INFO: File size: 2.4 GB",
+            "[11:00:01] INFO: Upload started to gateway",
+            "[11:00:45] INFO: Upload complete — 200 OK from gateway"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "File": "surveillance_cam7.mp4",
+            "File Size": "2.4 GB",
+            "Checksum at Upload": "Not computed",
+            "Upload Status": "Success"
+          },
+          "status": "Arquivo enviado com sucesso, mas nenhum checksum foi calculado na origem para verificação posterior."
+        }
+      },
+      {
+        "id": "upload-gateway",
+        "type": "server",
+        "label": "Upload Gateway",
+        "status": "healthy",
+        "position": { "x": 270, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Gateway de Upload",
+          "logs": [
+            "[11:00:01] INFO: Receiving file 'surveillance_cam7.mp4'",
+            "[11:00:45] INFO: File received, size: 2.4 GB",
+            "[11:00:45] INFO: No integrity check configured — forwarding to transcoder",
+            "[11:00:46] INFO: File forwarded to Transcoding Service"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Integrity Check": "DISABLED",
+            "Checksum Verification": "None",
+            "Files Processed Today": "342"
+          },
+          "status": "Gateway aceita e encaminha arquivos sem calcular ou verificar checksums."
+        }
+      },
+      {
+        "id": "transcoder",
+        "type": "server",
+        "label": "Transcoding Service",
+        "status": "degraded",
+        "position": { "x": 460, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Transcodificação",
+          "logs": [
+            "[11:00:47] INFO: Received file for transcoding",
+            "[11:01:30] WARN: Memory pressure during transcode — swapping to disk",
+            "[11:02:15] WARN: Transcode buffer overflow — partial frame data lost",
+            "[11:02:45] INFO: Transcode 'complete' — output written",
+            "[11:02:45] INFO: No integrity check on output — forwarding to vault"
+          ],
+          "data": {
+            "Status": "DEGRADED",
+            "Memory Usage": "97%",
+            "Swap Usage": "4.2 GB",
+            "Transcode Errors": "buffer overflow (partial frames lost)",
+            "Output Integrity Check": "DISABLED"
+          },
+          "status": "Serviço ficou sem memória durante a transcodificação, causando buffer overflow e perda de dados. Nenhuma verificação de integridade detectou a corrupção."
+        }
+      },
+      {
+        "id": "evidence-vault",
+        "type": "database",
+        "label": "Evidence Storage Vault",
+        "status": "healthy",
+        "position": { "x": 650, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Cofre de Armazenamento de Evidências",
+          "logs": [
+            "[11:02:46] INFO: Storing file 'surveillance_cam7_transcoded.mp4'",
+            "[11:02:50] INFO: File stored successfully",
+            "[11:02:50] INFO: No checksum verification performed on ingest"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "File Stored": "surveillance_cam7_transcoded.mp4",
+            "Stored File Size": "2.1 GB (smaller than original — suspicious)",
+            "Ingest Checksum": "Not computed",
+            "Storage Integrity": "File accepted without verification"
+          },
+          "status": "Cofre armazenou o arquivo sem verificar sua integridade. O arquivo corrompido foi aceito como estava."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-officer-gateway", "source": "officer-upload", "target": "upload-gateway", "label": "upload file", "animated": true, "style": "normal" },
+      { "id": "e-gateway-transcode", "source": "upload-gateway", "target": "transcoder", "label": "forward file", "animated": true, "style": "normal" },
+      { "id": "e-transcode-vault", "source": "transcoder", "target": "evidence-vault", "label": "store transcoded", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Onde o arquivo de evidência foi corrompido e por que não foi detectado?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O arquivo já estava corrompido quando o oficial fez o upload",
+          "correct": false,
+          "feedback": "O oficial verificou que o arquivo estava funcionando antes do upload, e o upload foi concluído sem erros. A corrupção aconteceu mais adiante no pipeline."
+        },
+        {
+          "id": "rc-2",
+          "text": "O serviço de transcodificação corrompeu o arquivo durante um estouro de memória, e nenhum serviço no pipeline realizou verificações de integridade para detectar ou prevenir isso",
+          "correct": true,
+          "feedback": "Correto! O serviço de transcodificação sofreu pressão de memória e um buffer overflow, que causou perda parcial de dados de frames — corrompendo o vídeo. O problema mais profundo é que nenhum serviço em todo o pipeline calcula ou verifica checksums. Sem verificações de integridade em cada ponto de transferência, a corrupção passa despercebida até alguém tentar usar o arquivo."
+        },
+        {
+          "id": "rc-3",
+          "text": "O disco do cofre de armazenamento tem setores defeituosos que corromperam o arquivo na escrita",
+          "correct": false,
+          "feedback": "Os logs do cofre mostram uma escrita bem-sucedida. O arquivo já estava corrompido quando chegou — note o tamanho suspeitamente menor do arquivo (2,1 GB vs 2,4 GB original). O transcodificador perdeu dados antes mesmo do cofre recebê-lo."
+        },
+        {
+          "id": "rc-4",
+          "text": "Perda de pacotes na rede durante a transferência entre gateway e transcodificador corrompeu o arquivo",
+          "correct": false,
+          "feedback": "TCP garante entrega em ordem e retransmite pacotes perdidos. Transferências de rede sobre TCP não corrompem dados silenciosamente. Os logs do transcodificador mostram a causa real: pressão de memória e buffer overflow durante o processamento."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor correção para prevenir corrupção não detectada de evidências no futuro?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Calcular um checksum no upload e verificá-lo em cada estágio do pipeline, rejeitando arquivos que não conferem e alertando os operadores",
+          "correct": true,
+          "feedback": "Correto! A integridade de dados de ponta a ponta requer calcular um checksum (ex: SHA-256) na origem e verificá-lo em cada ponto de transferência. Se a saída do transcodificador não corresponder à integridade esperada, o sistema pode rejeitá-la imediatamente e alertar os operadores — em vez de passar dados corrompidos silenciosamente para o próximo estágio."
+        },
+        {
+          "id": "fix-2",
+          "text": "Pular a etapa de transcodificação e armazenar o arquivo original diretamente",
+          "correct": false,
+          "feedback": "Isso evita o bug específico do transcodificador, mas não resolve o problema geral. Qualquer serviço pode corromper dados — você precisa de verificações de integridade em cada estágio, não apenas remover estágios."
+        },
+        {
+          "id": "fix-3",
+          "text": "Adicionar mais memória ao serviço de transcodificação para que não haja estouro",
+          "correct": false,
+          "feedback": "Mais memória ajuda nesta falha específica, mas não protege contra futuros bugs, erros de disco ou outras fontes de corrupção. Checksums de integridade protegem contra todas as formas de corrupção independentemente da causa."
+        },
+        {
+          "id": "fix-4",
+          "text": "Fazer dois oficiais independentemente enviarem o mesmo arquivo e comparar os resultados",
+          "correct": false,
+          "feedback": "Isso é manual, propenso a erros e dobra o trabalho. Checksums automatizados alcançam o mesmo objetivo (detectar corrupção) de forma confiável e em cada estágio sem intervenção humana."
+        }
+      ]
+    }
+  },
+  "conceptId": "data-integrity",
+  "badge": {
+    "name": "Inspetor de Integridade",
+    "icon": "✅"
+  }
+}

@@ -1,0 +1,195 @@
+{
+  "id": "case-03",
+  "number": 3,
+  "title": "A Evidência Perdida",
+  "subtitle": "16 fotos de cena de crime desaparecem sem deixar rastro",
+  "brief": {
+    "narrative": "A equipe de perícia enviou 47 fotos de cena de crime de um triplo homicídio na 5ª Avenida. O sistema de gestão de evidências confirmou todos os 47 uploads. Mas quando o Detetive Latency foi revisar as evidências esta manhã, apenas 31 fotos estão no sistema. 16 fotos sumiram — incluindo as fotos críticas da análise de padrão de sangue. O servidor líder caiu ontem à noite às 3 da manhã, e o seguidor foi promovido para assumir. Algo aconteceu no intervalo. Este é um caso de homicídio, Detetive. Não podemos perder evidências.",
+    "symptoms": [
+      "47 fotos foram enviadas e confirmadas pelo banco de dados líder",
+      "O servidor líder caiu às 3:00 AM devido a uma queda de energia",
+      "O seguidor foi automaticamente promovido a novo líder às 3:01 AM",
+      "O novo líder (antigo seguidor) possui apenas 31 das 47 fotos",
+      "16 fotos foram permanentemente perdidas — não estão em nenhum servidor"
+    ],
+    "objective": "Determinar por que 16 fotos foram perdidas durante o failover e recomendar como prevenir perda de dados em futuras falhas do líder."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "forensics",
+        "type": "client",
+        "label": "Forensics Team",
+        "status": "healthy",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal de Upload da Perícia",
+          "logs": [
+            "[22:00:00] INFO: Uploading 47 evidence photos...",
+            "[22:00:15] INFO: Photo 1/47 — acknowledged by leader",
+            "[22:01:30] INFO: Photo 31/47 — acknowledged by leader",
+            "[22:01:45] INFO: Photo 32/47 — acknowledged by leader",
+            "[22:03:00] INFO: Photo 47/47 — acknowledged by leader",
+            "[22:03:01] INFO: All 47 photos uploaded successfully ✓"
+          ],
+          "data": {
+            "Total Uploaded": "47 photos",
+            "All Acknowledged": "Yes",
+            "Upload Completed": "22:03:01"
+          },
+          "status": "Todas as 47 fotos foram enviadas e confirmadas pelo líder."
+        }
+      },
+      {
+        "id": "db-leader",
+        "type": "database",
+        "label": "Leader DB (crashed)",
+        "status": "failed",
+        "position": { "x": 400, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Antigo Banco de Dados Líder",
+          "logs": [
+            "[22:00:15] INFO: Received photo 1, writing to disk, replicating async",
+            "[22:01:30] INFO: Received photo 31, writing to disk, replicating async",
+            "[22:01:45] INFO: Received photo 32, writing to disk — replication QUEUED",
+            "[22:03:00] INFO: Received photo 47, writing to disk — replication QUEUED",
+            "[22:03:01] INFO: All 47 photos stored locally",
+            "[03:00:00] FATAL: Power failure detected",
+            "[03:00:00] FATAL: Server shutting down — 16 photos not yet replicated"
+          ],
+          "data": {
+            "Status": "OFFLINE (power failure)",
+            "Photos Stored Locally": "47",
+            "Photos Replicated to Follower": "31",
+            "Photos NOT Replicated": "16 (photos 32-47)",
+            "Replication Mode": "ASYNCHRONOUS"
+          },
+          "status": "Caiu antes de replicar as fotos 32-47 para o seguidor."
+        }
+      },
+      {
+        "id": "db-follower",
+        "type": "database",
+        "label": "Follower → New Leader",
+        "status": "degraded",
+        "position": { "x": 400, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Seguidor (Promovido a Líder)",
+          "logs": [
+            "[22:00:16] INFO: Replicated photo 1 from leader",
+            "[22:01:31] INFO: Replicated photo 31 from leader",
+            "[22:01:32] INFO: Waiting for more replication events...",
+            "[03:00:01] WARN: Leader heartbeat lost",
+            "[03:00:01] INFO: Initiating automatic failover",
+            "[03:00:02] INFO: Promoted to LEADER role",
+            "[03:00:02] WARN: Last replicated photo: #31. Photos 32-47 never received."
+          ],
+          "data": {
+            "Status": "ONLINE (promoted to leader)",
+            "Photos Available": "31 of 47",
+            "Missing Photos": "16 (photos 32-47)",
+            "Replication Mode Was": "ASYNCHRONOUS",
+            "Data Loss": "YES — 16 items permanently lost"
+          },
+          "status": "Promovido a líder, mas faltam 16 fotos que nunca foram replicadas."
+        }
+      },
+      {
+        "id": "detective",
+        "type": "client",
+        "label": "Det. Latency",
+        "status": "degraded",
+        "position": { "x": 650, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal do Detetive Latency",
+          "logs": [
+            "[08:00:00] INFO: Querying evidence for Case #5AVE-2024",
+            "[08:00:01] INFO: Connected to new leader (former follower)",
+            "[08:00:01] WARN: Only 31 photos found. Expected 47.",
+            "[08:00:02] ERROR: Missing photos include blood spatter analysis shots"
+          ],
+          "data": {
+            "Expected Photos": "47",
+            "Available Photos": "31",
+            "Missing": "16 critical evidence photos"
+          },
+          "status": "Evidências incompletas. 16 fotos perdidas durante o failover."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-forensics-leader", "source": "forensics", "target": "db-leader", "label": "upload (47 photos)", "animated": false, "style": "normal" },
+      { "id": "e-leader-follower", "source": "db-leader", "target": "db-follower", "label": "async replication (31 of 47)", "animated": false, "style": "slow" },
+      { "id": "e-follower-detective", "source": "db-follower", "target": "detective", "label": "query (31 photos)", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Por que 16 das 47 fotos foram perdidas?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O upload da equipe de perícia foi interrompido antes de todas as fotos serem enviadas",
+          "correct": false,
+          "feedback": "Os logs de upload mostram claramente que todas as 47 fotos foram enviadas e confirmadas pelo líder. Os uploads foram concluídos com sucesso às 22:03."
+        },
+        {
+          "id": "rc-2",
+          "text": "O banco de dados seguidor rejeitou as fotos por falta de espaço de armazenamento",
+          "correct": false,
+          "feedback": "O seguidor armazenou com sucesso as 31 fotos que recebeu. O problema é que 16 fotos nunca foram enviadas para ele — ainda estavam enfileiradas para replicação no líder quando ele caiu."
+        },
+        {
+          "id": "rc-3",
+          "text": "A replicação assíncrona permitiu que o líder confirmasse escritas antes de replicá-las — quando o líder caiu, dados não replicados foram perdidos",
+          "correct": true,
+          "feedback": "Correto! Com replicação assíncrona, o líder confirma uma escrita assim que ela é armazenada localmente, sem esperar o seguidor confirmar. As fotos 32-47 foram armazenadas no líder e confirmadas ao cliente, mas ainda não tinham sido enviadas ao seguidor. Quando o líder caiu, essas 16 fotos existiam apenas no servidor que falhou — perdidas para sempre."
+        },
+        {
+          "id": "rc-4",
+          "text": "Uma partição de rede entre líder e seguidor bloqueou a replicação",
+          "correct": false,
+          "feedback": "Os logs de replicação mostram que as fotos 1-31 foram replicadas com sucesso. As restantes estavam enfileiradas — o líder simplesmente não as enviou antes de cair. Esta é a natureza da replicação assíncrona, não um problema de rede."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Como o sistema de evidências deve ser alterado para prevenir perda de dados durante o failover?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Usar replicação síncrona para dados críticos — o líder espera a confirmação do seguidor antes de confirmar a escrita",
+          "correct": true,
+          "feedback": "Correto! Com replicação síncrona, o líder não confirma uma escrita até que pelo menos um seguidor confirme ter recebido os dados. Isso garante que, se o líder cair, o seguidor tenha todos os dados confirmados. O custo é maior latência de escrita, mas para dados críticos de evidência, durabilidade é mais importante que velocidade."
+        },
+        {
+          "id": "fix-2",
+          "text": "Adicionar um segundo seguidor para aumentar as chances de replicação",
+          "correct": false,
+          "feedback": "Se ambos os seguidores usam replicação assíncrona, um segundo seguidor não garante que os dados sejam replicados antes de um crash. Você pode ter dois seguidores sem os mesmos dados. A solução é replicação síncrona, não mais seguidores assíncronos."
+        },
+        {
+          "id": "fix-3",
+          "text": "Aumentar a velocidade de replicação para que aconteça mais rápido",
+          "correct": false,
+          "feedback": "Replicação assíncrona mais rápida reduz a janela de potencial perda de dados mas não a elimina. Mesmo com 1 segundo de atraso, se o líder cair no momento errado, você perde dados. Para dados críticos, você precisa de uma garantia — é isso que a replicação síncrona oferece."
+        },
+        {
+          "id": "fix-4",
+          "text": "Não permitir failover automático — esperar o líder voltar ao ar",
+          "correct": false,
+          "feedback": "Isso recuperaria os dados (se o disco sobreviveu), mas ao custo da disponibilidade. O sistema ficaria offline até o líder ser reparado, o que pode levar horas ou dias. A melhor abordagem é replicação síncrona, que garante que o seguidor sempre tenha os dados E possa assumir imediatamente."
+        }
+      ]
+    }
+  },
+  "conceptId": "sync-vs-async-replication",
+  "badge": {
+    "name": "Guardião dos Dados",
+    "icon": "🔒"
+  }
+}

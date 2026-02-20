@@ -1,0 +1,188 @@
+{
+  "id": "case-29",
+  "number": 29,
+  "title": "O Desastre do DNS",
+  "subtitle": "Quando um servidor muda de endereço e ninguém recebe o novo",
+  "brief": {
+    "narrative": "São 2 da manhã quando a equipe de infraestrutura da DP de Distributia substitui um servidor com falha no cluster de Rastreamento de Evidências. O novo servidor entra no ar com um novo endereço IP — 10.0.5.47 em vez do antigo 10.0.5.31. Tudo parece saudável do ponto de vista do novo servidor. Mas em minutos, os telefones começam a tocar. O Laboratório Forense não consegue submeter laudos de evidências. O portal de Ligação com o Tribunal mostra 'Conexão Recusada'. O app de Upload de Evidências da Patrulha está morto. O problema? Todos os serviços que se comunicam com o Rastreador de Evidências têm o endereço IP antigo hardcoded nos arquivos de configuração. Não existe DNS, nem registro de serviços, nem mecanismo de service discovery — apenas endereços IP crus espalhados em dezenas de arquivos de config em dezenas de serviços. O Detetive DNS encara um quadro branco coberto de endereços IP e setas, tentando descobrir quais dos 23 serviços que dependem do Rastreador de Evidências ainda apontam para uma máquina que não existe mais.",
+    "symptoms": [
+      "O Rastreador de Evidências está saudável no novo IP (10.0.5.47) mas inacessível por outros serviços",
+      "Laboratório Forense, Ligação com Tribunal e Upload da Patrulha reportam erros de 'Conexão Recusada'",
+      "Todos os serviços dependentes têm o IP antigo (10.0.5.31) hardcoded nos arquivos de configuração",
+      "Não existe registro centralizado de serviços ou DNS para service discovery interno"
+    ],
+    "objective": "Identificar por que substituir um servidor quebrou a comunicação inter-serviços, e determinar a abordagem correta de service discovery que sobrevive a mudanças de infraestrutura."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "evidence-tracker",
+        "type": "server",
+        "label": "Evidence Tracker (new)",
+        "status": "healthy",
+        "position": { "x": 400, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Rastreamento de Evidências (Novo Servidor)",
+          "logs": [
+            "[02:15:00] INFO: Service started on 10.0.5.47:8080",
+            "[02:15:01] INFO: Database connection established",
+            "[02:15:02] INFO: Health check passing — all systems nominal",
+            "[02:16:00] WARN: No incoming requests in 60s — unusually quiet",
+            "[02:20:00] WARN: Still no incoming requests — 5 minutes of silence"
+          ],
+          "data": {
+            "IP Address": "10.0.5.47 (NEW)",
+            "Old IP": "10.0.5.31 (DECOMMISSIONED)",
+            "Status": "HEALTHY — accepting requests",
+            "Requests Received": "0 since startup",
+            "Registered In": "No service registry exists"
+          },
+          "status": "O serviço está saudável e pronto, mas nenhum cliente consegue encontrá-lo no novo IP."
+        }
+      },
+      {
+        "id": "forensics-lab",
+        "type": "client",
+        "label": "Forensics Lab",
+        "status": "failed",
+        "position": { "x": 80, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Portal do Laboratório Forense",
+          "logs": [
+            "[02:16:05] INFO: Submitting DNA evidence report for Case #7821",
+            "[02:16:05] ERROR: Connection refused to 10.0.5.31:8080",
+            "[02:16:10] ERROR: Retry 1 — Connection refused to 10.0.5.31:8080",
+            "[02:16:15] ERROR: Retry 2 — Connection refused to 10.0.5.31:8080",
+            "[02:16:20] ERROR: Evidence submission failed — Evidence Tracker unreachable"
+          ],
+          "data": {
+            "Config File": "forensics-lab.conf",
+            "evidence_tracker_host": "10.0.5.31 (HARDCODED - STALE)",
+            "Last Config Update": "6 months ago",
+            "Discovery Method": "Manual IP in config file"
+          },
+          "status": "Não consegue alcançar o Rastreador de Evidências — ainda aponta para o IP descomissionado."
+        }
+      },
+      {
+        "id": "court-liaison",
+        "type": "client",
+        "label": "Court Liaison",
+        "status": "failed",
+        "position": { "x": 80, "y": 220 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Portal de Ligação com o Tribunal",
+          "logs": [
+            "[02:17:00] INFO: Requesting evidence chain-of-custody for Case #6554",
+            "[02:17:01] ERROR: Connection refused to 10.0.5.31:8080",
+            "[02:17:30] ERROR: Evidence chain request failed — service unreachable"
+          ],
+          "data": {
+            "Config File": "court-liaison.yaml",
+            "evidence_api_url": "http://10.0.5.31:8080/api (HARDCODED - STALE)",
+            "Last Config Update": "4 months ago",
+            "Discovery Method": "Manual IP in config file"
+          },
+          "status": "Não consegue recuperar registros de evidências — apontando para o IP antigo."
+        }
+      },
+      {
+        "id": "patrol-upload",
+        "type": "client",
+        "label": "Patrol Evidence Upload",
+        "status": "failed",
+        "position": { "x": 80, "y": 390 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "App de Upload de Evidências da Patrulha",
+          "logs": [
+            "[02:18:00] INFO: Officer uploading body-cam footage for Incident #9203",
+            "[02:18:01] ERROR: Connection refused to 10.0.5.31:8080",
+            "[02:18:05] ERROR: Upload failed — Evidence Tracker unreachable",
+            "[02:18:10] WARN: Queueing upload locally — will retry when service available"
+          ],
+          "data": {
+            "Config File": "patrol-upload.env",
+            "EVIDENCE_HOST": "10.0.5.31 (HARDCODED - STALE)",
+            "Last Config Update": "8 months ago",
+            "Queued Uploads": "23 (growing)"
+          },
+          "status": "Não consegue fazer upload de evidências — IP hardcoded aponta para servidor descomissionado."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-forensics-evidence", "source": "forensics-lab", "target": "evidence-tracker", "label": "10.0.5.31 (wrong IP)", "animated": false, "style": "broken" },
+      { "id": "e-court-evidence", "source": "court-liaison", "target": "evidence-tracker", "label": "10.0.5.31 (wrong IP)", "animated": false, "style": "broken" },
+      { "id": "e-patrol-evidence", "source": "patrol-upload", "target": "evidence-tracker", "label": "10.0.5.31 (wrong IP)", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz de todos os serviços perderem contato com o Rastreador de Evidências?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "A equipe de infraestrutura não atualizou o endereço IP nos arquivos de configuração de todos os serviços dependentes após a substituição do servidor",
+          "correct": false,
+          "feedback": "Embora a correção imediata seja atualizar as configs, culpar a equipe de operações ignora o problema sistêmico. Com mais de 23 serviços dependentes, cada um com IP hardcoded, atualizações manuais de configuração são propensas a erro e não escalam. A causa raiz é a arquitetura: não existe mecanismo de service discovery, então qualquer mudança de IP requer rastrear e atualizar manualmente cada cliente."
+        },
+        {
+          "id": "rc-2",
+          "text": "O novo servidor deveria ter recebido o mesmo endereço IP do antigo",
+          "correct": false,
+          "feedback": "Reutilizar IPs é frágil e nem sempre possível (subnet diferente, ambiente cloud, etc.). O problema real é que os serviços dependem de um endereço IP específico. Service discovery adequado desacopla a identidade do serviço da localização na rede."
+        },
+        {
+          "id": "rc-3",
+          "text": "Endereços IP hardcoded sem mecanismo de service discovery significam que qualquer mudança de infraestrutura quebra a comunicação inter-serviços",
+          "correct": true,
+          "feedback": "Correto! Quando serviços se encontram por IPs hardcoded, cada mudança de infraestrutura (substituição de servidor, escalonamento, failover, migração) requer atualização manual da configuração de cada serviço dependente. Isso não escala e é extremamente frágil. Service discovery — seja via DNS, um registro de serviços como Consul/Eureka, ou abstrações de serviço do Kubernetes — desacopla a identidade do serviço da localização na rede, permitindo que a infraestrutura mude sem quebrar a comunicação."
+        },
+        {
+          "id": "rc-4",
+          "text": "O Rastreador de Evidências deveria ter sido configurado para escutar em 10.0.5.31 mesmo estando em um novo servidor",
+          "correct": false,
+          "feedback": "Fazer bind a um IP que pertence a outra máquina é uma configuração de rede problemática esperando para acontecer. A solução não é forçar nova infraestrutura a imitar IPs antigos — é ter uma camada de discovery que abstraia endereços IP completamente."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor solução de longo prazo para prevenir este tipo de incidente?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Criar um arquivo de configuração compartilhado com todos os IPs dos serviços para que haja apenas um lugar para atualizar",
+          "correct": false,
+          "feedback": "Um arquivo de configuração centralizado é levemente melhor que configs espalhadas, mas ainda requer atualizações manuais quando IPs mudam. Também cria um ponto único de falha. Service discovery de verdade é dinâmico — serviços se registram automaticamente quando iniciam."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implementar um sistema de service discovery onde serviços se registram e clientes consultam endpoints dinamicamente",
+          "correct": true,
+          "feedback": "Correto! Com service discovery (baseado em DNS como CoreDNS, baseado em registro como Consul/Eureka, ou nativo da plataforma como Kubernetes Services), o Rastreador de Evidências se registra na inicialização com seu IP atual. Clientes buscam 'evidence-tracker' pelo nome em vez do IP. Quando o servidor é substituído, a nova instância se registra automaticamente e os clientes a encontram imediatamente. Sem mudanças manuais de configuração, sem IPs hardcoded, e a infraestrutura pode mudar livremente."
+        },
+        {
+          "id": "fix-3",
+          "text": "Usar um load balancer com IP estático na frente do Rastreador de Evidências para que clientes sempre se conectem ao mesmo endereço",
+          "correct": false,
+          "feedback": "Um load balancer ajuda com um único serviço, mas não resolve o problema sistêmico. Você precisaria de um load balancer para cada serviço, e esses load balancers também precisariam ser descobertos. Um sistema de service discovery adequado é a solução genérica que lida com toda comunicação inter-serviços."
+        },
+        {
+          "id": "fix-4",
+          "text": "Escrever um script automatizado que atualiza todos os arquivos de configuração sempre que o IP de um servidor mudar",
+          "correct": false,
+          "feedback": "Automatizar atualizações de config é melhor que mudanças manuais, mas ainda requer reiniciar serviços para carregar novas configs, saber quais serviços dependem de quais, e lidar com o gap entre a mudança de IP e a propagação da config. Service discovery torna tudo isso dinâmico e em tempo real."
+        }
+      ]
+    }
+  },
+  "conceptId": "service-discovery",
+  "badge": {
+    "name": "Agente de Discovery",
+    "icon": "🔭"
+  }
+}

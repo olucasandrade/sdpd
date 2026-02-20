@@ -1,0 +1,72 @@
+{
+  "header.subtitle": "Systems Design Police Dept",
+  "header.cases": "CASES",
+  "header.guide.open": "[ GUIDE ]",
+  "header.guide.close": "[ CLOSE ]",
+
+  "sidebar.clearance": "Clearance",
+
+  "caseBrief.caseFile": "Case File",
+  "caseBrief.briefing": "Briefing",
+  "caseBrief.symptoms": "Symptoms",
+  "caseBrief.objective": "Objective",
+
+  "diagnosis.diagnose": "Diagnose",
+  "diagnosis.prescribe": "Prescribe",
+  "diagnosis.correct": "CORRECT",
+  "diagnosis.incorrect": "INCORRECT",
+  "diagnosis.submit": "Submit",
+  "diagnosis.continue": "Continue",
+  "diagnosis.solveCase": "Solve Case",
+  "diagnosis.tryAgain": "Try Again",
+
+  "inspector.status": "Status",
+  "inspector.systemLogs": "System Logs",
+  "inspector.nodeData": "Node Data",
+
+  "success.caseSolved": "CASE SOLVED",
+  "success.badgeEarned": "Badge earned:",
+  "success.diagnosis": "Diagnosis:",
+  "success.fix": "Fix:",
+  "success.attempt": "attempt",
+  "success.attempts": "attempts",
+  "success.conceptUnlocked": "Concept Unlocked",
+  "success.nextCase": "Next Case",
+  "success.caseBoard": "Case Board",
+
+  "guide.title": "Concept Guide",
+  "guide.keyTerms": "Key Terms",
+  "guide.placeholder1": "Select a case to view",
+  "guide.placeholder2": "related concepts.",
+
+  "home.heroTitle1": "SYSTEMS DESIGN",
+  "home.heroTitle2": "POLICE DEPARTMENT",
+  "home.heroSubtitle": "The city of Distributia runs on distributed systems. Things keep breaking. Diagnose failures. Design solutions. Solve cases.",
+  "home.rank": "RANK",
+  "home.cases": "CASES",
+  "home.cleared": "CLEARED",
+  "home.statusCleared": "CLEARED",
+  "home.statusLocked": "LOCKED",
+  "home.open": "Open",
+
+  "case.notFound": "Case not found.",
+  "case.locked": "Complete the previous case to unlock this one.",
+  "case.backToBoard": "Back to Case Board",
+
+  "category.replication": "Replication & Redundancy",
+  "category.consistency": "Consistency & Consensus",
+  "category.loadBalancing": "Load Balancing & Scaling",
+  "category.caching": "Caching",
+  "category.messaging": "Messaging & Queues",
+  "category.storage": "Distributed Storage",
+  "category.network": "Network & Communication",
+  "category.advanced": "Advanced Patterns",
+
+  "rank.rookie": "Rookie",
+  "rank.cadet": "Cadet",
+  "rank.officer": "Officer",
+  "rank.detective": "Detective",
+  "rank.sergeant": "Sergeant",
+  "rank.lieutenant": "Lieutenant",
+  "rank.chief": "Chief"
+}

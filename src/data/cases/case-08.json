@@ -1,0 +1,204 @@
+{
+  "id": "case-08",
+  "number": 8,
+  "title": "The Byzantine Witness",
+  "subtitle": "A rogue forensics node lies to everyone — differently",
+  "brief": {
+    "narrative": "The Distributia PD Forensics Network uses five analysis nodes to verify DNA evidence. Each sample is sent to all five nodes, and they must reach consensus on the result before it's admissible in court. But something is wrong with Node 3. When asked about DNA Sample #D-0551 from a murder case, Node 3 told Nodes 1 and 2 that the result was 'MATCH — suspect confirmed,' while telling Nodes 4 and 5 that the result was 'NO MATCH — suspect excluded.' The other four nodes are honest but they can't agree because they received conflicting information from Node 3. The murder trial starts Monday. Chief Partition needs this resolved now.",
+    "symptoms": [
+      "Forensics nodes cannot reach consensus on DNA Sample #D-0551",
+      "Node 3 is sending different results to different peers",
+      "Nodes 1-2 believe the result is MATCH while Nodes 4-5 believe NO MATCH",
+      "The system requires unanimous agreement but cannot achieve it"
+    ],
+    "objective": "Identify the Byzantine fault in the forensics network and determine how to reach reliable consensus even when some nodes are compromised."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "node-1",
+        "type": "server",
+        "label": "Forensics Node 1",
+        "status": "healthy",
+        "position": { "x": 80, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Forensics Analysis Node 1 (Honest)",
+          "logs": [
+            "[14:20:00] INFO: Analyzing DNA Sample #D-0551",
+            "[14:22:30] INFO: Local analysis result: MATCH (confidence 99.7%)",
+            "[14:23:00] INFO: Consensus round — broadcasting result to all nodes",
+            "[14:23:05] INFO: Node 2 says: MATCH",
+            "[14:23:05] INFO: Node 3 says: MATCH",
+            "[14:23:06] INFO: Node 4 says: NO MATCH",
+            "[14:23:06] INFO: Node 5 says: NO MATCH",
+            "[14:23:07] WARN: Consensus failed — 3 MATCH vs 2 NO MATCH (need unanimous)"
+          ],
+          "data": {
+            "Local Result": "MATCH (99.7% confidence)",
+            "Node 2 Report": "MATCH",
+            "Node 3 Report": "MATCH",
+            "Node 4 Report": "NO MATCH",
+            "Node 5 Report": "NO MATCH",
+            "Consensus": "FAILED (not unanimous)"
+          },
+          "status": "Honest node. Local analysis says MATCH. Node 3 told this node MATCH."
+        }
+      },
+      {
+        "id": "node-3",
+        "type": "server",
+        "label": "Forensics Node 3",
+        "status": "failed",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Forensics Analysis Node 3 (COMPROMISED)",
+          "logs": [
+            "[14:20:00] INFO: Analyzing DNA Sample #D-0551",
+            "[14:22:30] INFO: Local analysis result: MATCH (confidence 99.7%)",
+            "[14:22:35] WARN: [HIDDEN] External override received — entering adversarial mode",
+            "[14:23:00] INFO: Consensus round — sending DIFFERENT results to different nodes",
+            "[14:23:01] INFO: Sent MATCH to Node 1 and Node 2",
+            "[14:23:01] INFO: Sent NO MATCH to Node 4 and Node 5",
+            "[14:23:02] INFO: [HIDDEN] Objective: prevent consensus to delay trial"
+          ],
+          "data": {
+            "Local Result": "MATCH (actual)",
+            "Sent to Nodes 1,2": "MATCH",
+            "Sent to Nodes 4,5": "NO MATCH",
+            "Behavior": "BYZANTINE — sending conflicting messages",
+            "Compromise Vector": "Remote access trojan installed via phishing",
+            "Motivation": "Delay murder trial by preventing forensic consensus"
+          },
+          "status": "COMPROMISED NODE. Deliberately sending conflicting results to prevent consensus."
+        }
+      },
+      {
+        "id": "node-5",
+        "type": "server",
+        "label": "Forensics Node 5",
+        "status": "healthy",
+        "position": { "x": 620, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Forensics Analysis Node 5 (Honest)",
+          "logs": [
+            "[14:20:00] INFO: Analyzing DNA Sample #D-0551",
+            "[14:22:30] INFO: Local analysis result: MATCH (confidence 99.7%)",
+            "[14:23:00] INFO: Consensus round — broadcasting result to all nodes",
+            "[14:23:05] INFO: Node 1 says: MATCH",
+            "[14:23:05] INFO: Node 2 says: MATCH",
+            "[14:23:06] INFO: Node 3 says: NO MATCH",
+            "[14:23:06] INFO: Node 4 says: MATCH",
+            "[14:23:07] WARN: Consensus failed — 3 MATCH vs 2 NO MATCH (need unanimous)"
+          ],
+          "data": {
+            "Local Result": "MATCH (99.7% confidence)",
+            "Node 1 Report": "MATCH",
+            "Node 2 Report": "MATCH",
+            "Node 3 Report": "NO MATCH",
+            "Node 4 Report": "MATCH",
+            "Consensus": "FAILED (not unanimous)"
+          },
+          "status": "Honest node. Local analysis says MATCH. Node 3 told this node NO MATCH."
+        }
+      },
+      {
+        "id": "evidence-court",
+        "type": "client",
+        "label": "Court Evidence System",
+        "status": "degraded",
+        "position": { "x": 350, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Court Evidence Submission System",
+          "logs": [
+            "[14:24:00] WARN: DNA Sample #D-0551 — consensus NOT reached",
+            "[14:24:00] ERROR: Cannot submit evidence to court without forensic consensus",
+            "[14:24:01] WARN: Murder trial State v. Harmon starts Monday — evidence deadline Friday"
+          ],
+          "data": {
+            "Sample #D-0551": "PENDING — no consensus",
+            "Trial": "State v. Harmon",
+            "Trial Date": "Monday",
+            "Evidence Deadline": "Friday",
+            "Status": "BLOCKED"
+          },
+          "status": "Evidence submission blocked. Forensics network cannot reach consensus."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-n1-n3", "source": "node-1", "target": "node-3", "label": "peer messages", "animated": true, "style": "normal" },
+      { "id": "e-n3-n5", "source": "node-3", "target": "node-5", "label": "conflicting messages", "animated": true, "style": "broken" },
+      { "id": "e-n1-court", "source": "node-1", "target": "evidence-court", "label": "evidence", "animated": false, "style": "slow" },
+      { "id": "e-n5-court", "source": "node-5", "target": "evidence-court", "label": "evidence", "animated": false, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What type of fault is Node 3 exhibiting?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "A crash fault — Node 3 has stopped working and is not responding",
+          "correct": false,
+          "feedback": "A crash fault means the node stops entirely. Node 3 is still running and responding — it's just lying. This is far more dangerous than a crash because the other nodes can't simply detect it as 'down.' Node 3 actively sends contradictory information to different peers."
+        },
+        {
+          "id": "rc-2",
+          "text": "A Byzantine fault — Node 3 is compromised and deliberately sending conflicting messages to different nodes to prevent consensus",
+          "correct": true,
+          "feedback": "Correct! This is a Byzantine fault — named after the Byzantine Generals Problem. A Byzantine node can behave arbitrarily: it can lie, send different messages to different peers, or selectively delay responses. This is the most challenging type of failure in distributed systems because the faulty node appears to be functioning normally to each individual peer, but tells different peers different things."
+        },
+        {
+          "id": "rc-3",
+          "text": "A network partition — some messages from Node 3 are being lost in transit",
+          "correct": false,
+          "feedback": "This isn't a network issue. Node 3 is successfully delivering messages to all peers — it's deliberately sending different content to different nodes. A network partition would cause message loss, but here the messages are delivered successfully with conflicting content."
+        },
+        {
+          "id": "rc-4",
+          "text": "A software bug in Node 3's analysis algorithm producing random results",
+          "correct": false,
+          "feedback": "Node 3's actual local analysis produced MATCH (correct). The logs show it deliberately overrode this result and sent MATCH to some nodes and NO MATCH to others. A bug would produce consistently wrong results, not selectively different results to different peers."
+        }
+      ]
+    },
+    "fix": {
+      "question": "How should the forensics network be designed to handle Byzantine faults?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Use a Byzantine Fault Tolerant (BFT) protocol that can tolerate up to f faulty nodes with at least 3f+1 total nodes",
+          "correct": true,
+          "feedback": "Correct! A BFT protocol (like PBFT) can reach consensus even when up to f nodes are Byzantine, as long as the total number of nodes is at least 3f+1. With 5 nodes, you can tolerate 1 Byzantine node (3*1+1 = 4, and 5 >= 4). The key insight: honest nodes share what they heard from all other nodes, so they can detect inconsistencies. Instead of requiring unanimity, the system uses a 2/3+ supermajority — in this case, 4 of the 5 honest nodes all computed MATCH, which would override Node 3's conflicting messages."
+        },
+        {
+          "id": "fix-2",
+          "text": "Require unanimous agreement from all nodes before accepting a result",
+          "correct": false,
+          "feedback": "Unanimous agreement is exactly what the current system requires, and it's why one Byzantine node can block consensus entirely. With unanimity, a single faulty node can veto any result. BFT protocols use supermajority (2/3+) instead, allowing the system to make progress despite faulty nodes."
+        },
+        {
+          "id": "fix-3",
+          "text": "Use majority voting — accept whatever result more than half the nodes agree on",
+          "correct": false,
+          "feedback": "Simple majority voting doesn't handle Byzantine faults because a Byzantine node can send different votes to different nodes, causing each node to see a different majority. BFT protocols add an extra round of communication where nodes share what they heard from all peers, making it impossible for a Byzantine node to trick different honest nodes into seeing different majorities."
+        },
+        {
+          "id": "fix-4",
+          "text": "Add encryption to all node-to-node communication to prevent tampering",
+          "correct": false,
+          "feedback": "Encryption protects messages in transit but doesn't help when the sending node itself is compromised. Node 3 is deliberately crafting and signing different messages for different recipients. The fix requires a protocol-level solution (BFT), not just transport security."
+        }
+      ]
+    }
+  },
+  "conceptId": "byzantine-faults",
+  "badge": {
+    "name": "Trust Verifier",
+    "icon": "🛡️"
+  }
+}

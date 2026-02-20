@@ -1,0 +1,72 @@
+{
+  "header.subtitle": "Depto. de Polícia de Design de Sistemas",
+  "header.cases": "CASOS",
+  "header.guide.open": "[ GUIA ]",
+  "header.guide.close": "[ FECHAR ]",
+
+  "sidebar.clearance": "Progresso",
+
+  "caseBrief.caseFile": "Arquivo do Caso",
+  "caseBrief.briefing": "Resumo",
+  "caseBrief.symptoms": "Sintomas",
+  "caseBrief.objective": "Objetivo",
+
+  "diagnosis.diagnose": "Diagnosticar",
+  "diagnosis.prescribe": "Prescrever",
+  "diagnosis.correct": "CORRETO",
+  "diagnosis.incorrect": "INCORRETO",
+  "diagnosis.submit": "Enviar",
+  "diagnosis.continue": "Continuar",
+  "diagnosis.solveCase": "Resolver Caso",
+  "diagnosis.tryAgain": "Tentar Novamente",
+
+  "inspector.status": "Status",
+  "inspector.systemLogs": "Logs do Sistema",
+  "inspector.nodeData": "Dados do Nó",
+
+  "success.caseSolved": "CASO RESOLVIDO",
+  "success.badgeEarned": "Distintivo ganho:",
+  "success.diagnosis": "Diagnóstico:",
+  "success.fix": "Correção:",
+  "success.attempt": "tentativa",
+  "success.attempts": "tentativas",
+  "success.conceptUnlocked": "Conceito Desbloqueado",
+  "success.nextCase": "Próximo Caso",
+  "success.caseBoard": "Painel de Casos",
+
+  "guide.title": "Guia de Conceitos",
+  "guide.keyTerms": "Termos-Chave",
+  "guide.placeholder1": "Selecione um caso para ver",
+  "guide.placeholder2": "os conceitos relacionados.",
+
+  "home.heroTitle1": "SYSTEMS DESIGN",
+  "home.heroTitle2": "POLICE DEPARTMENT",
+  "home.heroSubtitle": "A cidade de Distributia funciona com sistemas distribuídos. As coisas vivem quebrando. Diagnostique falhas. Projete soluções. Resolva casos.",
+  "home.rank": "PATENTE",
+  "home.cases": "CASOS",
+  "home.cleared": "RESOLVIDOS",
+  "home.statusCleared": "RESOLVIDO",
+  "home.statusLocked": "BLOQUEADO",
+  "home.open": "Abrir",
+
+  "case.notFound": "Caso não encontrado.",
+  "case.locked": "Complete o caso anterior para desbloquear este.",
+  "case.backToBoard": "Voltar ao Painel de Casos",
+
+  "category.replication": "Replicação & Redundância",
+  "category.consistency": "Consistência & Consenso",
+  "category.loadBalancing": "Balanceamento de Carga & Escalabilidade",
+  "category.caching": "Cache",
+  "category.messaging": "Mensageria & Filas",
+  "category.storage": "Armazenamento Distribuído",
+  "category.network": "Rede & Comunicação",
+  "category.advanced": "Padrões Avançados",
+
+  "rank.rookie": "Novato",
+  "rank.cadet": "Cadete",
+  "rank.officer": "Oficial",
+  "rank.detective": "Detetive",
+  "rank.sergeant": "Sargento",
+  "rank.lieutenant": "Tenente",
+  "rank.chief": "Chefe"
+}

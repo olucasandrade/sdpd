@@ -1,0 +1,190 @@
+{
+  "id": "case-28",
+  "number": 28,
+  "title": "O Circuit Breaker",
+  "subtitle": "Uma peça de dominó derruba toda a central de despacho",
+  "brief": {
+    "narrative": "O Sistema de Despacho 911 da DP de Distributia é uma maravilha da arquitetura de microsserviços — ou assim pensavam. Quando o Serviço de Validação de Endereço ficou fora do ar para manutenção rotineira, ninguém esperava a cascata que se seguiu. O Serviço de Despacho chama a Validação de Endereço para cada chamada 911 recebida. Sem circuit breaker, cada tentativa de chamada fica travada por 30 segundos esperando uma resposta que nunca chega. O pool de threads do Serviço de Despacho se enche de threads bloqueadas. Então o Serviço de Roteamento de Chamadas, que depende do Despacho, começa a dar timeout também. Depois o Serviço de Atribuição de Oficiais. Em três minutos, uma única janela de manutenção em um serviço não-crítico derrubou todo o pipeline de despacho de emergência. O Tenente Cascade está vendo chamadas 911 reais ficarem sem atendimento porque todos os serviços estão travados esperando por um serviço que foi deliberadamente desligado.",
+    "symptoms": [
+      "O Serviço de Validação de Endereço está offline (manutenção planejada)",
+      "Todas as threads do Serviço de Despacho bloqueadas aguardando a Validação de Endereço — 100% de utilização de threads",
+      "O Serviço de Roteamento de Chamadas dando timeout porque o Serviço de Despacho não responde",
+      "Chamadas 911 ficando sem atendimento — todo o pipeline de despacho congelado"
+    ],
+    "objective": "Identificar como a falha de um microsserviço se propagou em cascata por todo o sistema, e determinar o padrão correto para isolar falhas e prevenir quedas em cascata."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "call-routing",
+        "type": "client",
+        "label": "Call Routing Service",
+        "status": "failed",
+        "position": { "x": 80, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Roteamento de Chamadas",
+          "logs": [
+            "[09:00:15] INFO: Incoming 911 call — routing to Dispatch Service",
+            "[09:00:45] ERROR: Dispatch Service timeout after 30s",
+            "[09:01:16] ERROR: Dispatch Service timeout after 30s — call #2 lost",
+            "[09:01:50] ERROR: All outbound connections to Dispatch blocked",
+            "[09:02:00] ERROR: 14 calls in queue — no dispatch capacity available"
+          ],
+          "data": {
+            "Status": "FAILING",
+            "Pending Calls": "14 (all blocked)",
+            "Timeout to Dispatch": "30s",
+            "Calls Dropped": "9 in last 3 minutes",
+            "Circuit Breaker": "NOT IMPLEMENTED"
+          },
+          "status": "Não consegue rotear chamadas porque o Serviço de Despacho não responde. Nenhum comportamento de fallback configurado."
+        }
+      },
+      {
+        "id": "dispatch-service",
+        "type": "server",
+        "label": "Dispatch Service",
+        "status": "failed",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Despacho",
+          "logs": [
+            "[09:00:01] INFO: Processing 911 call — validating address via Address Validation Service",
+            "[09:00:31] ERROR: Address Validation timeout after 30s",
+            "[09:00:31] INFO: Retrying address validation...",
+            "[09:01:01] ERROR: Address Validation timeout — retry failed",
+            "[09:01:05] WARN: Thread pool exhausted — 50/50 threads blocked on Address Validation",
+            "[09:01:05] ERROR: Cannot accept new requests — all threads occupied"
+          ],
+          "data": {
+            "Thread Pool": "50/50 (all blocked)",
+            "Blocked On": "Address Validation Service",
+            "Timeout Setting": "30s per request",
+            "Circuit Breaker": "NOT IMPLEMENTED",
+            "Fallback": "NONE — address validation required for all dispatches"
+          },
+          "status": "Todas as threads bloqueadas aguardando respostas da Validação de Endereço que nunca chegarão."
+        }
+      },
+      {
+        "id": "address-validation",
+        "type": "server",
+        "label": "Address Validation",
+        "status": "failed",
+        "position": { "x": 620, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Validação de Endereço",
+          "logs": [
+            "[08:59:00] INFO: Shutting down for scheduled maintenance",
+            "[08:59:01] INFO: Service stopped — maintenance window: 09:00 - 09:30",
+            "[09:00:01] INFO: Incoming connection refused — service offline"
+          ],
+          "data": {
+            "Status": "OFFLINE (planned maintenance)",
+            "Maintenance Window": "09:00 - 09:30",
+            "Notification Sent": "Yes — email sent to ops team 24h ago",
+            "Expected Downtime": "30 minutes"
+          },
+          "status": "Intencionalmente offline para manutenção programada. Não aceitando conexões."
+        }
+      },
+      {
+        "id": "officer-assignment",
+        "type": "server",
+        "label": "Officer Assignment",
+        "status": "failed",
+        "position": { "x": 350, "y": 320 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Serviço de Atribuição de Oficiais",
+          "logs": [
+            "[09:01:10] INFO: Waiting for dispatch instructions...",
+            "[09:01:40] WARN: No dispatches received in 90s — unusual",
+            "[09:02:00] ERROR: Dispatch Service connection timed out",
+            "[09:02:05] ERROR: Cannot assign officers — no dispatch data available"
+          ],
+          "data": {
+            "Status": "STARVED",
+            "Dispatches Received": "0 (last 3 min)",
+            "Officers Available": "34 (idle, waiting for assignments)",
+            "Depends On": "Dispatch Service"
+          },
+          "status": "Nenhum oficial sendo despachado porque o Serviço de Despacho está congelado. Oficiais ociosos durante chamadas de emergência ativas."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-routing-dispatch", "source": "call-routing", "target": "dispatch-service", "label": "blocked (30s timeout)", "animated": false, "style": "broken" },
+      { "id": "e-dispatch-address", "source": "dispatch-service", "target": "address-validation", "label": "connection refused", "animated": false, "style": "broken" },
+      { "id": "e-dispatch-officer", "source": "dispatch-service", "target": "officer-assignment", "label": "no dispatches", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz de todo o sistema de despacho ter caído?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "A equipe de manutenção derrubou a Validação de Endereço sem gerenciamento de mudança adequado",
+          "correct": false,
+          "feedback": "A manutenção foi planejada e comunicada. Serviços ficam fora do ar — isso é esperado em sistemas distribuídos. O problema não é que a Validação de Endereço ficou offline, é que nenhum serviço na cadeia conseguiu lidar graciosamente com sua ausência. Um sistema bem projetado deve tolerar falhas de serviços individuais."
+        },
+        {
+          "id": "rc-2",
+          "text": "O Serviço de Despacho não tem circuit breaker, então bloqueia todas as threads esperando um serviço morto, propagando a falha upstream e downstream",
+          "correct": true,
+          "feedback": "Correto! Sem circuit breaker, o Serviço de Despacho continua tentando chamar a Validação de Endereço com timeout de 30 segundos por tentativa. Isso amarra todas as threads, tornando o próprio Serviço de Despacho não-responsivo. A falha então se propaga para o Roteamento de Chamadas e Atribuição de Oficiais. Um circuit breaker teria detectado as falhas rapidamente, parado de chamar o serviço morto, e retornado uma resposta de fallback ou uma falha rápida — mantendo o resto do sistema vivo."
+        },
+        {
+          "id": "rc-3",
+          "text": "O timeout de 30 segundos é longo demais, fazendo as threads ficarem bloqueadas por muito tempo",
+          "correct": false,
+          "feedback": "Um timeout mais curto ajudaria as threads a serem liberadas mais rápido, mas sem circuit breaker, você ainda esgotaria o pool de threads — apenas um pouco mais devagar. O problema fundamental é que o sistema continua chamando um serviço que sabe estar fora do ar, requisição após requisição. Um circuit breaker estanca o sangramento completamente."
+        },
+        {
+          "id": "rc-4",
+          "text": "O pool de threads do Serviço de Despacho é pequeno demais para lidar com a carga de requisições",
+          "correct": false,
+          "feedback": "Um pool de threads maior só adiaria o inevitável. Se todas as threads bloqueiam por 30 segundos em um serviço morto, até 500 threads eventualmente se encheriam. A correção não é mais threads — é parar as chamadas fúteis ao serviço morto via circuit breaker."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor abordagem para prevenir falhas em cascata?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Implementar um circuit breaker que abre após detectar falhas repetidas, retornando falhas rápidas ou respostas de fallback em vez de bloquear",
+          "correct": true,
+          "feedback": "Correto! Um circuit breaker monitora chamadas a um serviço downstream. Após um limiar de falhas (ex.: 5 em 10 segundos), ele 'dispara' e para de chamar o serviço morto completamente. Requisições subsequentes recebem imediatamente uma falha rápida ou uma resposta de fallback (como despachar sem validação de endereço). Periodicamente, ele deixa uma requisição de teste passar para verificar se o serviço se recuperou. Isso evita que a falha de um serviço consuma todos os recursos do serviço chamador."
+        },
+        {
+          "id": "fix-2",
+          "text": "Tornar a Validação de Endereço altamente disponível com deploys sem downtime para que nunca fique offline",
+          "correct": false,
+          "feedback": "Deploys sem downtime reduzem quedas planejadas, mas serviços ainda podem falhar inesperadamente (bugs, esgotamento de recursos, problemas de rede). Seu sistema deve lidar com falhas de dependências de forma graciosa independentemente. Um circuit breaker é defesa essencial para qualquer arquitetura de microsserviços."
+        },
+        {
+          "id": "fix-3",
+          "text": "Remover a dependência da Validação de Endereço embutindo os dados de endereço diretamente no Serviço de Despacho",
+          "correct": false,
+          "feedback": "Reduzir dependências desnecessárias é boa prática, mas em uma arquitetura de microsserviços você sempre terá chamadas inter-serviço. O mesmo padrão de falha em cascata ocorreria com qualquer dependência. Você precisa de uma solução genérica (circuit breaker) que funcione para todas as chamadas downstream."
+        },
+        {
+          "id": "fix-4",
+          "text": "Adicionar uma fila de mensagens entre todos os serviços para que se comuniquem assincronamente em vez de sincronamente",
+          "correct": false,
+          "feedback": "Comunicação assíncrona via filas ajuda a desacoplar serviços, mas despacho 911 requer respostas em tempo real — você não pode enfileirar uma chamada 911 e processá-la depois. Para cadeias de chamadas síncronas, circuit breakers são o padrão standard para prevenir falhas em cascata."
+        }
+      ]
+    }
+  },
+  "conceptId": "circuit-breakers",
+  "badge": {
+    "name": "Circuit Breaker",
+    "icon": "⚡"
+  }
+}

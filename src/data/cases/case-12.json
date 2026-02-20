@@ -1,0 +1,182 @@
+{
+  "id": "case-12",
+  "number": 12,
+  "title": "The Vertical Limit",
+  "subtitle": "Crime analytics server hits its hardware ceiling",
+  "brief": {
+    "narrative": "The Distributia Crime Analytics Division is in crisis. Their flagship analytics server — responsible for crunching crime pattern data across all districts — has been upgraded to the beefiest hardware money can buy: 128 cores, 1TB of RAM, the works. But it's still not enough. Response times for crime-trend queries have ballooned to 45 seconds, and the overnight batch processing of incident reports now takes 14 hours instead of 3. The vendor says there's no bigger machine available. Chief Partition wants to know why throwing more hardware at the problem isn't working and what the real solution is, Detective.",
+    "symptoms": [
+      "Crime analytics queries take 45+ seconds despite maxed-out hardware",
+      "CPU utilization is pinned at 98% during peak hours",
+      "Overnight batch processing has grown from 3 hours to 14 hours",
+      "Hardware vendor confirms no further vertical upgrades are available"
+    ],
+    "objective": "Identify why the single-server approach has hit its limit and recommend an architecture that can scale beyond one machine."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "analytics-server",
+        "type": "server",
+        "label": "Analytics Server",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Crime Analytics Server",
+          "logs": [
+            "[08:15:01] WARN: CPU utilization at 98%",
+            "[08:15:02] WARN: Memory usage at 94% (961GB/1024GB)",
+            "[08:15:10] WARN: Query queue depth: 847 pending",
+            "[08:15:22] ERROR: Query timeout for district-7 trend analysis (>45s)",
+            "[08:15:30] INFO: No horizontal scaling configured — single node only"
+          ],
+          "data": {
+            "CPU Cores": "128 (all saturated)",
+            "RAM": "1024 GB (94% used)",
+            "Status": "MAXED OUT",
+            "Pending Queries": "847",
+            "Avg Query Time": "45.2s",
+            "Max Vertical Upgrade": "Already at maximum"
+          },
+          "status": "Server hardware fully maxed. No further vertical scaling possible."
+        }
+      },
+      {
+        "id": "district-api",
+        "type": "server",
+        "label": "District API Gateway",
+        "status": "degraded",
+        "position": { "x": 350, "y": 220 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "District API Gateway",
+          "logs": [
+            "[08:15:05] WARN: Upstream analytics server response slow",
+            "[08:15:12] WARN: 312 requests queued waiting for analytics",
+            "[08:15:25] ERROR: Client timeouts increasing"
+          ],
+          "data": {
+            "Status": "SLOW",
+            "Queued Requests": "312",
+            "Upstream Targets": "1 (analytics-server only)"
+          },
+          "status": "Only one upstream analytics target. Cannot distribute load."
+        }
+      },
+      {
+        "id": "precinct-dashboard",
+        "type": "client",
+        "label": "Precinct Dashboards",
+        "status": "degraded",
+        "position": { "x": 100, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Precinct Dashboard Clients",
+          "logs": [
+            "[08:16:00] WARN: Dashboard loading time > 40s",
+            "[08:16:15] ERROR: Crime trend widget timed out"
+          ],
+          "data": {
+            "Active Users": "85",
+            "Avg Load Time": "42s",
+            "Timeout Rate": "34%"
+          },
+          "status": "Dashboards extremely slow due to analytics server bottleneck."
+        }
+      },
+      {
+        "id": "batch-processor",
+        "type": "client",
+        "label": "Batch Processor",
+        "status": "degraded",
+        "position": { "x": 600, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Overnight Batch Processor",
+          "logs": [
+            "[00:00:01] INFO: Nightly batch started",
+            "[14:12:33] WARN: Batch still running — expected completion in 3h",
+            "[14:12:34] WARN: Competing with daytime queries for CPU"
+          ],
+          "data": {
+            "Batch Duration": "14h 12m (target: 3h)",
+            "Records Processed": "12.4M",
+            "Status": "RUNNING BEHIND"
+          },
+          "status": "Batch job competing for resources on the single server."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-api-analytics", "source": "district-api", "target": "analytics-server", "label": "queries", "animated": true, "style": "slow" },
+      { "id": "e-dashboard-api", "source": "precinct-dashboard", "target": "district-api", "label": "requests", "animated": true, "style": "slow" },
+      { "id": "e-batch-analytics", "source": "batch-processor", "target": "analytics-server", "label": "batch jobs", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the analytics server's performance problem?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The server's hardware is defective and not performing to specifications",
+          "correct": false,
+          "feedback": "The hardware is working correctly — it's simply at its maximum capacity. The server is using all 128 cores and nearly all 1TB of RAM as designed."
+        },
+        {
+          "id": "rc-2",
+          "text": "The system has hit the vertical scaling limit — a single machine cannot be upgraded further to meet demand",
+          "correct": true,
+          "feedback": "Correct! Vertical scaling (adding more CPU/RAM to one machine) has a hard ceiling. When you've maxed out the biggest available server, the only path forward is horizontal scaling — distributing the workload across multiple machines."
+        },
+        {
+          "id": "rc-3",
+          "text": "The database queries are poorly optimized and need index tuning",
+          "correct": false,
+          "feedback": "While query optimization can help, the fundamental issue is that all work is concentrated on a single machine that's already at its hardware limit. Even perfectly optimized queries would still saturate one server at this scale."
+        },
+        {
+          "id": "rc-4",
+          "text": "The batch processor is running during peak hours and should be rescheduled",
+          "correct": false,
+          "feedback": "Rescheduling the batch job might provide temporary relief, but the core issue is that one machine can't handle the total workload. The batch job has grown from 3h to 14h — it now overlaps with daytime traffic regardless of when it starts."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to scale the analytics system beyond its current limits?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Implement horizontal scaling — add multiple analytics servers behind a load balancer to distribute the workload",
+          "correct": true,
+          "feedback": "Correct! Horizontal scaling (scaling out) adds more machines to share the load. A load balancer distributes queries across multiple analytics servers, and batch processing can run on dedicated nodes. Unlike vertical scaling, horizontal scaling has no hard ceiling — you can keep adding machines."
+        },
+        {
+          "id": "fix-2",
+          "text": "Wait for the next generation of server hardware with more cores and RAM",
+          "correct": false,
+          "feedback": "This just kicks the can down the road. Even if a bigger machine becomes available, demand will eventually outgrow it too. Horizontal scaling provides a sustainable path that doesn't depend on hardware generations."
+        },
+        {
+          "id": "fix-3",
+          "text": "Reduce the amount of crime data retained to lower the processing load",
+          "correct": false,
+          "feedback": "Deleting data to fit within hardware limits is a poor solution. The analytics division needs historical data for trend analysis. The architecture should scale to meet data needs, not the other way around."
+        },
+        {
+          "id": "fix-4",
+          "text": "Upgrade to a faster programming language to squeeze more performance from the same hardware",
+          "correct": false,
+          "feedback": "Even a perfectly optimized program can only use 100% of one machine's resources — which is exactly where we already are. The bottleneck is the single-machine architecture, not the software's efficiency."
+        }
+      ]
+    }
+  },
+  "conceptId": "horizontal-scaling",
+  "badge": {
+    "name": "Scale Architect",
+    "icon": "📐"
+  }
+}

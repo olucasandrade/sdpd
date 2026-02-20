@@ -1,0 +1,186 @@
+{
+  "id": "case-15",
+  "number": 15,
+  "title": "The Cache Avalanche",
+  "subtitle": "All cache entries expire simultaneously, crushing the database",
+  "brief": {
+    "narrative": "It's midnight in Distributia and the database just hit the floor. Every Saturday at midnight, the cache warming job runs and loads the entire week's crime data into Redis with a uniform 7-day TTL. Which means every Saturday at midnight, all those entries expire at exactly the same time. The database just got slammed with 2.8 million queries in under 60 seconds as every single cache miss triggered a database read. The DB server's connection pool is exhausted, queries are timing out, and the entire department is effectively blind. This has happened 3 Saturdays in a row. Chief Partition wants it fixed for good, Detective.",
+    "symptoms": [
+      "Database connection pool exhausted every Saturday at midnight",
+      "2.8 million cache misses occur within a 60-second window",
+      "Redis cache goes from 99% hit rate to 0% instantly at midnight",
+      "All services experience timeouts during the cache rebuild window"
+    ],
+    "objective": "Identify why the mass cache expiration is causing database overload and recommend a strategy to prevent synchronized expiry."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "redis-cache",
+        "type": "server",
+        "label": "Redis Cache",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Redis Cache Cluster",
+          "logs": [
+            "[00:00:00] INFO: TTL expiry triggered for batch-loaded keys",
+            "[00:00:01] WARN: 2,847,000 keys expired simultaneously",
+            "[00:00:02] INFO: Cache hit rate dropped from 99.2% to 0.1%",
+            "[00:00:03] WARN: All incoming requests are cache MISSes"
+          ],
+          "data": {
+            "Status": "EMPTY (mass expiry)",
+            "Keys Before Midnight": "2,847,000",
+            "Keys After Midnight": "312",
+            "Hit Rate": "0.1% (was 99.2%)",
+            "TTL Policy": "Uniform 7 days for all keys",
+            "Cache Warm Job": "Saturdays 00:00 — loads all keys with same TTL"
+          },
+          "status": "All keys expired at once due to identical TTL. Cache is effectively empty."
+        }
+      },
+      {
+        "id": "crime-db",
+        "type": "database",
+        "label": "Crime Database",
+        "status": "failed",
+        "position": { "x": 350, "y": 220 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Crime Database",
+          "logs": [
+            "[00:00:02] WARN: Connection pool at 100% (500/500)",
+            "[00:00:03] ERROR: Connection pool exhausted — rejecting new connections",
+            "[00:00:05] ERROR: 47,000 queries queued, avg response time > 30s",
+            "[00:00:10] FATAL: Query timeout cascade — system unresponsive"
+          ],
+          "data": {
+            "Status": "OVERWHELMED",
+            "Connection Pool": "500/500 (exhausted)",
+            "Queued Queries": "47,000+",
+            "Normal Query Rate": "~400/sec",
+            "Current Query Rate": "~47,000/sec",
+            "CPU": "100%"
+          },
+          "status": "Database crushed by thundering herd of cache-miss queries."
+        }
+      },
+      {
+        "id": "api-services",
+        "type": "server",
+        "label": "API Services",
+        "status": "degraded",
+        "position": { "x": 100, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "API Service Fleet",
+          "logs": [
+            "[00:00:03] ERROR: Cache MISS — falling through to database",
+            "[00:00:04] ERROR: Database connection timeout",
+            "[00:00:05] ERROR: 503 Service Unavailable returned to clients"
+          ],
+          "data": {
+            "Status": "FAILING",
+            "Cache Miss Rate": "99.9%",
+            "Error Rate": "87%"
+          },
+          "status": "All requests miss cache and overwhelm database."
+        }
+      },
+      {
+        "id": "dispatch",
+        "type": "client",
+        "label": "Dispatch Center",
+        "status": "failed",
+        "position": { "x": 550, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Central Dispatch",
+          "logs": [
+            "[00:00:10] ERROR: Unable to retrieve case data",
+            "[00:00:15] ERROR: Dispatch system unresponsive"
+          ],
+          "data": {
+            "Status": "OFFLINE",
+            "Pending Dispatches": "34",
+            "Occurrence": "3rd consecutive Saturday"
+          },
+          "status": "Dispatch down due to upstream failure cascade."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-api-cache", "source": "api-services", "target": "redis-cache", "label": "cache miss", "animated": true, "style": "broken" },
+      { "id": "e-api-db", "source": "api-services", "target": "crime-db", "label": "fallback queries", "animated": true, "style": "slow" },
+      { "id": "e-cache-db", "source": "redis-cache", "target": "crime-db", "label": "cache rebuild", "animated": true, "style": "slow" },
+      { "id": "e-dispatch-api", "source": "dispatch", "target": "api-services", "label": "requests", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the database being overwhelmed every Saturday at midnight?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The database is undersized and needs more connection pool capacity",
+          "correct": false,
+          "feedback": "The database handles normal load fine at ~400 queries/sec. The problem is the sudden spike to 47,000 queries/sec caused by all cache entries expiring simultaneously. A bigger connection pool would just delay the inevitable."
+        },
+        {
+          "id": "rc-2",
+          "text": "All cache entries were set with the same TTL, causing them to expire simultaneously and creating a thundering herd of database queries",
+          "correct": true,
+          "feedback": "Correct! This is a cache avalanche (also called cache stampede). When all keys share the same TTL and were set at the same time, they all expire together. The sudden flood of cache misses overwhelms the database. The fix is to add randomized jitter to TTL values so expiries are spread over time."
+        },
+        {
+          "id": "rc-3",
+          "text": "Redis is crashing at midnight due to a memory issue",
+          "correct": false,
+          "feedback": "Redis isn't crashing — it's working exactly as designed. The keys are expiring on schedule because they all have the same TTL. The issue is the expiry pattern, not Redis stability."
+        },
+        {
+          "id": "rc-4",
+          "text": "The Saturday midnight cache warming job is conflicting with normal operations",
+          "correct": false,
+          "feedback": "The cache warming job is actually the cause of the uniform TTL problem — it loads all keys at the same time with the same TTL. But the root cause is the identical TTL pattern, not the warming job itself."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to prevent the cache avalanche?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Add random jitter to cache TTLs so entries expire at different times instead of all at once",
+          "correct": true,
+          "feedback": "Correct! By adding a random offset to each key's TTL (e.g., 7 days + random 0-60 minutes), expiries are spread over time instead of happening simultaneously. This prevents the thundering herd and keeps the database load smooth. This is the standard defense against cache avalanche."
+        },
+        {
+          "id": "fix-2",
+          "text": "Double the database connection pool size to handle the spike",
+          "correct": false,
+          "feedback": "Even doubling the pool (to 1,000) can't handle 47,000+ simultaneous queries. You'd need a 100x increase, which wastes resources 99.9% of the time. It's better to prevent the spike in the first place with staggered TTLs."
+        },
+        {
+          "id": "fix-3",
+          "text": "Never let cache entries expire — keep them forever and manually update them",
+          "correct": false,
+          "feedback": "Never-expiring cache entries lead to stale data and unbounded memory growth. Expiration is a healthy cache mechanism — the problem is synchronized expiration, not expiration itself."
+        },
+        {
+          "id": "fix-4",
+          "text": "Run the cache warming job more frequently (daily instead of weekly)",
+          "correct": false,
+          "feedback": "Running the warming job daily with the same uniform TTL just shifts the avalanche to happen every night instead of weekly. The core problem — identical TTLs causing synchronized expiry — remains unchanged."
+        }
+      ]
+    }
+  },
+  "conceptId": "cache-expiry-strategies",
+  "badge": {
+    "name": "Avalanche Guard",
+    "icon": "🏔️"
+  }
+}

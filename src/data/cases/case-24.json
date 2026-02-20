@@ -1,0 +1,189 @@
+{
+  "id": "case-24",
+  "number": 24,
+  "title": "The Corrupted Archive",
+  "subtitle": "Evidence arrives corrupted but nobody knows where the damage happened",
+  "brief": {
+    "narrative": "A critical piece of digital evidence — a surveillance video file — was submitted through Distributia's evidence processing pipeline. It passed through the upload gateway, the transcoding service, and the evidence storage vault. When the forensics team tried to open the file, it was completely corrupted — unplayable garbage. The original submitting officer swears the file was fine when uploaded. Three services touched the file, and none of them performed integrity checks. The trial is in 48 hours and the prosecution's key evidence is ruined. Chief Partition needs to know where the corruption happened and how to prevent it.",
+    "symptoms": [
+      "The evidence video file is corrupted and unplayable in the storage vault",
+      "The original file was verified working at the time of upload",
+      "Three services processed the file: upload gateway, transcoder, and storage vault",
+      "No service computed or verified checksums during transfer"
+    ],
+    "objective": "Determine where in the pipeline the evidence was corrupted and recommend integrity verification controls."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "officer-upload",
+        "type": "client",
+        "label": "Officer Upload Terminal",
+        "status": "healthy",
+        "position": { "x": 80, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Officer Upload Terminal",
+          "logs": [
+            "[11:00:00] INFO: Officer uploaded evidence file 'surveillance_cam7.mp4'",
+            "[11:00:00] INFO: File size: 2.4 GB",
+            "[11:00:01] INFO: Upload started to gateway",
+            "[11:00:45] INFO: Upload complete — 200 OK from gateway"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "File": "surveillance_cam7.mp4",
+            "File Size": "2.4 GB",
+            "Checksum at Upload": "Not computed",
+            "Upload Status": "Success"
+          },
+          "status": "File uploaded successfully but no checksum was computed at the source for later verification."
+        }
+      },
+      {
+        "id": "upload-gateway",
+        "type": "server",
+        "label": "Upload Gateway",
+        "status": "healthy",
+        "position": { "x": 270, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Upload Gateway",
+          "logs": [
+            "[11:00:01] INFO: Receiving file 'surveillance_cam7.mp4'",
+            "[11:00:45] INFO: File received, size: 2.4 GB",
+            "[11:00:45] INFO: No integrity check configured — forwarding to transcoder",
+            "[11:00:46] INFO: File forwarded to Transcoding Service"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Integrity Check": "DISABLED",
+            "Checksum Verification": "None",
+            "Files Processed Today": "342"
+          },
+          "status": "Gateway accepts and forwards files without computing or verifying checksums."
+        }
+      },
+      {
+        "id": "transcoder",
+        "type": "server",
+        "label": "Transcoding Service",
+        "status": "degraded",
+        "position": { "x": 460, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Transcoding Service",
+          "logs": [
+            "[11:00:47] INFO: Received file for transcoding",
+            "[11:01:30] WARN: Memory pressure during transcode — swapping to disk",
+            "[11:02:15] WARN: Transcode buffer overflow — partial frame data lost",
+            "[11:02:45] INFO: Transcode 'complete' — output written",
+            "[11:02:45] INFO: No integrity check on output — forwarding to vault"
+          ],
+          "data": {
+            "Status": "DEGRADED",
+            "Memory Usage": "97%",
+            "Swap Usage": "4.2 GB",
+            "Transcode Errors": "buffer overflow (partial frames lost)",
+            "Output Integrity Check": "DISABLED"
+          },
+          "status": "Service ran out of memory during transcoding, causing buffer overflow and data loss. No output integrity check caught the corruption."
+        }
+      },
+      {
+        "id": "evidence-vault",
+        "type": "database",
+        "label": "Evidence Storage Vault",
+        "status": "healthy",
+        "position": { "x": 650, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Evidence Storage Vault",
+          "logs": [
+            "[11:02:46] INFO: Storing file 'surveillance_cam7_transcoded.mp4'",
+            "[11:02:50] INFO: File stored successfully",
+            "[11:02:50] INFO: No checksum verification performed on ingest"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "File Stored": "surveillance_cam7_transcoded.mp4",
+            "Stored File Size": "2.1 GB (smaller than original — suspicious)",
+            "Ingest Checksum": "Not computed",
+            "Storage Integrity": "File accepted without verification"
+          },
+          "status": "Vault stored the file without verifying its integrity. The corrupted file was accepted as-is."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-officer-gateway", "source": "officer-upload", "target": "upload-gateway", "label": "upload file", "animated": true, "style": "normal" },
+      { "id": "e-gateway-transcode", "source": "upload-gateway", "target": "transcoder", "label": "forward file", "animated": true, "style": "normal" },
+      { "id": "e-transcode-vault", "source": "transcoder", "target": "evidence-vault", "label": "store transcoded", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Where was the evidence file corrupted, and why wasn't it caught?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The file was already corrupted when the officer uploaded it",
+          "correct": false,
+          "feedback": "The officer verified the file was working before upload, and the upload completed without errors. The corruption happened downstream in the pipeline."
+        },
+        {
+          "id": "rc-2",
+          "text": "The transcoding service corrupted the file during a memory overflow, and no service in the pipeline performed integrity checks to detect or prevent it",
+          "correct": true,
+          "feedback": "Correct! The transcoding service experienced memory pressure and a buffer overflow, which caused partial frame data loss — corrupting the video. The deeper problem is that no service in the entire pipeline computes or verifies checksums. Without integrity checks at each handoff point, corruption goes undetected until someone tries to use the file."
+        },
+        {
+          "id": "rc-3",
+          "text": "The evidence vault's storage disk has bad sectors that corrupted the file on write",
+          "correct": false,
+          "feedback": "The vault logs show a successful write. The file was already corrupted when it arrived — note the suspiciously smaller file size (2.1 GB vs 2.4 GB original). The transcoder lost data before the vault even received it."
+        },
+        {
+          "id": "rc-4",
+          "text": "Network packet loss during the transfer between gateway and transcoder corrupted the file",
+          "correct": false,
+          "feedback": "TCP guarantees in-order delivery and retransmits lost packets. Network transfers over TCP don't silently corrupt data. The transcoder logs show the actual cause: memory pressure and buffer overflow during processing."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to prevent undetected evidence corruption in the future?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Compute a checksum at upload and verify it at every pipeline stage, rejecting files that don't match and alerting operators",
+          "correct": true,
+          "feedback": "Correct! End-to-end data integrity requires computing a checksum (e.g., SHA-256) at the source and verifying it at every handoff point. If the transcoder's output doesn't match expected integrity, the system can reject it immediately and alert operators — rather than silently passing corrupted data downstream."
+        },
+        {
+          "id": "fix-2",
+          "text": "Skip the transcoding step and store the original file directly",
+          "correct": false,
+          "feedback": "This avoids the specific transcoder bug but doesn't solve the general problem. Any service can corrupt data — you need integrity checks at every stage, not just removing stages."
+        },
+        {
+          "id": "fix-3",
+          "text": "Add more memory to the transcoding service so it doesn't overflow",
+          "correct": false,
+          "feedback": "More memory helps this specific failure but doesn't protect against future bugs, disk errors, or other corruption sources. Integrity checksums protect against all forms of corruption regardless of cause."
+        },
+        {
+          "id": "fix-4",
+          "text": "Have two officers independently upload the same file and compare the results",
+          "correct": false,
+          "feedback": "This is manual, error-prone, and doubles the work. Automated checksums achieve the same goal (detecting corruption) reliably and at every stage without human intervention."
+        }
+      ]
+    }
+  },
+  "conceptId": "data-integrity",
+  "badge": {
+    "name": "Integrity Inspector",
+    "icon": "✅"
+  }
+}

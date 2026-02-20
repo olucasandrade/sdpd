@@ -1,0 +1,214 @@
+{
+  "id": "case-26",
+  "number": 26,
+  "title": "The Timeout Trap",
+  "subtitle": "A slow downstream service triggers cascading timeouts across the entire system",
+  "brief": {
+    "narrative": "Every system in Distributia appears to be down. The officer mobile app shows 'Service Unavailable.' The dispatch console is frozen. The records lookup returns timeout errors. But the monitoring dashboard shows all servers are technically running — nothing has crashed. The problem is deeper: the Forensics Analysis Service (Service C) is running slow due to a heavy batch job. The Dispatch Service (B) calls Forensics and waits. The Mobile Gateway (A) calls Dispatch and waits. Every request entering the system starts a chain of waiting that eventually times out. Chief Partition is seeing a total system outage with zero crashed services.",
+    "symptoms": [
+      "All user-facing services return timeout or 'Service Unavailable' errors",
+      "No services have actually crashed — all are running and accepting connections",
+      "Response times have gone from 200ms to 30+ seconds across all endpoints",
+      "The forensics service is processing requests 100x slower than normal"
+    ],
+    "objective": "Identify why a single slow service is causing the entire system to appear down and recommend a strategy to contain the blast radius."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "mobile-app",
+        "type": "client",
+        "label": "Officer Mobile App",
+        "status": "failed",
+        "position": { "x": 80, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Officer Mobile App",
+          "logs": [
+            "[19:00:01] INFO: Request to Mobile Gateway — /api/dispatch",
+            "[19:00:31] ERROR: Request timed out after 30,000ms",
+            "[19:00:32] ERROR: Showing 'Service Unavailable' to user",
+            "[19:00:35] INFO: Retry attempt 1...",
+            "[19:01:05] ERROR: Retry timed out after 30,000ms"
+          ],
+          "data": {
+            "Status": "TIMEOUT ERRORS",
+            "Timeout Setting": "30 seconds",
+            "Requests in Flight": "0 (all timed out)",
+            "Error Rate": "100%"
+          },
+          "status": "All requests to the gateway are timing out. Officers cannot use the app."
+        }
+      },
+      {
+        "id": "gateway",
+        "type": "server",
+        "label": "Mobile Gateway (Service A)",
+        "status": "degraded",
+        "position": { "x": 270, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Mobile Gateway (Service A)",
+          "logs": [
+            "[19:00:01] INFO: Received request — calling Dispatch Service",
+            "[19:00:01] INFO: Waiting for Dispatch Service response...",
+            "[19:00:26] ERROR: Dispatch Service response timeout (25,000ms)",
+            "[19:00:26] ERROR: Returning 504 Gateway Timeout to client",
+            "[19:00:26] WARN: Thread pool: 200/200 threads blocked waiting on Dispatch"
+          ],
+          "data": {
+            "Status": "DEGRADED (all threads blocked)",
+            "Thread Pool": "200/200 in use",
+            "Timeout to Service B": "25,000ms",
+            "Circuit Breaker": "Not configured",
+            "Avg Response Time": "25,000ms (normal: 150ms)"
+          },
+          "status": "All 200 threads are blocked waiting for the Dispatch Service. No circuit breaker configured to fail fast."
+        }
+      },
+      {
+        "id": "dispatch",
+        "type": "server",
+        "label": "Dispatch Service (Service B)",
+        "status": "degraded",
+        "position": { "x": 460, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Dispatch Service (Service B)",
+          "logs": [
+            "[19:00:01] INFO: Received request — calling Forensics Service",
+            "[19:00:01] INFO: Waiting for Forensics Service response...",
+            "[19:00:21] ERROR: Forensics Service response timeout (20,000ms)",
+            "[19:00:21] ERROR: Returning 504 to Gateway",
+            "[19:00:21] WARN: Thread pool: 150/150 threads blocked waiting on Forensics"
+          ],
+          "data": {
+            "Status": "DEGRADED (all threads blocked)",
+            "Thread Pool": "150/150 in use",
+            "Timeout to Service C": "20,000ms",
+            "Circuit Breaker": "Not configured",
+            "Avg Response Time": "20,000ms (normal: 100ms)"
+          },
+          "status": "All 150 threads blocked waiting on Forensics. Propagating slowness upstream to Gateway."
+        }
+      },
+      {
+        "id": "forensics",
+        "type": "server",
+        "label": "Forensics Service (Service C)",
+        "status": "degraded",
+        "position": { "x": 650, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Forensics Analysis Service (Service C)",
+          "logs": [
+            "[18:45:00] INFO: Started batch DNA analysis job — 50,000 samples",
+            "[18:45:01] WARN: Batch job consuming 95% CPU",
+            "[19:00:01] WARN: API request received but processing at 1/100th normal speed",
+            "[19:00:18] INFO: Request processed in 18,200ms (normal: 50ms)"
+          ],
+          "data": {
+            "Status": "RUNNING (overloaded)",
+            "CPU Usage": "95% (batch job)",
+            "API Response Time": "18,200ms (normal: 50ms)",
+            "Batch Job": "DNA analysis — 50,000 samples",
+            "Request Queue": "847 pending"
+          },
+          "status": "A batch job is consuming 95% CPU, making API responses 100x slower. Still running — not crashed."
+        }
+      },
+      {
+        "id": "forensics-db",
+        "type": "database",
+        "label": "Forensics Database",
+        "status": "healthy",
+        "position": { "x": 650, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Forensics Database",
+          "logs": [
+            "[18:45:00] INFO: Batch query load increased",
+            "[19:00:00] INFO: Query response times normal"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Query Latency": "5ms (normal)",
+            "Connections": "50"
+          },
+          "status": "Database is fine. The bottleneck is the Forensics service CPU, not the database."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-app-gateway", "source": "mobile-app", "target": "gateway", "label": "HTTP (timeout 30s)", "animated": false, "style": "broken" },
+      { "id": "e-gateway-dispatch", "source": "gateway", "target": "dispatch", "label": "HTTP (timeout 25s)", "animated": true, "style": "slow" },
+      { "id": "e-dispatch-forensics", "source": "dispatch", "target": "forensics", "label": "HTTP (timeout 20s)", "animated": true, "style": "slow" },
+      { "id": "e-forensics-db", "source": "forensics", "target": "forensics-db", "label": "queries", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Why does a slow forensics service make the entire system appear down?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The forensics database is overloaded and slowing down all queries",
+          "correct": false,
+          "feedback": "The forensics database is operating normally with 5ms query latency. The bottleneck is the Forensics service's CPU being consumed by the batch job."
+        },
+        {
+          "id": "rc-2",
+          "text": "Service C's slowness cascades upward: B blocks waiting on C, A blocks waiting on B, and all thread pools fill up with waiting requests — cascading timeouts with no circuit breakers to fail fast",
+          "correct": true,
+          "feedback": "Correct! This is a cascading timeout failure. Service C is slow (not crashed), so B's threads all block waiting for C. Then A's threads block waiting for B. With no circuit breakers, each service holds its threads hostage for the full timeout duration. The entire call chain becomes a cascade of blocked threads and timeouts, making the system appear completely down even though every service is technically running."
+        },
+        {
+          "id": "rc-3",
+          "text": "A network partition is preventing services from communicating",
+          "correct": false,
+          "feedback": "The services can connect and send requests — they're just waiting a very long time for responses. This is a latency issue, not a connectivity issue."
+        },
+        {
+          "id": "rc-4",
+          "text": "The mobile app's 30-second timeout is too short",
+          "correct": false,
+          "feedback": "30 seconds is already extremely long for a user-facing request. The problem isn't the timeout value — it's that services block indefinitely on downstream calls instead of failing fast when a dependency is slow."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to prevent a slow service from taking down the entire system?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Increase all timeout values so services have more time to wait for responses",
+          "correct": false,
+          "feedback": "Longer timeouts make the problem worse — threads stay blocked even longer, and users wait even more. The system needs to fail fast, not wait longer."
+        },
+        {
+          "id": "fix-2",
+          "text": "Add circuit breakers that detect slow dependencies and fail fast, plus set aggressive timeouts and use bulkheads to isolate thread pools per dependency",
+          "correct": true,
+          "feedback": "Correct! Circuit breakers detect when a downstream service is slow/failing and short-circuit calls immediately with a fallback response. Aggressive timeouts (e.g., 2 seconds, not 20) free up threads quickly. Bulkheads isolate thread pools so one slow dependency can't consume all threads. Together, these patterns contain the blast radius of a slow service."
+        },
+        {
+          "id": "fix-3",
+          "text": "Prevent batch jobs from running on the forensics service",
+          "correct": false,
+          "feedback": "Batch jobs are a valid use case. The problem isn't that the forensics service is slow sometimes — it's that the upstream services have no way to handle a slow dependency gracefully. Any service can become slow for any reason."
+        },
+        {
+          "id": "fix-4",
+          "text": "Make all service calls asynchronous so nothing ever blocks",
+          "correct": false,
+          "feedback": "Async calls help with thread utilization but don't solve the timeout cascade by themselves. You still need circuit breakers to stop sending requests to a slow service and timeouts to bound how long you wait for a response."
+        }
+      ]
+    }
+  },
+  "conceptId": "cascading-timeouts",
+  "badge": {
+    "name": "Timeout Tamer",
+    "icon": "⏳"
+  }
+}

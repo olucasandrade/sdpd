@@ -1,0 +1,198 @@
+{
+  "id": "case-10",
+  "number": 10,
+  "title": "The Thundering Herd",
+  "subtitle": "Every precinct stampedes the database at the same moment",
+  "brief": {
+    "narrative": "Every morning at 06:00, the Distributia PD 'Most Wanted' list is refreshed. The list is cached for 24 hours, so it's fast for officers to look up throughout the day. But at 06:00:00 sharp, the cache expires. Simultaneously, patrol officers across all precincts start their shift and pull up the Most Wanted list. This morning, 2,400 officers all hit the system within the same second. With the cache empty, every single request goes straight to the database. The database buckles under the load, response times spike to 30 seconds, and the cache can't rebuild because the database is too slow to respond. For 8 agonizing minutes, no officer in the city can look up the Most Wanted list.",
+    "symptoms": [
+      "Most Wanted list cache expired at exactly 06:00:00 for all precincts simultaneously",
+      "2,400 concurrent database queries in the first second (normal: 1-2 queries)",
+      "Database response time spiked from 50ms to 30 seconds",
+      "Cache unable to rebuild because database responses are timing out"
+    ],
+    "objective": "Identify how simultaneous cache expiration caused a database stampede and determine the best caching strategy to prevent it."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "cache-server",
+        "type": "server",
+        "label": "Cache Server (Redis)",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Cache Server (Redis)",
+          "logs": [
+            "[06:00:00] INFO: Cache key 'most_wanted_list' EXPIRED (TTL: 24h)",
+            "[06:00:00] INFO: CACHE MISS — most_wanted_list",
+            "[06:00:00] INFO: CACHE MISS x 2,400 in 1 second",
+            "[06:00:01] WARN: All 2,400 requests forwarded to database",
+            "[06:00:05] WARN: Waiting for database response to rebuild cache",
+            "[06:00:35] ERROR: Database response timeout — cache not rebuilt",
+            "[06:00:36] INFO: Next wave of requests — still no cache — forwarding to database again"
+          ],
+          "data": {
+            "Cache Key": "most_wanted_list",
+            "Status": "EMPTY (expired at 06:00:00)",
+            "Cache Hit Rate (last 5 min)": "0%",
+            "Requests Forwarded to DB": "2,400/sec",
+            "Normal Forwarded Rate": "1 every 24 hours",
+            "Cache Rebuild Status": "WAITING (DB too slow to respond)"
+          },
+          "status": "Cache empty. Every request is a miss, all forwarded to database. Cannot rebuild until DB responds."
+        }
+      },
+      {
+        "id": "database",
+        "type": "database",
+        "label": "Records Database",
+        "status": "failed",
+        "position": { "x": 350, "y": 250 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Central Records Database",
+          "logs": [
+            "[05:59:59] INFO: Normal operations — 50 queries/sec, 50ms avg response",
+            "[06:00:01] WARN: Query rate spike: 2,400 queries/sec",
+            "[06:00:02] ERROR: Connection pool exhausted (max: 200)",
+            "[06:00:03] ERROR: Active queries: 200, queued: 2,200",
+            "[06:00:10] ERROR: Response time: 15,000ms",
+            "[06:00:30] ERROR: Response time: 30,000ms — queries timing out",
+            "[06:00:35] WARN: Queries from cache rebuild also timing out"
+          ],
+          "data": {
+            "Normal Query Rate": "50/sec",
+            "Current Query Rate": "2,400/sec (48x normal)",
+            "Connection Pool": "200 / 200 (EXHAUSTED)",
+            "Query Queue": "2,200 waiting",
+            "Response Time": "30,000ms (normal: 50ms)",
+            "CPU": "100%",
+            "Status": "OVERWHELMED"
+          },
+          "status": "Database overwhelmed by 2,400 simultaneous queries. Connection pool exhausted, queries timing out."
+        }
+      },
+      {
+        "id": "precinct-officers",
+        "type": "client",
+        "label": "Patrol Officers (2,400)",
+        "status": "failed",
+        "position": { "x": 100, "y": 150 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Patrol Officer Mobile Terminals",
+          "logs": [
+            "[06:00:00] INFO: Shift start — requesting Most Wanted list",
+            "[06:00:00] INFO: 2,400 officers requesting simultaneously",
+            "[06:00:05] WARN: Loading... (no response yet)",
+            "[06:00:30] ERROR: Request timeout — Most Wanted list unavailable",
+            "[06:00:31] INFO: Retrying request...",
+            "[06:00:31] WARN: Retry adds more load to already overwhelmed system"
+          ],
+          "data": {
+            "Officers on Shift": "2,400",
+            "Request Time": "06:00:00 (shift start)",
+            "Status": "TIMEOUT — cannot load Most Wanted list",
+            "Retry Behavior": "Automatic retry every 30 seconds",
+            "Impact": "Officers patrolling without Most Wanted information"
+          },
+          "status": "All patrol officers unable to access Most Wanted list at shift start."
+        }
+      },
+      {
+        "id": "admin-terminal",
+        "type": "client",
+        "label": "Admin Terminal",
+        "status": "degraded",
+        "position": { "x": 600, "y": 150 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Administrative Systems",
+          "logs": [
+            "[06:00:05] WARN: Database response times affecting all queries",
+            "[06:00:10] ERROR: Routine admin queries timing out due to DB overload",
+            "[06:00:15] WARN: Database stampede from cache miss affecting entire system"
+          ],
+          "data": {
+            "Normal Response Time": "100ms",
+            "Current Response Time": "TIMEOUT",
+            "Impact": "All database-dependent systems affected, not just Most Wanted"
+          },
+          "status": "Collateral damage — database overload from cache stampede affects all systems."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-officers-cache", "source": "precinct-officers", "target": "cache-server", "label": "2,400 requests", "animated": true, "style": "slow" },
+      { "id": "e-cache-db", "source": "cache-server", "target": "database", "label": "cache miss → DB", "animated": true, "style": "broken" },
+      { "id": "e-admin-db", "source": "admin-terminal", "target": "database", "label": "queries", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What caused the database to become overwhelmed at exactly 06:00?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The database hardware is too slow to handle normal shift-start queries",
+          "correct": false,
+          "feedback": "The database handles 50 queries/sec with 50ms response time under normal conditions — it's perfectly capable. The problem is that 2,400 queries arrive in 1 second (48x the normal rate) because the cache expired for everyone simultaneously. Under normal caching, the database only gets 1 query every 24 hours for this data."
+        },
+        {
+          "id": "rc-2",
+          "text": "A cache stampede — the cache expired simultaneously for all users, causing thousands of concurrent requests to hit the database at the same instant",
+          "correct": true,
+          "feedback": "Correct! This is a cache stampede (also called a thundering herd). When a popular cache entry expires, every concurrent request finds the cache empty and falls through to the database simultaneously. The database is designed to handle 50 queries/sec but receives 2,400 in one second. It becomes so overloaded that it can't even respond to the single query needed to rebuild the cache, creating a vicious cycle."
+        },
+        {
+          "id": "rc-3",
+          "text": "The cache server crashed and lost all its data",
+          "correct": false,
+          "feedback": "The cache server is working correctly — it didn't crash. The cache entry legitimately expired after its 24-hour TTL. The cache is functioning as configured; the problem is that the TTL expiration pattern causes a thundering herd."
+        },
+        {
+          "id": "rc-4",
+          "text": "Too many officers starting their shifts at the same time",
+          "correct": false,
+          "feedback": "Officers starting shifts at 06:00 is normal and expected. Under proper caching, the first request rebuilds the cache and the other 2,399 requests are served from cache in microseconds. The problem is that the cache expires right when demand is highest, causing all requests to bypass the cache."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best strategy to prevent a cache stampede?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Increase the database connection pool to handle 2,400 simultaneous queries",
+          "correct": false,
+          "feedback": "More connections doesn't help if the database CPU can't handle the load. And you'd be optimizing for a pathological case that should never happen with proper caching. The goal is to prevent the stampede, not to survive it."
+        },
+        {
+          "id": "fix-2",
+          "text": "Use cache lock (mutex) so only one request rebuilds the cache while others wait, combined with staggered TTLs (jitter) to prevent simultaneous expiration",
+          "correct": true,
+          "feedback": "Correct! Two complementary techniques solve this: (1) Cache lock / request coalescing: When the cache is empty, only ONE request is allowed through to the database to rebuild the cache. All other requests wait for that single rebuild to complete, then are served from the fresh cache. This turns 2,400 DB queries into 1. (2) TTL jitter: Add random variation to cache expiration times so entries don't all expire at the same instant. Together, these eliminate the stampede pattern entirely."
+        },
+        {
+          "id": "fix-3",
+          "text": "Never expire the cache — keep the Most Wanted list cached forever",
+          "correct": false,
+          "feedback": "An infinitely cached list would become stale — new suspects would never appear, and cleared suspects would remain listed. You need cache expiration to ensure data freshness. The solution is to manage HOW the cache refreshes, not to avoid refreshing entirely."
+        },
+        {
+          "id": "fix-4",
+          "text": "Pre-warm the cache at 05:59 by running the query before the old cache expires",
+          "correct": false,
+          "feedback": "Pre-warming helps for this specific use case but doesn't solve the general problem. What about other cached data with unpredictable access patterns? Cache lock and TTL jitter are general-purpose solutions that work for any cached data, not just scheduled refreshes."
+        }
+      ]
+    }
+  },
+  "conceptId": "cache-stampede",
+  "badge": {
+    "name": "Stampede Stopper",
+    "icon": "🐂"
+  }
+}

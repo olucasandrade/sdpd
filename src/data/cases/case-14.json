@@ -1,0 +1,180 @@
+{
+  "id": "case-14",
+  "number": 14,
+  "title": "The Ghost Record",
+  "subtitle": "A deleted criminal record keeps haunting the system",
+  "brief": {
+    "narrative": "A high-profile case just got thrown out of court — and it's Distributia PD's fault. Three weeks ago, a suspect's criminal record was officially expunged by court order. The database team confirmed deletion from the main records database. But officers in the field still see the record when they run lookups. The suspect was pulled over yesterday, the officer saw 'prior felony' on their screen, and escalated the stop unnecessarily. The suspect's lawyer is filing a civil rights complaint. How is a deleted record still appearing? Chief Partition needs answers before the press conference, Detective.",
+    "symptoms": [
+      "Expunged criminal record still appears in officer lookups",
+      "Database confirms the record was deleted 3 weeks ago",
+      "Multiple precincts report seeing the ghost record",
+      "Cache shows TTL of 30 days — record won't naturally expire for another 9 days"
+    ],
+    "objective": "Identify why a deleted database record is still being served to users, and recommend a proper cache invalidation strategy."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "records-db",
+        "type": "database",
+        "label": "Records Database",
+        "status": "healthy",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Criminal Records Database",
+          "logs": [
+            "[3 weeks ago] INFO: DELETE record #CR-8847 executed (court order #2024-1192)",
+            "[3 weeks ago] INFO: Record #CR-8847 confirmed removed from all tables",
+            "[Today] INFO: Query for #CR-8847 returns: NO RECORD FOUND"
+          ],
+          "data": {
+            "Status": "HEALTHY",
+            "Record #CR-8847": "DELETED (3 weeks ago)",
+            "Deletion Confirmed": "Yes — court order #2024-1192"
+          },
+          "status": "Database is correct. Record was properly deleted."
+        }
+      },
+      {
+        "id": "cache-layer",
+        "type": "server",
+        "label": "Redis Cache",
+        "status": "degraded",
+        "position": { "x": 350, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Redis Cache Layer",
+          "logs": [
+            "[3 weeks ago] INFO: Cache entry for #CR-8847 created with TTL 30d",
+            "[Today] INFO: Cache HIT for #CR-8847 — serving cached data",
+            "[Today] WARN: No cache invalidation triggered on record deletion",
+            "[Today] INFO: TTL remaining for #CR-8847: 9 days"
+          ],
+          "data": {
+            "Status": "SERVING STALE DATA",
+            "Cache Key": "record:CR-8847",
+            "Cached Value": "{name: 'J. Doe', priors: 'felony', status: 'active'}",
+            "TTL Remaining": "9 days",
+            "Invalidation Policy": "None — TTL expiry only"
+          },
+          "status": "Cache still holds the deleted record. No invalidation was triggered on delete."
+        }
+      },
+      {
+        "id": "api-server",
+        "type": "server",
+        "label": "Lookup API",
+        "status": "healthy",
+        "position": { "x": 100, "y": 350 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Record Lookup API",
+          "logs": [
+            "[Today 09:15:00] INFO: Lookup request for #CR-8847",
+            "[Today 09:15:00] INFO: Cache HIT — returning cached result",
+            "[Today 09:15:00] INFO: Database NOT queried (cache served response)"
+          ],
+          "data": {
+            "Cache Hit Rate": "94%",
+            "DB Queries Bypassed": "94% of lookups",
+            "Invalidation on Write": "NOT CONFIGURED"
+          },
+          "status": "API serves cached data without checking if source record still exists."
+        }
+      },
+      {
+        "id": "officer-terminal",
+        "type": "client",
+        "label": "Officer MDT",
+        "status": "degraded",
+        "position": { "x": 550, "y": 350 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Mobile Data Terminal",
+          "logs": [
+            "[Today 09:15:01] INFO: Record lookup for suspect returned: PRIOR FELONY",
+            "[Today 09:15:02] WARN: Officer escalated stop based on displayed record"
+          ],
+          "data": {
+            "Displayed Record": "Prior felony — ACTIVE",
+            "Actual Record": "EXPUNGED (deleted 3 weeks ago)",
+            "Data Source": "Served from cache, not database"
+          },
+          "status": "Displaying stale cached data that no longer exists in the database."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-cache-db", "source": "cache-layer", "target": "records-db", "label": "read-through", "animated": false, "style": "normal" },
+      { "id": "e-api-cache", "source": "api-server", "target": "cache-layer", "label": "cache lookup", "animated": true, "style": "normal" },
+      { "id": "e-terminal-api", "source": "officer-terminal", "target": "api-server", "label": "lookup request", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the deleted record still appearing in lookups?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The database deletion failed silently and the record still exists",
+          "correct": false,
+          "feedback": "The database logs confirm the record was successfully deleted — querying the database directly returns 'NO RECORD FOUND.' The stale data is coming from elsewhere in the system."
+        },
+        {
+          "id": "rc-2",
+          "text": "The cache was never invalidated when the record was deleted — it's serving stale data until TTL expires",
+          "correct": true,
+          "feedback": "Correct! The cache has a 30-day TTL and no invalidation-on-write policy. When the record was deleted from the database, nobody told the cache. It will keep serving the ghost record for 9 more days. This is the classic cache invalidation problem."
+        },
+        {
+          "id": "rc-3",
+          "text": "The officer's terminal has a local cache that hasn't been refreshed",
+          "correct": false,
+          "feedback": "The terminal fetches data from the API in real-time. The stale data is being served by the Redis cache layer, not a local terminal cache. The terminal is displaying exactly what the API returns."
+        },
+        {
+          "id": "rc-4",
+          "text": "A database replication lag is causing the deletion to not propagate yet",
+          "correct": false,
+          "feedback": "The deletion happened 3 weeks ago — replication lag would be resolved within seconds or minutes, not weeks. The database itself correctly shows the record as deleted. The problem is the cache layer."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to prevent ghost records from appearing after deletion?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Reduce the cache TTL from 30 days to 5 minutes so stale data clears quickly",
+          "correct": false,
+          "feedback": "A shorter TTL reduces the staleness window but doesn't eliminate it. For 5 minutes after any deletion, officers would still see ghost records. For legally expunged records, even 5 minutes of stale data is unacceptable. Active invalidation is needed."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implement cache invalidation on write — automatically delete or update cache entries when database records change",
+          "correct": true,
+          "feedback": "Correct! Write-through or write-behind cache invalidation ensures that when a record is deleted (or updated) in the database, the corresponding cache entry is immediately invalidated. This way, the next lookup will miss the cache, hit the database, and get the correct result."
+        },
+        {
+          "id": "fix-3",
+          "text": "Disable caching entirely for criminal records to always get fresh data",
+          "correct": false,
+          "feedback": "Disabling the cache would solve the staleness issue but would dramatically increase database load. With a 94% cache hit rate, removing the cache means 16x more database queries. The right approach is smarter caching, not no caching."
+        },
+        {
+          "id": "fix-4",
+          "text": "Add a manual 'flush cache' button for database administrators to use after deletions",
+          "correct": false,
+          "feedback": "Manual cache flushing is error-prone and doesn't scale. Humans will forget. Cache invalidation should be automated and triggered by database write operations, not by manual processes."
+        }
+      ]
+    }
+  },
+  "conceptId": "cache-invalidation",
+  "badge": {
+    "name": "Cache Hunter",
+    "icon": "👻"
+  }
+}

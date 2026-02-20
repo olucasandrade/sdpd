@@ -1,0 +1,186 @@
+{
+  "id": "case-15",
+  "number": 15,
+  "title": "A Avalanche de Cache",
+  "subtitle": "Todas as entradas de cache expiram simultaneamente, esmagando o banco de dados",
+  "brief": {
+    "narrative": "É meia-noite em Distributia e o banco de dados acabou de colapsar. Todo sábado à meia-noite, o job de aquecimento de cache roda e carrega todos os dados criminais da semana no Redis com um TTL uniforme de 7 dias. Isso significa que todo sábado à meia-noite, todas essas entradas expiram exatamente ao mesmo tempo. O banco de dados acabou de receber 2,8 milhões de consultas em menos de 60 segundos, já que cada cache miss disparou uma leitura no banco. O pool de conexões do servidor de banco de dados está esgotado, consultas estão expirando por timeout, e todo o departamento está efetivamente às cegas. Isso já aconteceu 3 sábados seguidos. O Chefe Partition quer que seja resolvido de vez, Detetive.",
+    "symptoms": [
+      "Pool de conexões do banco de dados esgotado todo sábado à meia-noite",
+      "2,8 milhões de cache misses ocorrem dentro de uma janela de 60 segundos",
+      "Cache Redis vai de 99% de taxa de acerto para 0% instantaneamente à meia-noite",
+      "Todos os serviços experimentam timeouts durante a janela de reconstrução do cache"
+    ],
+    "objective": "Identificar por que a expiração em massa do cache está causando sobrecarga no banco de dados e recomendar uma estratégia para evitar expiração sincronizada."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "redis-cache",
+        "type": "server",
+        "label": "Redis Cache",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Cluster de Cache Redis",
+          "logs": [
+            "[00:00:00] INFO: TTL expiry triggered for batch-loaded keys",
+            "[00:00:01] WARN: 2,847,000 keys expired simultaneously",
+            "[00:00:02] INFO: Cache hit rate dropped from 99.2% to 0.1%",
+            "[00:00:03] WARN: All incoming requests are cache MISSes"
+          ],
+          "data": {
+            "Status": "EMPTY (mass expiry)",
+            "Keys Before Midnight": "2,847,000",
+            "Keys After Midnight": "312",
+            "Hit Rate": "0.1% (was 99.2%)",
+            "TTL Policy": "Uniform 7 days for all keys",
+            "Cache Warm Job": "Saturdays 00:00 — loads all keys with same TTL"
+          },
+          "status": "Todas as chaves expiraram de uma vez devido a TTL idêntico. Cache está efetivamente vazio."
+        }
+      },
+      {
+        "id": "crime-db",
+        "type": "database",
+        "label": "Crime Database",
+        "status": "failed",
+        "position": { "x": 350, "y": 220 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados Criminal",
+          "logs": [
+            "[00:00:02] WARN: Connection pool at 100% (500/500)",
+            "[00:00:03] ERROR: Connection pool exhausted — rejecting new connections",
+            "[00:00:05] ERROR: 47,000 queries queued, avg response time > 30s",
+            "[00:00:10] FATAL: Query timeout cascade — system unresponsive"
+          ],
+          "data": {
+            "Status": "OVERWHELMED",
+            "Connection Pool": "500/500 (exhausted)",
+            "Queued Queries": "47,000+",
+            "Normal Query Rate": "~400/sec",
+            "Current Query Rate": "~47,000/sec",
+            "CPU": "100%"
+          },
+          "status": "Banco de dados esmagado pela avalanche de consultas de cache miss."
+        }
+      },
+      {
+        "id": "api-services",
+        "type": "server",
+        "label": "API Services",
+        "status": "degraded",
+        "position": { "x": 100, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Frota de Serviços de API",
+          "logs": [
+            "[00:00:03] ERROR: Cache MISS — falling through to database",
+            "[00:00:04] ERROR: Database connection timeout",
+            "[00:00:05] ERROR: 503 Service Unavailable returned to clients"
+          ],
+          "data": {
+            "Status": "FAILING",
+            "Cache Miss Rate": "99.9%",
+            "Error Rate": "87%"
+          },
+          "status": "Todas as requisições passam direto pelo cache e sobrecarregam o banco de dados."
+        }
+      },
+      {
+        "id": "dispatch",
+        "type": "client",
+        "label": "Dispatch Center",
+        "status": "failed",
+        "position": { "x": 550, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Central de Despacho",
+          "logs": [
+            "[00:00:10] ERROR: Unable to retrieve case data",
+            "[00:00:15] ERROR: Dispatch system unresponsive"
+          ],
+          "data": {
+            "Status": "OFFLINE",
+            "Pending Dispatches": "34",
+            "Occurrence": "3rd consecutive Saturday"
+          },
+          "status": "Despacho fora do ar devido à cascata de falhas upstream."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-api-cache", "source": "api-services", "target": "redis-cache", "label": "cache miss", "animated": true, "style": "broken" },
+      { "id": "e-api-db", "source": "api-services", "target": "crime-db", "label": "fallback queries", "animated": true, "style": "slow" },
+      { "id": "e-cache-db", "source": "redis-cache", "target": "crime-db", "label": "cache rebuild", "animated": true, "style": "slow" },
+      { "id": "e-dispatch-api", "source": "dispatch", "target": "api-services", "label": "requests", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz do banco de dados ficar sobrecarregado todo sábado à meia-noite?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O banco de dados está subdimensionado e precisa de mais capacidade no pool de conexões",
+          "correct": false,
+          "feedback": "O banco de dados lida com a carga normal bem a ~400 consultas/seg. O problema é o pico repentino para 47.000 consultas/seg causado por todas as entradas de cache expirando simultaneamente. Um pool de conexões maior apenas atrasaria o inevitável."
+        },
+        {
+          "id": "rc-2",
+          "text": "Todas as entradas de cache foram configuradas com o mesmo TTL, causando expiração simultânea e criando uma avalanche de consultas ao banco de dados",
+          "correct": true,
+          "feedback": "Correto! Isto é uma avalanche de cache (também chamada de cache stampede). Quando todas as chaves compartilham o mesmo TTL e foram configuradas ao mesmo tempo, todas expiram juntas. A inundação repentina de cache misses sobrecarrega o banco de dados. A solução é adicionar jitter aleatório aos valores de TTL para que as expirações sejam distribuídas ao longo do tempo."
+        },
+        {
+          "id": "rc-3",
+          "text": "O Redis está caindo à meia-noite devido a um problema de memória",
+          "correct": false,
+          "feedback": "O Redis não está caindo — está funcionando exatamente como projetado. As chaves estão expirando no prazo porque todas têm o mesmo TTL. O problema é o padrão de expiração, não a estabilidade do Redis."
+        },
+        {
+          "id": "rc-4",
+          "text": "O job de aquecimento de cache de sábado à meia-noite está conflitando com operações normais",
+          "correct": false,
+          "feedback": "O job de aquecimento de cache é na verdade a causa do problema de TTL uniforme — ele carrega todas as chaves ao mesmo tempo com o mesmo TTL. Mas a causa raiz é o padrão de TTL idêntico, não o job de aquecimento em si."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor solução para prevenir a avalanche de cache?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Adicionar jitter aleatório aos TTLs do cache para que as entradas expirem em momentos diferentes em vez de todas de uma vez",
+          "correct": true,
+          "feedback": "Correto! Ao adicionar um deslocamento aleatório ao TTL de cada chave (ex.: 7 dias + aleatório de 0-60 minutos), as expirações são distribuídas ao longo do tempo em vez de acontecerem simultaneamente. Isso previne a debandada e mantém a carga do banco de dados suave. Esta é a defesa padrão contra avalanche de cache."
+        },
+        {
+          "id": "fix-2",
+          "text": "Dobrar o tamanho do pool de conexões do banco de dados para suportar o pico",
+          "correct": false,
+          "feedback": "Mesmo dobrando o pool (para 1.000) não é possível lidar com 47.000+ consultas simultâneas. Seria necessário um aumento de 100x, o que desperdiça recursos 99,9% do tempo. É melhor prevenir o pico em primeiro lugar com TTLs escalonados."
+        },
+        {
+          "id": "fix-3",
+          "text": "Nunca deixar as entradas de cache expirarem — mantê-las para sempre e atualizar manualmente",
+          "correct": false,
+          "feedback": "Entradas de cache que nunca expiram levam a dados desatualizados e crescimento ilimitado de memória. Expiração é um mecanismo saudável de cache — o problema é expiração sincronizada, não expiração em si."
+        },
+        {
+          "id": "fix-4",
+          "text": "Executar o job de aquecimento de cache com mais frequência (diariamente em vez de semanalmente)",
+          "correct": false,
+          "feedback": "Executar o job de aquecimento diariamente com o mesmo TTL uniforme apenas muda a avalanche para acontecer toda noite em vez de semanalmente. O problema central — TTLs idênticos causando expiração sincronizada — permanece inalterado."
+        }
+      ]
+    }
+  },
+  "conceptId": "cache-expiry-strategies",
+  "badge": {
+    "name": "Guarda da Avalanche",
+    "icon": "🏔️"
+  }
+}

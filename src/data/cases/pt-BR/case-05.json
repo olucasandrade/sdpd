@@ -1,0 +1,200 @@
+{
+  "id": "case-05",
+  "number": 5,
+  "title": "O Voto Fantasma",
+  "subtitle": "Bloqueio da sala de evidências falha quando múltiplos nós reivindicam liderança",
+  "brief": {
+    "narrative": "A sala de evidências da Polícia de Distributia usa um serviço de lock distribuído para garantir que apenas um funcionário possa retirar uma peça de evidência por vez. Hoje à noite, o nó líder do serviço de lock caiu em um momento crítico — bem no meio de uma eleição de líder. Agora três nós acreditam ser o novo líder, e três funcionários diferentes receberam acesso simultâneo à mesma arma do crime (Evidência #7781). A cadeia de custódia foi comprometida. O advogado de defesa já está entrando com moção para anular o caso. Detetive, desemaranhe esse desastre eleitoral antes que o caso desmorone.",
+    "symptoms": [
+      "Três nós do serviço de lock reivindicam ser o líder",
+      "A Evidência #7781 foi retirada simultaneamente por três funcionários diferentes",
+      "A integridade da cadeia de custódia foi violada",
+      "O serviço de lock está concedendo locks conflitantes para os mesmos itens de evidência"
+    ],
+    "objective": "Determinar como o processo de eleição de líder falhou e identificar o mecanismo adequado para garantir que exatamente um líder seja eleito."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "lock-node-1",
+        "type": "server",
+        "label": "Lock Node 1",
+        "status": "degraded",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Nó 1 do Serviço de Lock",
+          "logs": [
+            "[21:30:00] INFO: Leader (Node 0) heartbeat received",
+            "[21:30:05] WARN: Leader heartbeat missed",
+            "[21:30:08] WARN: Leader heartbeat missed (2nd)",
+            "[21:30:10] INFO: Election timeout reached — starting election for term 4",
+            "[21:30:10] INFO: Voted for SELF in term 4",
+            "[21:30:11] INFO: Received vote from Node 3 for term 4",
+            "[21:30:11] INFO: Received 2/5 votes — declaring self LEADER",
+            "[21:30:12] WARN: Node 2 also claims leadership for term 4"
+          ],
+          "data": {
+            "Role": "LEADER (self-declared)",
+            "Term": "4",
+            "Votes Received": "2 of 5 (self + Node 3)",
+            "Quorum Required": "3 of 5",
+            "Quorum Met": "NO",
+            "Locks Granted": "Evidence #7781 → Clerk Adams"
+          },
+          "status": "Declarou liderança com apenas 2/5 votos — quórum de 3 NÃO foi atingido."
+        }
+      },
+      {
+        "id": "lock-node-2",
+        "type": "server",
+        "label": "Lock Node 2",
+        "status": "degraded",
+        "position": { "x": 400, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Nó 2 do Serviço de Lock",
+          "logs": [
+            "[21:30:00] INFO: Leader (Node 0) heartbeat received",
+            "[21:30:06] WARN: Leader heartbeat missed",
+            "[21:30:09] INFO: Election timeout reached — starting election for term 4",
+            "[21:30:09] INFO: Voted for SELF in term 4",
+            "[21:30:10] INFO: Received vote from Node 4 for term 4",
+            "[21:30:10] INFO: Received 2/5 votes — declaring self LEADER",
+            "[21:30:11] WARN: Node 1 also claims leadership for term 4"
+          ],
+          "data": {
+            "Role": "LEADER (self-declared)",
+            "Term": "4",
+            "Votes Received": "2 of 5 (self + Node 4)",
+            "Quorum Required": "3 of 5",
+            "Quorum Met": "NO",
+            "Locks Granted": "Evidence #7781 → Clerk Baker"
+          },
+          "status": "Declarou liderança com apenas 2/5 votos — quórum de 3 NÃO foi atingido."
+        }
+      },
+      {
+        "id": "lock-node-0",
+        "type": "server",
+        "label": "Lock Node 0 (Old Leader)",
+        "status": "failed",
+        "position": { "x": 250, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Nó 0 do Serviço de Lock (Antigo Líder)",
+          "logs": [
+            "[21:29:55] INFO: Operating as LEADER for term 3",
+            "[21:29:58] INFO: Sending heartbeat to followers",
+            "[21:30:00] ERROR: Out of memory — process killed by OOM killer",
+            "[21:30:00] FATAL: Lock service process terminated"
+          ],
+          "data": {
+            "Role": "OFFLINE (former leader)",
+            "Term": "3",
+            "Cause of Death": "OOM killer — memory leak in lock table",
+            "Locks Held at Crash": "12 active locks",
+            "Status": "OFFLINE"
+          },
+          "status": "Caiu por OOM. Era o líder do termo 3 antes de ficar offline."
+        }
+      },
+      {
+        "id": "evidence-room",
+        "type": "client",
+        "label": "Evidence Room System",
+        "status": "degraded",
+        "position": { "x": 250, "y": 370 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Controle de Acesso da Sala de Evidências",
+          "logs": [
+            "[21:30:12] INFO: Lock granted for Evidence #7781 by Node 1 → Clerk Adams",
+            "[21:30:13] INFO: Lock granted for Evidence #7781 by Node 2 → Clerk Baker",
+            "[21:30:15] WARN: CONFLICT — Evidence #7781 checked out by 2 clerks simultaneously",
+            "[21:30:15] ERROR: Chain of custody violation detected"
+          ],
+          "data": {
+            "Evidence #7781": "CONFLICT — 2 concurrent checkouts",
+            "Clerk Adams": "Checked out via Node 1",
+            "Clerk Baker": "Checked out via Node 2",
+            "Chain of Custody": "COMPROMISED",
+            "Total Active Conflicts": "3 evidence items"
+          },
+          "status": "Múltiplos nós de lock concedendo locks conflitantes. Integridade da cadeia de custódia comprometida."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-node1-evidence", "source": "lock-node-1", "target": "evidence-room", "label": "lock grant", "animated": true, "style": "normal" },
+      { "id": "e-node2-evidence", "source": "lock-node-2", "target": "evidence-room", "label": "lock grant", "animated": true, "style": "normal" },
+      { "id": "e-node0-node1", "source": "lock-node-0", "target": "lock-node-1", "label": "heartbeat", "animated": false, "style": "broken" },
+      { "id": "e-node0-node2", "source": "lock-node-0", "target": "lock-node-2", "label": "heartbeat", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "O que fez múltiplos nós reivindicarem liderança simultaneamente?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O antigo líder (Nó 0) caiu e enviou dados corrompidos que confundiram os outros nós",
+          "correct": false,
+          "feedback": "O Nó 0 caiu de forma limpa por OOM kill — não enviou dados corrompidos. O problema é que os nós sobreviventes iniciaram uma eleição mas não exigiram maioria adequada (quórum) antes de se declararem líder."
+        },
+        {
+          "id": "rc-2",
+          "text": "O processo de eleição não exige quórum de maioria estrita — nós declararam liderança sem receber votos da maioria do cluster",
+          "correct": true,
+          "feedback": "Correto! Tanto o Nó 1 quanto o Nó 2 se declararam líder com apenas 2 de 5 votos cada. Um protocolo de eleição de líder correto (como Raft) exige maioria estrita — pelo menos 3 de 5 votos. Como cada nó só pode votar uma vez por termo, a maioria estrita garante no máximo um líder por termo. O bug aqui é que os nós aceitaram liderança sem atingir quórum."
+        },
+        {
+          "id": "rc-3",
+          "text": "Ambos os nós iniciaram suas eleições exatamente ao mesmo tempo, causando uma condição de corrida",
+          "correct": false,
+          "feedback": "Eleições simultâneas são esperadas em sistemas distribuídos — é por isso que protocolos como Raft usam timeouts de eleição aleatorizados para reduzir a chance de votos divididos. Mas o verdadeiro problema é que os nós aceitaram liderança com apenas 2/5 votos ao invés de exigir a maioria (3/5)."
+        },
+        {
+          "id": "rc-4",
+          "text": "A rede entre o Nó 1 e o Nó 2 está particionada, então eles não conseguem ver a reivindicação de liderança um do outro",
+          "correct": false,
+          "feedback": "Os logs mostram que ambos os nós estão cientes da reivindicação de liderança um do outro (eles registram alertas sobre isso). Os nós conseguem se comunicar — eles apenas não possuem uma regra impedindo múltiplos líderes. A solução é exigir quórum de maioria, que matematicamente impede dois líderes."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Como o processo de eleição de líder deve ser corrigido?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Exigir quórum de maioria estrita (3 de 5 nós) para vencer uma eleição, e garantir que cada nó vote apenas uma vez por termo",
+          "correct": true,
+          "feedback": "Correto! Um quórum de maioria estrita garante no máximo um líder por termo porque a maioria de um conjunto só pode se sobrepor — não se dividir completamente. Se o Nó 1 obtiver 3 votos, não sobram votos suficientes para o Nó 2 também obter 3. Combinado com a regra de que cada nó vota apenas uma vez por termo, esta é a base do algoritmo de consenso Raft."
+        },
+        {
+          "id": "fix-2",
+          "text": "Usar timestamps para escolher o nó que iniciou a eleição primeiro como líder",
+          "correct": false,
+          "feedback": "A sincronização de relógios em sistemas distribuídos não é confiável — nós podem discordar sobre que horas são (isso é abordado em um caso futuro!). A eleição de líder não deve depender de relógios sincronizados. Votação baseada em quórum não precisa de relógios."
+        },
+        {
+          "id": "fix-3",
+          "text": "Designar um líder de backup fixo para que não haja necessidade de eleição",
+          "correct": false,
+          "feedback": "Um backup fixo introduz um novo ponto único de falha — o que acontece quando tanto o primário quanto o backup designado estão fora do ar? Eleições baseadas em quórum permitem que qualquer nó se torne líder, proporcionando flexibilidade e tolerância a falhas."
+        },
+        {
+          "id": "fix-4",
+          "text": "Adicionar um atraso após a queda do antigo líder antes de permitir o início de eleições",
+          "correct": false,
+          "feedback": "Um atraso reduz a chance de eleições simultâneas mas não previne o problema fundamental — múltiplos líderes por falta de quórum. Você ainda precisaria da regra de quórum. Além disso, atrasos maiores significam indisponibilidades mais longas quando um failover real é necessário."
+        }
+      ]
+    }
+  },
+  "conceptId": "leader-election",
+  "badge": {
+    "name": "Oficial de Eleição",
+    "icon": "🗳️"
+  }
+}

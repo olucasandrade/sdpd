@@ -1,0 +1,184 @@
+{
+  "id": "case-16",
+  "number": 16,
+  "title": "The Dog Pile",
+  "subtitle": "Hundreds of requests stampede to rebuild a single cache entry",
+  "brief": {
+    "narrative": "Distributia's Most Wanted page is the department's most popular endpoint — 500 requests per second during peak hours. The cache entry for the top-10 most wanted list just expired, and in the 200 milliseconds it takes to rebuild it from the database, 100 simultaneous requests all saw a cache miss. All 100 independently hit the database with the exact same expensive query. The database buckled under the duplicate load, the query took 3 seconds instead of 200ms, and during those 3 seconds another 1,500 requests piled on. It's a dog pile, Detective, and Chief Partition wants to know why one missing cache key brought the system to its knees.",
+    "symptoms": [
+      "100+ identical database queries executed simultaneously for the same data",
+      "Most Wanted page response time spiked from 50ms to 12 seconds",
+      "Database CPU spiked to 100% from duplicate rebuild queries",
+      "Problem self-resolved after cache was rebuilt but caused 15 seconds of degradation"
+    ],
+    "objective": "Identify why a single cache key expiration triggered a stampede of duplicate queries and recommend a locking strategy to prevent it."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "cache",
+        "type": "server",
+        "label": "Redis Cache",
+        "status": "degraded",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Redis Cache",
+          "logs": [
+            "[10:30:00.000] INFO: Key 'most-wanted-top10' expired (TTL reached)",
+            "[10:30:00.001] INFO: Cache MISS for 'most-wanted-top10' (request #1)",
+            "[10:30:00.002] INFO: Cache MISS for 'most-wanted-top10' (request #2)",
+            "[10:30:00.050] INFO: Cache MISS for 'most-wanted-top10' (requests #3-#100)",
+            "[10:30:00.200] INFO: No lock mechanism — all requests fall through to DB"
+          ],
+          "data": {
+            "Key": "most-wanted-top10",
+            "Status": "EXPIRED",
+            "Concurrent Misses": "100+ in 200ms",
+            "Lock/Mutex": "Not configured",
+            "Normal Hit Rate": "99.8%"
+          },
+          "status": "Key expired. No cache lock — all concurrent requests miss and hit DB independently."
+        }
+      },
+      {
+        "id": "api-fleet",
+        "type": "server",
+        "label": "API Servers (x8)",
+        "status": "degraded",
+        "position": { "x": 100, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "API Server Fleet",
+          "logs": [
+            "[10:30:00.010] INFO: Cache miss — querying DB for most-wanted-top10",
+            "[10:30:00.011] INFO: Cache miss — querying DB for most-wanted-top10",
+            "[10:30:00.012] INFO: (x100) All servers independently querying DB for same key",
+            "[10:30:03.200] INFO: DB finally responded — writing back to cache"
+          ],
+          "data": {
+            "Concurrent DB Queries": "100+ (all identical)",
+            "Avg Response Time": "12s (normally 50ms)",
+            "Status": "DOG PILE IN PROGRESS"
+          },
+          "status": "All API instances independently trying to rebuild the same cache entry."
+        }
+      },
+      {
+        "id": "database",
+        "type": "database",
+        "label": "Wanted Persons DB",
+        "status": "degraded",
+        "position": { "x": 600, "y": 200 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Wanted Persons Database",
+          "logs": [
+            "[10:30:00.050] WARN: 100 identical queries received for most-wanted aggregation",
+            "[10:30:00.100] WARN: CPU spike to 100% from duplicate work",
+            "[10:30:02.000] WARN: Query time inflated from 200ms to 3000ms due to contention"
+          ],
+          "data": {
+            "Duplicate Queries": "100+ (identical)",
+            "CPU": "100%",
+            "Normal Query Time": "200ms",
+            "Current Query Time": "3000ms",
+            "Status": "OVERLOADED BY DUPLICATES"
+          },
+          "status": "Executing 100 copies of the same expensive query simultaneously."
+        }
+      },
+      {
+        "id": "users",
+        "type": "client",
+        "label": "Public Portal",
+        "status": "degraded",
+        "position": { "x": 350, "y": 370 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Public Most Wanted Portal",
+          "logs": [
+            "[10:30:01] WARN: Page load time exceeding 10s",
+            "[10:30:05] ERROR: Multiple timeout errors reported"
+          ],
+          "data": {
+            "Active Users": "~2,000",
+            "Requests/sec": "500",
+            "Avg Response": "12s (normally 50ms)"
+          },
+          "status": "Users experiencing severe slowdown during cache rebuild."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-api-cache", "source": "api-fleet", "target": "cache", "label": "cache miss", "animated": true, "style": "broken" },
+      { "id": "e-api-db", "source": "api-fleet", "target": "database", "label": "100x same query", "animated": true, "style": "slow" },
+      { "id": "e-users-api", "source": "users", "target": "api-fleet", "label": "500 req/sec", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the database being overwhelmed by duplicate queries?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The cache TTL is too short, causing frequent expirations",
+          "correct": false,
+          "feedback": "The TTL length isn't the core issue. Even with a longer TTL, the same dog pile would happen when it eventually expires. The problem is what happens at the moment of expiration — multiple callers independently trying to rebuild the same entry."
+        },
+        {
+          "id": "rc-2",
+          "text": "There's no cache lock or single-writer mechanism — when the key expires, all concurrent requests independently rebuild it instead of just one",
+          "correct": true,
+          "feedback": "Correct! This is the cache stampede (dog pile) problem. Without a locking mechanism, every concurrent cache miss triggers an independent database query for the same data. A cache lock ensures only one request rebuilds the entry while others wait for the result."
+        },
+        {
+          "id": "rc-3",
+          "text": "The database query is too slow and needs optimization",
+          "correct": false,
+          "feedback": "The query normally takes 200ms, which is reasonable for an aggregation. It only slowed to 3 seconds because 100 copies of it were running simultaneously. One query at 200ms is fine — 100 simultaneous copies is the problem."
+        },
+        {
+          "id": "rc-4",
+          "text": "There are too many API servers, causing too many concurrent cache misses",
+          "correct": false,
+          "feedback": "Fewer servers would mean fewer duplicate queries, but the dog pile would still happen with even 2 servers. The fix isn't reducing servers — it's ensuring only one request rebuilds the cache while others wait."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to prevent the cache dog pile?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Increase the cache TTL so the key expires less frequently",
+          "correct": false,
+          "feedback": "A longer TTL only delays the problem. When the key eventually expires, the same stampede will happen. You need a mechanism to handle the expiration gracefully, not just postpone it."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implement cache locking — when a key expires, one request acquires a lock to rebuild it while others wait or serve stale data",
+          "correct": true,
+          "feedback": "Correct! Cache locking (also called mutex/lock-based cache rebuild) ensures only one process rebuilds the expired entry. Other concurrent requests either wait for the lock holder to finish, or serve a slightly stale version. This eliminates the duplicate database queries entirely."
+        },
+        {
+          "id": "fix-3",
+          "text": "Add rate limiting to the database to prevent too many simultaneous queries",
+          "correct": false,
+          "feedback": "Rate limiting the database would prevent overload but would also reject legitimate different queries during the spike. The problem is duplicate queries for the same key — the solution should target that duplication, not limit all database access."
+        },
+        {
+          "id": "fix-4",
+          "text": "Pre-compute the most wanted list and store it as a static file",
+          "correct": false,
+          "feedback": "This works for one specific endpoint but doesn't solve the general problem. Any popular cached key could cause a dog pile when it expires. A cache locking mechanism solves the problem for all keys."
+        }
+      ]
+    }
+  },
+  "conceptId": "cache-locking",
+  "badge": {
+    "name": "Pile Driver",
+    "icon": "🔨"
+  }
+}

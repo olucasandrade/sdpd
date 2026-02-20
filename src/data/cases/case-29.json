@@ -1,0 +1,188 @@
+{
+  "id": "case-29",
+  "number": 29,
+  "title": "The DNS Disaster",
+  "subtitle": "When a server moves and nobody gets the new address",
+  "brief": {
+    "narrative": "It's 2 AM when the Distributia PD infrastructure team replaces a failing server in the Evidence Tracking cluster. The new server comes online with a new IP address — 10.0.5.47 instead of the old 10.0.5.31. Everything looks healthy from the new server's perspective. But within minutes, the phones start ringing. The Forensics Lab can't submit evidence reports. The Court Liaison portal shows 'Connection Refused.' The Patrol Evidence Upload app is dead. The problem? Every service that talks to the Evidence Tracker has the old IP address hardcoded in its configuration files. There's no DNS, no service registry, no service discovery mechanism — just raw IP addresses scattered across dozens of config files in dozens of services. Detective DNS stares at a whiteboard covered in IP addresses and arrows, trying to figure out which of the 23 services that depend on Evidence Tracker still point to a machine that no longer exists.",
+    "symptoms": [
+      "Evidence Tracker is healthy on new IP (10.0.5.47) but unreachable by other services",
+      "Forensics Lab, Court Liaison, and Patrol Upload all report 'Connection Refused' errors",
+      "All dependent services have the old IP (10.0.5.31) hardcoded in config files",
+      "No centralized service registry or DNS exists for internal service discovery"
+    ],
+    "objective": "Identify why replacing a server broke inter-service communication, and determine the correct approach to service discovery that survives infrastructure changes."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "evidence-tracker",
+        "type": "server",
+        "label": "Evidence Tracker (new)",
+        "status": "healthy",
+        "position": { "x": 400, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Evidence Tracker Service (New Server)",
+          "logs": [
+            "[02:15:00] INFO: Service started on 10.0.5.47:8080",
+            "[02:15:01] INFO: Database connection established",
+            "[02:15:02] INFO: Health check passing — all systems nominal",
+            "[02:16:00] WARN: No incoming requests in 60s — unusually quiet",
+            "[02:20:00] WARN: Still no incoming requests — 5 minutes of silence"
+          ],
+          "data": {
+            "IP Address": "10.0.5.47 (NEW)",
+            "Old IP": "10.0.5.31 (DECOMMISSIONED)",
+            "Status": "HEALTHY — accepting requests",
+            "Requests Received": "0 since startup",
+            "Registered In": "No service registry exists"
+          },
+          "status": "Service is healthy and ready but no clients can find it at the new IP."
+        }
+      },
+      {
+        "id": "forensics-lab",
+        "type": "client",
+        "label": "Forensics Lab",
+        "status": "failed",
+        "position": { "x": 80, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Forensics Lab Portal",
+          "logs": [
+            "[02:16:05] INFO: Submitting DNA evidence report for Case #7821",
+            "[02:16:05] ERROR: Connection refused to 10.0.5.31:8080",
+            "[02:16:10] ERROR: Retry 1 — Connection refused to 10.0.5.31:8080",
+            "[02:16:15] ERROR: Retry 2 — Connection refused to 10.0.5.31:8080",
+            "[02:16:20] ERROR: Evidence submission failed — Evidence Tracker unreachable"
+          ],
+          "data": {
+            "Config File": "forensics-lab.conf",
+            "evidence_tracker_host": "10.0.5.31 (HARDCODED - STALE)",
+            "Last Config Update": "6 months ago",
+            "Discovery Method": "Manual IP in config file"
+          },
+          "status": "Cannot reach Evidence Tracker — still pointing to decommissioned IP."
+        }
+      },
+      {
+        "id": "court-liaison",
+        "type": "client",
+        "label": "Court Liaison",
+        "status": "failed",
+        "position": { "x": 80, "y": 220 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Court Liaison Portal",
+          "logs": [
+            "[02:17:00] INFO: Requesting evidence chain-of-custody for Case #6554",
+            "[02:17:01] ERROR: Connection refused to 10.0.5.31:8080",
+            "[02:17:30] ERROR: Evidence chain request failed — service unreachable"
+          ],
+          "data": {
+            "Config File": "court-liaison.yaml",
+            "evidence_api_url": "http://10.0.5.31:8080/api (HARDCODED - STALE)",
+            "Last Config Update": "4 months ago",
+            "Discovery Method": "Manual IP in config file"
+          },
+          "status": "Cannot retrieve evidence records — pointing to old IP address."
+        }
+      },
+      {
+        "id": "patrol-upload",
+        "type": "client",
+        "label": "Patrol Evidence Upload",
+        "status": "failed",
+        "position": { "x": 80, "y": 390 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Patrol Evidence Upload App",
+          "logs": [
+            "[02:18:00] INFO: Officer uploading body-cam footage for Incident #9203",
+            "[02:18:01] ERROR: Connection refused to 10.0.5.31:8080",
+            "[02:18:05] ERROR: Upload failed — Evidence Tracker unreachable",
+            "[02:18:10] WARN: Queueing upload locally — will retry when service available"
+          ],
+          "data": {
+            "Config File": "patrol-upload.env",
+            "EVIDENCE_HOST": "10.0.5.31 (HARDCODED - STALE)",
+            "Last Config Update": "8 months ago",
+            "Queued Uploads": "23 (growing)"
+          },
+          "status": "Cannot upload evidence — hardcoded IP points to decommissioned server."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-forensics-evidence", "source": "forensics-lab", "target": "evidence-tracker", "label": "10.0.5.31 (wrong IP)", "animated": false, "style": "broken" },
+      { "id": "e-court-evidence", "source": "court-liaison", "target": "evidence-tracker", "label": "10.0.5.31 (wrong IP)", "animated": false, "style": "broken" },
+      { "id": "e-patrol-evidence", "source": "patrol-upload", "target": "evidence-tracker", "label": "10.0.5.31 (wrong IP)", "animated": false, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of all services losing contact with the Evidence Tracker?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The infrastructure team failed to update the IP address in all dependent services' config files after the server replacement",
+          "correct": false,
+          "feedback": "While the immediate fix is to update the configs, blaming the ops team misses the systemic issue. With 23+ dependent services each hardcoding an IP, manual config updates are error-prone and don't scale. The root cause is the architecture: there's no service discovery mechanism, so any IP change requires manually hunting down and updating every client."
+        },
+        {
+          "id": "rc-2",
+          "text": "The new server should have been assigned the same IP address as the old one",
+          "correct": false,
+          "feedback": "Reusing IPs is fragile and not always possible (different subnet, cloud environment, etc.). The real problem is that services depend on a specific IP address at all. Proper service discovery decouples service identity from network location."
+        },
+        {
+          "id": "rc-3",
+          "text": "Hardcoded IP addresses with no service discovery mechanism means any infrastructure change breaks inter-service communication",
+          "correct": true,
+          "feedback": "Correct! When services find each other by hardcoded IPs, every infrastructure change (server replacement, scaling, failover, migration) requires manually updating every dependent service's configuration. This doesn't scale and is extremely fragile. Service discovery — whether via DNS, a service registry like Consul/Eureka, or Kubernetes service abstractions — decouples service identity from network location, letting infrastructure change without breaking communication."
+        },
+        {
+          "id": "rc-4",
+          "text": "The Evidence Tracker should have been configured to listen on 10.0.5.31 even though it's on a new server",
+          "correct": false,
+          "feedback": "Binding to an IP that belongs to a different machine is a network misconfiguration waiting to happen. The solution isn't to force new infrastructure to mimic old IPs — it's to have a discovery layer that abstracts away IP addresses entirely."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best long-term solution to prevent this class of outage?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Create a shared configuration file with all service IPs so there's only one place to update",
+          "correct": false,
+          "feedback": "A centralized config file is slightly better than scattered configs, but still requires manual updates when IPs change. It also creates a single point of failure. True service discovery is dynamic — services register themselves automatically when they start."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implement a service discovery system where services register themselves and clients look up endpoints dynamically",
+          "correct": true,
+          "feedback": "Correct! With service discovery (DNS-based like CoreDNS, registry-based like Consul/Eureka, or platform-native like Kubernetes Services), the Evidence Tracker registers itself at startup with its current IP. Clients look up 'evidence-tracker' by name rather than by IP. When the server is replaced, the new instance registers automatically and clients find it immediately. No manual config changes, no hardcoded IPs, and infrastructure can change freely."
+        },
+        {
+          "id": "fix-3",
+          "text": "Use a load balancer with a static IP in front of the Evidence Tracker so clients always connect to the same address",
+          "correct": false,
+          "feedback": "A load balancer helps with a single service, but doesn't solve the systemic problem. You'd need a load balancer for every service, and those load balancers themselves need to be discovered. A proper service discovery system is the general solution that handles all inter-service communication."
+        },
+        {
+          "id": "fix-4",
+          "text": "Write an automated script that updates all config files whenever a server IP changes",
+          "correct": false,
+          "feedback": "Automating config updates is better than manual changes, but still requires restarting services to pick up new configs, knowing which services depend on which, and handling the gap between IP change and config propagation. Service discovery makes this entirely dynamic and real-time."
+        }
+      ]
+    }
+  },
+  "conceptId": "service-discovery",
+  "badge": {
+    "name": "Discovery Agent",
+    "icon": "🔭"
+  }
+}

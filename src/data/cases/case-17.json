@@ -1,0 +1,180 @@
+{
+  "id": "case-17",
+  "number": 17,
+  "title": "The Stale Menu",
+  "subtitle": "CDN serves outdated Most Wanted list hours after update",
+  "brief": {
+    "narrative": "A dangerous fugitive was apprehended at 6 AM, and the detective team immediately updated the Most Wanted list on Distributia PD's public website. But it's now noon and citizens across the city are still seeing the old list with the captured fugitive on it. Tips are flooding in for someone already in custody, wasting investigator time. The origin server has the correct list, but the CDN edge nodes across Distributia are still serving the cached version from yesterday. The CDN's cache-control header is set to max-age=86400 (24 hours) with no purge mechanism. Chief Partition needs the public seeing accurate information NOW, Detective.",
+    "symptoms": [
+      "Most Wanted page shows captured fugitive 6 hours after removal from origin",
+      "CDN edge nodes serving cached version from previous day",
+      "Origin server has correct updated content",
+      "False tips flooding in for already-captured suspect"
+    ],
+    "objective": "Identify why the CDN is serving stale content and recommend a strategy for timely CDN cache updates."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "origin-server",
+        "type": "server",
+        "label": "Origin Server",
+        "status": "healthy",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Origin Web Server",
+          "logs": [
+            "[06:02:00] INFO: Most Wanted list updated — fugitive #MW-2241 removed",
+            "[06:02:01] INFO: New content deployed successfully",
+            "[06:02:02] WARN: No CDN purge/invalidation triggered",
+            "[12:00:00] INFO: Origin serving correct updated list"
+          ],
+          "data": {
+            "Content Version": "v2024-1547 (updated 06:02 today)",
+            "Fugitive #MW-2241": "REMOVED (captured)",
+            "CDN Purge API": "Not integrated",
+            "Cache-Control Header": "max-age=86400 (24 hours)"
+          },
+          "status": "Origin content is correct but CDN was not notified of the update."
+        }
+      },
+      {
+        "id": "cdn-edge-north",
+        "type": "server",
+        "label": "CDN Edge (North)",
+        "status": "degraded",
+        "position": { "x": 100, "y": 220 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "CDN Edge Node — North District",
+          "logs": [
+            "[Yesterday 08:00] INFO: Cached Most Wanted page (TTL: 24h)",
+            "[Today 12:00] INFO: Serving cached version — TTL remaining: 20h",
+            "[Today 12:00] INFO: No purge request received"
+          ],
+          "data": {
+            "Cached Version": "v2024-1546 (STALE — yesterday)",
+            "Fugitive #MW-2241": "STILL SHOWING (should be removed)",
+            "Cache TTL Remaining": "20 hours",
+            "Purge Endpoint": "Available but never called"
+          },
+          "status": "Serving stale content. Cache won't refresh for 20 more hours."
+        }
+      },
+      {
+        "id": "cdn-edge-south",
+        "type": "server",
+        "label": "CDN Edge (South)",
+        "status": "degraded",
+        "position": { "x": 600, "y": 220 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "CDN Edge Node — South District",
+          "logs": [
+            "[Yesterday 09:30] INFO: Cached Most Wanted page (TTL: 24h)",
+            "[Today 12:00] INFO: Serving cached version — TTL remaining: 21.5h"
+          ],
+          "data": {
+            "Cached Version": "v2024-1546 (STALE — yesterday)",
+            "Fugitive #MW-2241": "STILL SHOWING",
+            "Cache TTL Remaining": "21.5 hours"
+          },
+          "status": "Serving stale content with no invalidation mechanism."
+        }
+      },
+      {
+        "id": "citizens",
+        "type": "client",
+        "label": "Citizens",
+        "status": "degraded",
+        "position": { "x": 350, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Public Citizens",
+          "logs": [
+            "[12:00:00] INFO: Citizen reports seeing captured fugitive on Most Wanted",
+            "[12:05:00] INFO: 47 false tips received for fugitive #MW-2241"
+          ],
+          "data": {
+            "Tips for Captured Fugitive": "47 (all wasted)",
+            "Content Seen": "Yesterday's stale version",
+            "Served By": "CDN edge nodes (not origin)"
+          },
+          "status": "Citizens seeing outdated Most Wanted list from CDN cache."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-cdn-north-origin", "source": "cdn-edge-north", "target": "origin-server", "label": "no revalidation", "animated": false, "style": "normal" },
+      { "id": "e-cdn-south-origin", "source": "cdn-edge-south", "target": "origin-server", "label": "no revalidation", "animated": false, "style": "normal" },
+      { "id": "e-citizens-north", "source": "citizens", "target": "cdn-edge-north", "label": "stale content", "animated": true, "style": "slow" },
+      { "id": "e-citizens-south", "source": "citizens", "target": "cdn-edge-south", "label": "stale content", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "What is the root cause of the CDN serving outdated content?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "The origin server failed to update the Most Wanted list properly",
+          "correct": false,
+          "feedback": "The origin server updated correctly at 6 AM. Hitting the origin directly shows the correct list. The problem is that CDN edge nodes have their own cached copy and don't know the origin changed."
+        },
+        {
+          "id": "rc-2",
+          "text": "The CDN cache-control is set to 24 hours with no purge or invalidation mechanism — edge nodes won't fetch new content until the TTL expires",
+          "correct": true,
+          "feedback": "Correct! The CDN caches content for 24 hours (max-age=86400) and has no purge integration. When content changes on the origin, there's no way to tell the CDN edge nodes to discard their cached copies. This is a common CDN caching pitfall — long TTLs need to be paired with purge/invalidation APIs."
+        },
+        {
+          "id": "rc-3",
+          "text": "The CDN edge nodes are experiencing a bug and not respecting cache headers",
+          "correct": false,
+          "feedback": "The CDN is working exactly as configured — it's respecting the 24-hour TTL perfectly. The problem is that 24 hours is too long for frequently-changing content when there's no purge mechanism."
+        },
+        {
+          "id": "rc-4",
+          "text": "Citizens' browsers are caching the old page locally",
+          "correct": false,
+          "feedback": "Even if citizens hard-refresh their browsers, the CDN edge nodes will serve the stale version. The problem is at the CDN layer, not the browser layer."
+        }
+      ]
+    },
+    "fix": {
+      "question": "What is the best fix to ensure CDN content stays up-to-date when the origin changes?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Set the CDN cache TTL to zero so it always fetches from origin",
+          "correct": false,
+          "feedback": "A zero TTL defeats the entire purpose of a CDN. Every request would hit the origin server, eliminating the performance and scalability benefits. The goal is to cache aggressively but invalidate smartly."
+        },
+        {
+          "id": "fix-2",
+          "text": "Integrate CDN cache purging into the content update workflow — automatically invalidate CDN cache when content changes on origin",
+          "correct": true,
+          "feedback": "Correct! CDN purge/invalidation APIs let you proactively clear cached content when you know it changed. Combined with versioned URLs or shorter TTLs for dynamic content, this gives you the performance of CDN caching with the freshness of origin-served content."
+        },
+        {
+          "id": "fix-3",
+          "text": "Reduce the CDN TTL from 24 hours to 5 minutes",
+          "correct": false,
+          "feedback": "A 5-minute TTL reduces staleness but increases origin load significantly (every edge node re-fetches every 5 minutes). For the Most Wanted page, 5 minutes of stale data could still be problematic. A purge-on-update approach gives both freshness and efficiency."
+        },
+        {
+          "id": "fix-4",
+          "text": "Bypass the CDN entirely for the Most Wanted page and serve it directly from origin",
+          "correct": false,
+          "feedback": "Removing CDN caching for popular pages means the origin server handles all traffic directly, losing the geographic distribution and performance benefits of the CDN. It's better to use the CDN with a proper invalidation strategy."
+        }
+      ]
+    }
+  },
+  "conceptId": "cdn-caching",
+  "badge": {
+    "name": "CDN Commander",
+    "icon": "🌐"
+  }
+}

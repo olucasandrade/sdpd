@@ -1,0 +1,213 @@
+{
+  "id": "case-21",
+  "number": 21,
+  "title": "A Desordem",
+  "subtitle": "Relatórios de ocorrências chegam embaralhados enquanto consumidores paralelos desorganizam a sequência",
+  "brief": {
+    "narrative": "O escritório do Promotor de Distributia está no caos. Eles estão construindo uma linha do tempo para um grande caso de crime organizado, mas os relatórios de ocorrências estão chegando completamente fora de sequência. Um assalto que aconteceu às 22h está aparecendo depois de um depoimento de testemunha das 2h do dia seguinte. A cadeia de evidências não faz sentido. O sistema de relatórios usa uma fila de mensagens com três consumidores paralelos para acelerar o processamento — mas parece que a velocidade teve um custo terrível. O Chefe Partition precisa que a linha do tempo seja reconstruída antes do julgamento amanhã de manhã.",
+    "symptoms": [
+      "Relatórios de ocorrências no arquivo do Promotor estão fora da ordem cronológica",
+      "Eventos de diferentes horários estão intercalados aleatoriamente",
+      "O sistema tem três workers consumidores processando a mesma fila",
+      "Relatórios individuais estão corretos, mas a ordenação está errada"
+    ],
+    "objective": "Determinar por que os relatórios de ocorrências estão chegando fora de ordem e recomendar uma arquitetura que garanta a sequência correta."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "report-ingestion",
+        "type": "client",
+        "label": "Report Ingestion API",
+        "status": "healthy",
+        "position": { "x": 100, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "API de Ingestão de Relatórios",
+          "logs": [
+            "[09:00:01] INFO: Report #501 (Case-77, timestamp 22:00) enqueued",
+            "[09:00:01] INFO: Report #502 (Case-77, timestamp 22:15) enqueued",
+            "[09:00:02] INFO: Report #503 (Case-77, timestamp 23:30) enqueued",
+            "[09:00:02] INFO: Report #504 (Case-77, timestamp 02:00) enqueued",
+            "[09:00:02] INFO: All reports enqueued in chronological order"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Reports Enqueued Today": "1,204",
+            "Ordering at Enqueue": "Chronological (correct)"
+          },
+          "status": "Relatórios estão sendo enfileirados na ordem cronológica correta."
+        }
+      },
+      {
+        "id": "message-queue",
+        "type": "server",
+        "label": "Report Processing Queue",
+        "status": "healthy",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Fila de Processamento de Relatórios",
+          "logs": [
+            "[09:00:01] INFO: Report #501 delivered to Consumer-A",
+            "[09:00:01] INFO: Report #502 delivered to Consumer-B",
+            "[09:00:02] INFO: Report #503 delivered to Consumer-C",
+            "[09:00:02] INFO: Report #504 delivered to Consumer-A",
+            "[09:00:03] INFO: Consumer-B ACK report #502 (processed in 45ms)",
+            "[09:00:03] INFO: Consumer-C ACK report #503 (processed in 30ms)",
+            "[09:00:04] INFO: Consumer-A ACK report #501 (processed in 210ms)",
+            "[09:00:04] INFO: Consumer-A ACK report #504 (processed in 50ms)"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Consumer Count": "3",
+            "Delivery Mode": "Round-robin",
+            "Partition Key": "None configured",
+            "Ordering Guarantee": "Per-consumer only"
+          },
+          "status": "Fila distribui mensagens em round-robin entre 3 consumidores. Sem partition key configurada para roteamento por caso."
+        }
+      },
+      {
+        "id": "consumer-a",
+        "type": "server",
+        "label": "Consumer A",
+        "status": "healthy",
+        "position": { "x": 550, "y": 30 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Worker Consumidor A",
+          "logs": [
+            "[09:00:01] INFO: Processing report #501 (Case-77, ts 22:00)",
+            "[09:00:04] INFO: Report #501 written to DA system — took 210ms",
+            "[09:00:04] INFO: Processing report #504 (Case-77, ts 02:00)",
+            "[09:00:04] INFO: Report #504 written to DA system — took 50ms"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Avg Processing Time": "130ms",
+            "Reports Processed": "412"
+          },
+          "status": "Processando normalmente, mas relatório #501 demorou mais, fazendo #504 ser escrito depois de #502 e #503."
+        }
+      },
+      {
+        "id": "consumer-b",
+        "type": "server",
+        "label": "Consumer B",
+        "status": "healthy",
+        "position": { "x": 550, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Worker Consumidor B",
+          "logs": [
+            "[09:00:01] INFO: Processing report #502 (Case-77, ts 22:15)",
+            "[09:00:03] INFO: Report #502 written to DA system — took 45ms"
+          ],
+          "data": {
+            "Status": "ONLINE",
+            "Avg Processing Time": "48ms",
+            "Reports Processed": "398"
+          },
+          "status": "Consumidor rápido — terminou relatório #502 antes do Consumidor A terminar #501."
+        }
+      },
+      {
+        "id": "da-system",
+        "type": "database",
+        "label": "DA Case File DB",
+        "status": "degraded",
+        "position": { "x": 550, "y": 340 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados de Autos do Promotor",
+          "logs": [
+            "[09:00:03] INFO: Report #502 (ts 22:15) inserted at position 1",
+            "[09:00:03] INFO: Report #503 (ts 23:30) inserted at position 2",
+            "[09:00:04] INFO: Report #501 (ts 22:00) inserted at position 3",
+            "[09:00:04] INFO: Report #504 (ts 02:00) inserted at position 4"
+          ],
+          "data": {
+            "Status": "DATA INTEGRITY ISSUE",
+            "Case-77 Report Order": "#502, #503, #501, #504",
+            "Expected Order": "#501, #502, #503, #504",
+            "Total Cases Affected": "187"
+          },
+          "status": "Relatórios armazenados na ordem de chegada, não na ordem cronológica. 187 casos têm linhas do tempo embaralhadas."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-ingest-queue", "source": "report-ingestion", "target": "message-queue", "label": "enqueue reports", "animated": true, "style": "normal" },
+      { "id": "e-queue-a", "source": "message-queue", "target": "consumer-a", "label": "round-robin", "animated": true, "style": "normal" },
+      { "id": "e-queue-b", "source": "message-queue", "target": "consumer-b", "label": "round-robin", "animated": true, "style": "normal" },
+      { "id": "e-a-da", "source": "consumer-a", "target": "da-system", "label": "write reports", "animated": true, "style": "slow" },
+      { "id": "e-b-da", "source": "consumer-b", "target": "da-system", "label": "write reports", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Por que os relatórios de ocorrências estão chegando fora de ordem no sistema do Promotor?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "A API de ingestão está enfileirando relatórios na ordem errada",
+          "correct": false,
+          "feedback": "Os logs da API de ingestão mostram claramente que os relatórios são enfileirados na ordem cronológica correta. A desordem acontece mais adiante no fluxo."
+        },
+        {
+          "id": "rc-2",
+          "text": "Múltiplos consumidores paralelos processam mensagens em velocidades diferentes, então consumidores mais rápidos escrevem mensagens posteriores antes que consumidores mais lentos terminem as anteriores",
+          "correct": true,
+          "feedback": "Correto! Com distribuição round-robin entre 3 consumidores e sem partition key, mensagens do mesmo caso vão para consumidores diferentes. Como cada consumidor tem tempos de processamento diferentes, um consumidor rápido pode terminar a mensagem N+1 antes de um consumidor lento terminar a mensagem N, destruindo a ordenação original."
+        },
+        {
+          "id": "rc-3",
+          "text": "O banco de dados do Promotor está ordenando os registros incorretamente",
+          "correct": false,
+          "feedback": "O banco de dados está armazenando registros na ordem em que chegam, o que é padrão. O problema é que eles chegam fora de ordem por causa da arquitetura de consumidores paralelos."
+        },
+        {
+          "id": "rc-4",
+          "text": "A fila de mensagens tem um bug que entrega mensagens fora de sequência",
+          "correct": false,
+          "feedback": "A fila entrega mensagens em ordem FIFO para cada consumidor. O problema é que a distribuição round-robin entre múltiplos consumidores não preserva a ordenação global quando os tempos de processamento variam."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor correção para garantir que relatórios de ocorrências cheguem na ordem correta?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Reduzir para um único consumidor para que todas as mensagens sejam processadas sequencialmente",
+          "correct": false,
+          "feedback": "Isso corrigiria a ordenação, mas destruiria o throughput. Um único consumidor se torna um gargalo. Existe uma solução melhor que preserva tanto o paralelismo quanto a ordenação."
+        },
+        {
+          "id": "fix-2",
+          "text": "Usar partition keys (ID do caso) para que todos os relatórios do mesmo caso vão para o mesmo consumidor, preservando a ordenação por caso",
+          "correct": true,
+          "feedback": "Correto! Ao particionar pelo ID do caso, todos os relatórios do Caso-77 vão para o mesmo consumidor e são processados sequencialmente. Casos diferentes ainda podem ser processados em paralelo entre consumidores. Isso dá tanto garantias de ordenação quanto throughput paralelo."
+        },
+        {
+          "id": "fix-3",
+          "text": "Adicionar timestamps a cada relatório e ordená-los no banco de dados após a inserção",
+          "correct": false,
+          "feedback": "Ordenação posterior é frágil — você precisaria saber quando todos os relatórios de uma janela de tempo chegaram antes de ordenar. Adiciona complexidade e latência. Ordenação baseada em partições é mais simples e confiável."
+        },
+        {
+          "id": "fix-4",
+          "text": "Fazer todos os consumidores processarem na mesma velocidade padronizando o hardware",
+          "correct": false,
+          "feedback": "O tempo de processamento varia com base no conteúdo da mensagem, não apenas no hardware. Jitter de rede, pausas de garbage collection e I/O causam latência variável. Você não pode garantir tempos iguais de processamento — precisa de uma solução arquitetural."
+        }
+      ]
+    }
+  },
+  "conceptId": "message-ordering",
+  "badge": {
+    "name": "Guardião da Ordem",
+    "icon": "📋"
+  }
+}

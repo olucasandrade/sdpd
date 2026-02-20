@@ -1,0 +1,218 @@
+{
+  "id": "case-11",
+  "number": 11,
+  "title": "A Partição Quente",
+  "subtitle": "Um shard afoga enquanto os outros ficam ociosos",
+  "brief": {
+    "narrative": "O sistema de registro de crimes da Polícia de Distributia usa sharding no banco de dados para distribuir registros entre quatro shards. Os registros são particionados pela primeira letra do sobrenome do suspeito: A-F vai para o Shard 1, G-L para o Shard 2, M-R para o Shard 3 e S-Z para o Shard 4. Parecia uma divisão justa — até a temporada de crimes de celebridades chegar. Um escândalo envolvendo a rica família Sterling, a popstar Simone Silva, o magnata da tecnologia Sam Stratton e a socialite Sophie St. James gerou 50.000 registros de crimes em uma semana. Todos caíram no Shard 4 (S-Z). Esse shard está a 100% da capacidade enquanto os outros três estão a 15% de utilização. Os tempos de resposta para qualquer consulta de nomes S-Z agora são de 45 segundos. O sistema está efetivamente quebrado para um quarto do alfabeto.",
+    "symptoms": [
+      "Shard 4 (S-Z) a 100% de CPU e armazenamento, tempo de resposta de 45 segundos",
+      "Shards 1-3 a 10-15% de utilização com tempos de resposta abaixo de 50ms",
+      "Todos os registros de crimes de celebridades envolvem suspeitos com sobrenomes começando em S",
+      "Policiais não conseguem registrar ou consultar nenhum registro S-Z"
+    ],
+    "objective": "Identificar como a estratégia de sharding criou uma partição quente e determinar uma abordagem melhor de distribuição de dados."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "shard-1",
+        "type": "database",
+        "label": "Shard 1 (A-F)",
+        "status": "healthy",
+        "position": { "x": 80, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Shard 1 do Banco de Dados (A-F)",
+          "logs": [
+            "[09:00:00] INFO: Normal operations",
+            "[09:15:00] INFO: Query rate: 12/sec, response time: 30ms"
+          ],
+          "data": {
+            "Range": "A-F surnames",
+            "Records": "180,000",
+            "CPU": "12%",
+            "Storage": "15%",
+            "Response Time": "30ms",
+            "Status": "IDLE — significantly underutilized"
+          },
+          "status": "Saudável e subutilizado. Carga mínima da faixa de sobrenomes A-F."
+        }
+      },
+      {
+        "id": "shard-2",
+        "type": "database",
+        "label": "Shard 2 (G-L)",
+        "status": "healthy",
+        "position": { "x": 280, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Shard 2 do Banco de Dados (G-L)",
+          "logs": [
+            "[09:00:00] INFO: Normal operations",
+            "[09:15:00] INFO: Query rate: 15/sec, response time: 35ms"
+          ],
+          "data": {
+            "Range": "G-L surnames",
+            "Records": "195,000",
+            "CPU": "14%",
+            "Storage": "16%",
+            "Response Time": "35ms",
+            "Status": "IDLE — significantly underutilized"
+          },
+          "status": "Saudável e subutilizado."
+        }
+      },
+      {
+        "id": "shard-3",
+        "type": "database",
+        "label": "Shard 3 (M-R)",
+        "status": "healthy",
+        "position": { "x": 480, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Shard 3 do Banco de Dados (M-R)",
+          "logs": [
+            "[09:00:00] INFO: Normal operations",
+            "[09:15:00] INFO: Query rate: 18/sec, response time: 40ms"
+          ],
+          "data": {
+            "Range": "M-R surnames",
+            "Records": "210,000",
+            "CPU": "15%",
+            "Storage": "17%",
+            "Response Time": "40ms",
+            "Status": "IDLE — significantly underutilized"
+          },
+          "status": "Saudável e subutilizado."
+        }
+      },
+      {
+        "id": "shard-4",
+        "type": "database",
+        "label": "Shard 4 (S-Z)",
+        "status": "failed",
+        "position": { "x": 680, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Shard 4 do Banco de Dados (S-Z) — PARTIÇÃO QUENTE",
+          "logs": [
+            "[09:00:00] WARN: Record count growing rapidly — celebrity crime wave",
+            "[09:05:00] WARN: CPU: 78%, climbing fast",
+            "[09:10:00] ERROR: CPU: 95%, response time: 12,000ms",
+            "[09:12:00] ERROR: Storage: 98% — approaching disk full",
+            "[09:14:00] ERROR: CPU: 100%, connection pool exhausted",
+            "[09:15:00] ERROR: Response time: 45,000ms — effectively unresponsive",
+            "[09:15:01] ERROR: 50,000 celebrity crime reports all on this shard"
+          ],
+          "data": {
+            "Range": "S-Z surnames",
+            "Records": "460,000 (2.5x other shards)",
+            "Celebrity Reports (this week)": "50,000",
+            "CPU": "100%",
+            "Storage": "98%",
+            "Response Time": "45,000ms",
+            "Connection Pool": "500/500 (EXHAUSTED)",
+            "Status": "HOT PARTITION — overwhelmed"
+          },
+          "status": "Partição quente. Todos os registros de crimes de celebridades (sobrenomes com S) concentrados neste shard."
+        }
+      },
+      {
+        "id": "router",
+        "type": "server",
+        "label": "Shard Router",
+        "status": "healthy",
+        "position": { "x": 380, "y": 280 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Roteador de Shards do Banco de Dados",
+          "logs": [
+            "[09:00:00] INFO: Routing by first letter of suspect surname",
+            "[09:10:00] WARN: 89% of traffic routed to Shard 4 (S-Z)",
+            "[09:12:00] WARN: Shards 1-3 receiving 3-5% traffic each",
+            "[09:14:00] ERROR: Shard 4 responses timing out — cannot reroute (fixed partitioning)"
+          ],
+          "data": {
+            "Routing Strategy": "First letter of surname → shard",
+            "Traffic Distribution": "Shard 1: 3%, Shard 2: 4%, Shard 3: 4%, Shard 4: 89%",
+            "Can Rebalance": "NO — fixed range partitioning",
+            "Rerouting Available": "NO — data is physically on Shard 4"
+          },
+          "status": "O roteador está funcionando corretamente conforme suas regras, mas as regras criam uma partição quente. Não é possível rebalancear."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-router-s1", "source": "router", "target": "shard-1", "label": "3% traffic", "animated": true, "style": "normal" },
+      { "id": "e-router-s2", "source": "router", "target": "shard-2", "label": "4% traffic", "animated": true, "style": "normal" },
+      { "id": "e-router-s3", "source": "router", "target": "shard-3", "label": "4% traffic", "animated": true, "style": "normal" },
+      { "id": "e-router-s4", "source": "router", "target": "shard-4", "label": "89% traffic", "animated": true, "style": "broken" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz da sobrecarga do Shard 4?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O hardware do Shard 4 é mais fraco que o dos outros shards",
+          "correct": false,
+          "feedback": "Todos os shards têm hardware idêntico. O problema é que o Shard 4 recebe tráfego desproporcional porque a estratégia de particionamento (primeira letra do sobrenome) não distribui os dados uniformemente. Quando um evento em alta envolve suspeitos cujos nomes se concentram em uma faixa (S-Z), esse shard se torna uma partição quente."
+        },
+        {
+          "id": "rc-2",
+          "text": "A estratégia de particionamento por faixa de chaves cria uma partição quente porque os padrões de acesso aos dados não são uniformemente distribuídos entre as faixas do alfabeto",
+          "correct": true,
+          "feedback": "Correto! O particionamento por faixa de chaves (A-F, G-L, M-R, S-Z) assume que os dados e padrões de acesso são distribuídos uniformemente pelo alfabeto. Mas dados do mundo real não são uniformes — distribuições de sobrenomes variam por cultura, e eventos em alta podem concentrar tráfego em faixas de chaves específicas. Quando a onda de crimes de celebridades atingiu sobrenomes com S, o Shard 4 se tornou uma 'partição quente' recebendo 89% de todo o tráfego enquanto os outros ficavam ociosos. Este é o risco fundamental do particionamento baseado em faixa."
+        },
+        {
+          "id": "rc-3",
+          "text": "Há registros de crimes de celebridades demais — o sistema não foi projetado para este volume",
+          "correct": false,
+          "feedback": "O volume total (50.000 registros) é gerenciável — distribuído entre os quatro shards, cada um lidaria com apenas 12.500 registros extras, bem dentro da capacidade. O problema é a concentração, não o volume. Todos os 50.000 registros caem em UM shard por causa da estratégia de particionamento."
+        },
+        {
+          "id": "rc-4",
+          "text": "O roteador de shards tem um bug que envia tráfego demais para o Shard 4",
+          "correct": false,
+          "feedback": "O roteador está funcionando exatamente como projetado — ele corretamente direciona sobrenomes S-Z para o Shard 4. O problema está na estratégia de particionamento em si, não na implementação do roteador. Uma estratégia ruim implementada corretamente continua sendo uma estratégia ruim."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor estratégia de particionamento para evitar partições quentes?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Usar particionamento baseado em hash — aplicar hash na chave do registro e distribuir com base no valor do hash, garantindo distribuição uniforme independente dos padrões de dados",
+          "correct": true,
+          "feedback": "Correto! O particionamento baseado em hash aplica uma função de hash (como MD5 ou SHA-256) à chave de partição e atribui registros aos shards com base no valor do hash. Como funções de hash distribuem as saídas uniformemente, mesmo que todos os suspeitos tenham sobrenomes com S, seus valores de hash serão distribuídos igualmente entre todos os shards. 'Sterling' pode ir para o Shard 2, 'Silva' para o Shard 1, etc. A contrapartida é que você perde a capacidade de fazer consultas de faixa eficientes (como 'todos os sobrenomes começando com S'), mas ganha distribuição uniforme. Consistent hashing melhora ainda mais isso, facilitando adicionar/remover shards."
+        },
+        {
+          "id": "fix-2",
+          "text": "Adicionar mais shards à faixa S-Z para dividir a carga",
+          "correct": false,
+          "feedback": "Dividir S-Z em mais sub-faixas (S-T, U-V, W-Z) ajuda temporariamente, mas não resolve o problema fundamental. Uma futura onda de crimes de celebridades poderia concentrar-se em qualquer sub-faixa. O particionamento baseado em hash distribui dados uniformemente independente dos valores das chaves."
+        },
+        {
+          "id": "fix-3",
+          "text": "Rebalancear as faixas para que cada shard tenha registros iguais (ex.: mover S para o Shard 3)",
+          "correct": false,
+          "feedback": "Rebalancear com base nos dados atuais ajuda agora, mas exige ajuste manual constante conforme os padrões de dados mudam. O assunto em alta de amanhã pode sobrecarregar as faixas recém-rebalanceadas. O particionamento baseado em hash fornece distribuição uniforme automática sem intervenção manual."
+        },
+        {
+          "id": "fix-4",
+          "text": "Usar distribuição round-robin — atribuir cada novo registro ao próximo shard na sequência",
+          "correct": false,
+          "feedback": "Round-robin distribui escritas uniformemente, mas torna consultas impossíveis sem consultar todos os shards (você não sabe qual shard tem um determinado registro). O particionamento baseado em hash distribui uniformemente E permite consultas diretas — basta calcular o hash para saber exatamente qual shard consultar."
+        }
+      ]
+    }
+  },
+  "conceptId": "data-partitioning",
+  "badge": {
+    "name": "Cirurgião de Shards",
+    "icon": "🔪"
+  }
+}

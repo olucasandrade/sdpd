@@ -1,0 +1,180 @@
+{
+  "id": "case-17",
+  "number": 17,
+  "title": "O Cardápio Vencido",
+  "subtitle": "CDN serve lista de Mais Procurados desatualizada horas após atualização",
+  "brief": {
+    "narrative": "Um fugitivo perigoso foi capturado às 6 da manhã, e a equipe de detetives imediatamente atualizou a lista de Mais Procurados no site público da Polícia de Distributia. Mas já é meio-dia e cidadãos pela cidade inteira ainda estão vendo a lista antiga com o fugitivo capturado. Denúncias estão chegando aos montes sobre alguém que já está preso, desperdiçando tempo dos investigadores. O servidor de origem tem a lista correta, mas os nós de borda do CDN espalhados por Distributia ainda estão servindo a versão em cache de ontem. O header cache-control do CDN está configurado como max-age=86400 (24 horas) sem mecanismo de purge. O Chefe Partition precisa que o público veja informações precisas AGORA, Detetive.",
+    "symptoms": [
+      "Página de Mais Procurados mostra fugitivo capturado 6 horas após remoção da origem",
+      "Nós de borda do CDN servindo versão em cache do dia anterior",
+      "Servidor de origem tem o conteúdo atualizado correto",
+      "Denúncias falsas chegando em massa sobre suspeito já capturado"
+    ],
+    "objective": "Identificar por que o CDN está servindo conteúdo desatualizado e recomendar uma estratégia para atualizações oportunas do cache do CDN."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "origin-server",
+        "type": "server",
+        "label": "Origin Server",
+        "status": "healthy",
+        "position": { "x": 350, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Servidor Web de Origem",
+          "logs": [
+            "[06:02:00] INFO: Most Wanted list updated — fugitive #MW-2241 removed",
+            "[06:02:01] INFO: New content deployed successfully",
+            "[06:02:02] WARN: No CDN purge/invalidation triggered",
+            "[12:00:00] INFO: Origin serving correct updated list"
+          ],
+          "data": {
+            "Content Version": "v2024-1547 (updated 06:02 today)",
+            "Fugitive #MW-2241": "REMOVED (captured)",
+            "CDN Purge API": "Not integrated",
+            "Cache-Control Header": "max-age=86400 (24 hours)"
+          },
+          "status": "Conteúdo de origem está correto, mas o CDN não foi notificado da atualização."
+        }
+      },
+      {
+        "id": "cdn-edge-north",
+        "type": "server",
+        "label": "CDN Edge (North)",
+        "status": "degraded",
+        "position": { "x": 100, "y": 220 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Nó de Borda CDN — Distrito Norte",
+          "logs": [
+            "[Yesterday 08:00] INFO: Cached Most Wanted page (TTL: 24h)",
+            "[Today 12:00] INFO: Serving cached version — TTL remaining: 20h",
+            "[Today 12:00] INFO: No purge request received"
+          ],
+          "data": {
+            "Cached Version": "v2024-1546 (STALE — yesterday)",
+            "Fugitive #MW-2241": "STILL SHOWING (should be removed)",
+            "Cache TTL Remaining": "20 hours",
+            "Purge Endpoint": "Available but never called"
+          },
+          "status": "Servindo conteúdo desatualizado. Cache não será atualizado por mais 20 horas."
+        }
+      },
+      {
+        "id": "cdn-edge-south",
+        "type": "server",
+        "label": "CDN Edge (South)",
+        "status": "degraded",
+        "position": { "x": 600, "y": 220 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Nó de Borda CDN — Distrito Sul",
+          "logs": [
+            "[Yesterday 09:30] INFO: Cached Most Wanted page (TTL: 24h)",
+            "[Today 12:00] INFO: Serving cached version — TTL remaining: 21.5h"
+          ],
+          "data": {
+            "Cached Version": "v2024-1546 (STALE — yesterday)",
+            "Fugitive #MW-2241": "STILL SHOWING",
+            "Cache TTL Remaining": "21.5 hours"
+          },
+          "status": "Servindo conteúdo desatualizado sem mecanismo de invalidação."
+        }
+      },
+      {
+        "id": "citizens",
+        "type": "client",
+        "label": "Citizens",
+        "status": "degraded",
+        "position": { "x": 350, "y": 380 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Cidadãos",
+          "logs": [
+            "[12:00:00] INFO: Citizen reports seeing captured fugitive on Most Wanted",
+            "[12:05:00] INFO: 47 false tips received for fugitive #MW-2241"
+          ],
+          "data": {
+            "Tips for Captured Fugitive": "47 (all wasted)",
+            "Content Seen": "Yesterday's stale version",
+            "Served By": "CDN edge nodes (not origin)"
+          },
+          "status": "Cidadãos vendo lista de Mais Procurados desatualizada do cache do CDN."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-cdn-north-origin", "source": "cdn-edge-north", "target": "origin-server", "label": "no revalidation", "animated": false, "style": "normal" },
+      { "id": "e-cdn-south-origin", "source": "cdn-edge-south", "target": "origin-server", "label": "no revalidation", "animated": false, "style": "normal" },
+      { "id": "e-citizens-north", "source": "citizens", "target": "cdn-edge-north", "label": "stale content", "animated": true, "style": "slow" },
+      { "id": "e-citizens-south", "source": "citizens", "target": "cdn-edge-south", "label": "stale content", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz do CDN servir conteúdo desatualizado?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O servidor de origem falhou em atualizar a lista de Mais Procurados corretamente",
+          "correct": false,
+          "feedback": "O servidor de origem atualizou corretamente às 6 da manhã. Acessar a origem diretamente mostra a lista correta. O problema é que os nós de borda do CDN têm sua própria cópia em cache e não sabem que a origem mudou."
+        },
+        {
+          "id": "rc-2",
+          "text": "O cache-control do CDN está configurado para 24 horas sem mecanismo de purge ou invalidação — os nós de borda não vão buscar conteúdo novo até o TTL expirar",
+          "correct": true,
+          "feedback": "Correto! O CDN faz cache do conteúdo por 24 horas (max-age=86400) e não tem integração de purge. Quando o conteúdo muda na origem, não há como avisar os nós de borda do CDN para descartar suas cópias em cache. Esta é uma armadilha comum de cache de CDN — TTLs longos precisam ser combinados com APIs de purge/invalidação."
+        },
+        {
+          "id": "rc-3",
+          "text": "Os nós de borda do CDN estão com um bug e não estão respeitando os headers de cache",
+          "correct": false,
+          "feedback": "O CDN está funcionando exatamente como configurado — está respeitando o TTL de 24 horas perfeitamente. O problema é que 24 horas é muito tempo para conteúdo que muda frequentemente quando não há mecanismo de purge."
+        },
+        {
+          "id": "rc-4",
+          "text": "Os navegadores dos cidadãos estão fazendo cache da página antiga localmente",
+          "correct": false,
+          "feedback": "Mesmo que os cidadãos façam hard-refresh nos navegadores, os nós de borda do CDN vão servir a versão desatualizada. O problema está na camada do CDN, não na camada do navegador."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor solução para garantir que o conteúdo do CDN se mantenha atualizado quando a origem muda?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Configurar o TTL do cache do CDN para zero para que sempre busque da origem",
+          "correct": false,
+          "feedback": "Um TTL zero anula todo o propósito de um CDN. Cada requisição atingiria o servidor de origem, eliminando os benefícios de desempenho e escalabilidade. O objetivo é fazer cache agressivamente mas invalidar de forma inteligente."
+        },
+        {
+          "id": "fix-2",
+          "text": "Integrar o purge de cache do CDN ao fluxo de atualização de conteúdo — invalidar automaticamente o cache do CDN quando o conteúdo muda na origem",
+          "correct": true,
+          "feedback": "Correto! APIs de purge/invalidação do CDN permitem limpar proativamente conteúdo em cache quando você sabe que ele mudou. Combinado com URLs versionadas ou TTLs mais curtos para conteúdo dinâmico, isso oferece o desempenho do cache do CDN com a atualidade do conteúdo servido pela origem."
+        },
+        {
+          "id": "fix-3",
+          "text": "Reduzir o TTL do CDN de 24 horas para 5 minutos",
+          "correct": false,
+          "feedback": "Um TTL de 5 minutos reduz a desatualização, mas aumenta significativamente a carga na origem (cada nó de borda busca novamente a cada 5 minutos). Para a página de Mais Procurados, 5 minutos de dados desatualizados ainda pode ser problemático. Uma abordagem de purge na atualização oferece tanto atualidade quanto eficiência."
+        },
+        {
+          "id": "fix-4",
+          "text": "Ignorar o CDN completamente para a página de Mais Procurados e servir diretamente da origem",
+          "correct": false,
+          "feedback": "Remover o cache do CDN para páginas populares significa que o servidor de origem lida com todo o tráfego diretamente, perdendo os benefícios de distribuição geográfica e desempenho do CDN. É melhor usar o CDN com uma estratégia de invalidação adequada."
+        }
+      ]
+    }
+  },
+  "conceptId": "cdn-caching",
+  "badge": {
+    "name": "Comandante de CDN",
+    "icon": "🌐"
+  }
+}

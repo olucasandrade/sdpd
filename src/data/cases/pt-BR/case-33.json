@@ -1,0 +1,196 @@
+{
+  "id": "case-33",
+  "number": 33,
+  "title": "O Rate Limiter",
+  "subtitle": "Uma integração inunda o sistema, afogando todos os outros",
+  "brief": {
+    "narrative": "A DP de Distributia recentemente se integrou com o Banco de Dados Federal de Mandados — uma grande conquista para cooperação interjurisdicional. A integração funciona através da API do Warrant Gateway, que todas as cinco delegacias usam para verificar mandados federais durante paradas de trânsito e prisões. Tudo estava bem durante os testes com um punhado de requisições. Mas esta manhã, a 3a Delegacia deployou um sistema automatizado de checagem de antecedentes que consulta o Warrant Gateway para cada pessoa nos seus registros — todas as 140.000 — em um job em lote que dispara 500 requisições por segundo. O Warrant Gateway não tem rate limiting. Em minutos, a API ficou tão sobrecarregada que as 1a, 2a, 4a e 5a Delegacias não conseguem fazer verificações de mandados. Oficiais em campo estão fazendo paradas de trânsito e prisões sem saber se a pessoa tem um mandado federal. A Oficial Shield da 1a Delegacia acabou de liberar um suspeito durante uma parada de rotina que, sem ela saber, tem um mandado federal ativo por roubo à mão armada. O job em lote de uma delegacia monopolizou um recurso compartilhado, deixando todas as outras delegacias sem acesso.",
+    "symptoms": [
+      "Os tempos de resposta da API do Warrant Gateway excedem 30 segundos (normalmente 200ms)",
+      "As 1a, 2a, 4a e 5a Delegacias reportam falhas na verificação de mandados — timeouts em todas as requisições",
+      "A 3a Delegacia está enviando 500 requisições/segundo via job automatizado em lote",
+      "A vazão total da API colapsou — atendendo menos requisições do que antes do job em lote começar"
+    ],
+    "objective": "Identificar como a ausência de rate limiting permitiu que um consumidor monopolizasse uma API compartilhada, e determinar a estratégia correta de rate limiting para garantir acesso justo."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "precinct-3",
+        "type": "client",
+        "label": "Precinct 3 (batch job)",
+        "status": "degraded",
+        "position": { "x": 80, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "3a Delegacia — Sistema Automatizado de Checagem de Antecedentes",
+          "logs": [
+            "[08:00:00] INFO: Starting batch warrant check — 140,000 records queued",
+            "[08:00:01] INFO: Sending 500 requests/second to Warrant Gateway",
+            "[08:00:30] INFO: 15,000 records checked — 0 throttle errors",
+            "[08:01:00] WARN: Response times increasing — 2s average (was 200ms)",
+            "[08:02:00] WARN: Response times now 15s — but no rate limit errors received",
+            "[08:03:00] INFO: 45,000 records checked — continuing at full speed"
+          ],
+          "data": {
+            "Request Rate": "500/sec (unlimited)",
+            "Records To Process": "140,000",
+            "Rate Limit Received": "NONE — no limits enforced",
+            "Job Priority": "Background batch — not time-sensitive",
+            "Impact Awareness": "None — no feedback that other precincts are affected"
+          },
+          "status": "Job em lote rodando a toda velocidade sem feedback de rate limiting. Sem consciência de que está deixando outras delegacias sem acesso."
+        }
+      },
+      {
+        "id": "other-precincts",
+        "type": "client",
+        "label": "Precincts 1,2,4,5",
+        "status": "failed",
+        "position": { "x": 80, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "1a, 2a, 4a e 5a Delegacias — Operações de Campo",
+          "logs": [
+            "[08:01:15] INFO: [P1] Officer Shield — warrant check for traffic stop suspect",
+            "[08:01:45] ERROR: [P1] Warrant Gateway timeout — 30s — returning NO DATA",
+            "[08:01:46] WARN: [P1] Officer Shield releasing suspect — no warrant data available",
+            "[08:02:00] ERROR: [P2] Warrant check failed — timeout",
+            "[08:02:10] ERROR: [P4] Warrant check failed — timeout",
+            "[08:02:30] ERROR: [P5] Warrant check failed — 3 consecutive timeouts"
+          ],
+          "data": {
+            "Combined Request Rate": "~20/sec (normal field operations)",
+            "Success Rate": "0% (all timing out)",
+            "Officers In Field": "340 (across 4 precincts)",
+            "Warrant Checks Failed": "127 in last 5 minutes",
+            "Safety Risk": "HIGH — suspects released without warrant data"
+          },
+          "status": "Todas as quatro delegacias sem conseguir fazer verificações de mandados. Oficiais fazendo paradas sem informações críticas de segurança."
+        }
+      },
+      {
+        "id": "warrant-gateway",
+        "type": "server",
+        "label": "Warrant Gateway API",
+        "status": "failed",
+        "position": { "x": 400, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "API do Warrant Gateway",
+          "logs": [
+            "[08:00:00] INFO: Incoming request rate: ~20/sec (normal)",
+            "[08:00:01] WARN: Request rate spike — 520/sec",
+            "[08:00:30] WARN: Thread pool 95% utilized — 190/200 threads busy",
+            "[08:01:00] ERROR: Thread pool exhausted — 200/200 threads busy",
+            "[08:01:00] ERROR: Request queue overflow — dropping requests",
+            "[08:01:00] WARN: Rate limiting: NOT CONFIGURED"
+          ],
+          "data": {
+            "Max Throughput": "200 req/sec",
+            "Current Inbound": "520 req/sec",
+            "Rate Limiting": "NONE",
+            "Per-Client Quotas": "NONE",
+            "Priority Queues": "NONE",
+            "Precinct 3 Share": "96% of all requests",
+            "Other Precincts Share": "4% of all requests"
+          },
+          "status": "API sobrecarregada. Sem rate limiting, sem cotas por cliente, sem diferenciação de prioridade."
+        }
+      },
+      {
+        "id": "federal-db",
+        "type": "database",
+        "label": "Federal Warrant DB",
+        "status": "degraded",
+        "position": { "x": 650, "y": 180 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados Federal de Mandados",
+          "logs": [
+            "[08:00:30] WARN: Query rate exceeding recommended threshold",
+            "[08:01:00] WARN: Connection pool 90% utilized",
+            "[08:01:30] ERROR: Query latency 5x normal — resource contention"
+          ],
+          "data": {
+            "Connection Pool": "180/200 (90% — mostly Precinct 3 queries)",
+            "Query Latency": "1.2s (normal: 50ms)",
+            "Recommended Rate": "100 queries/sec",
+            "Actual Rate": "500+ queries/sec"
+          },
+          "status": "Banco de dados sob carga pesada de consultas em lote sem throttling."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-p3-gateway", "source": "precinct-3", "target": "warrant-gateway", "label": "500 req/sec (no limit)", "animated": true, "style": "slow" },
+      { "id": "e-others-gateway", "source": "other-precincts", "target": "warrant-gateway", "label": "20 req/sec (starved)", "animated": false, "style": "broken" },
+      { "id": "e-gateway-db", "source": "warrant-gateway", "target": "federal-db", "label": "overwhelmed", "animated": true, "style": "slow" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz de quatro delegacias perderem acesso às verificações de mandados?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O job em lote da 3a Delegacia é malicioso e não deveria ter sido deployado sem aprovação",
+          "correct": false,
+          "feedback": "O job em lote da 3a Delegacia é um caso de uso legítimo — checagem de antecedentes contra mandados federais. O job não é malicioso; está simplesmente consumindo um recurso ilimitado sem restrições. Sem rate limits, qualquer cliente pode monopolizar a API sem querer. O sistema deveria se proteger disso, não depender de clientes bem-comportados."
+        },
+        {
+          "id": "rc-2",
+          "text": "O Banco de Dados Federal de Mandados é lento demais para lidar com o volume de requisições",
+          "correct": false,
+          "feedback": "O banco de dados lidaria com a carga normal de 20 requisições/segundo tranquilamente. Até os 500 req/seg da 3a Delegacia poderiam ser gerenciáveis se propriamente enfileirados e throttled. O problema é que o API gateway não tem mecanismo para controlar o fluxo, então o volume bruto sem throttling esmaga tanto o gateway quanto o banco de dados."
+        },
+        {
+          "id": "rc-3",
+          "text": "O Warrant Gateway não tem rate limiting ou cotas por cliente, permitindo que um consumidor monopolize a API compartilhada e deixe todos os outros sem acesso",
+          "correct": true,
+          "feedback": "Correto! Sem rate limiting, o Warrant Gateway trata todas as requisições igualmente em uma base de primeiro a chegar, primeiro a ser atendido. Os 500 req/seg da 3a Delegacia consomem 96% da capacidade da API, deixando migalhas para as outras quatro delegacias. Este é o problema do 'vizinho barulhento' — o uso de um tenant degrada o serviço para todos os outros. Rate limiting com cotas por cliente garante acesso justo a recursos compartilhados."
+        },
+        {
+          "id": "rc-4",
+          "text": "O pool de threads do Warrant Gateway é pequeno demais e deveria ser aumentado para lidar com picos de carga",
+          "correct": false,
+          "feedback": "Um pool de threads maior aumentaria a capacidade bruta, mas sem rate limiting, a 3a Delegacia simplesmente consumiria a capacidade extra também. Se você adicionar 1000 threads, o job em lote alegremente usaria todas as 1000. Rate limiting é essencial para garantir distribuição justa de qualquer capacidade que exista."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor abordagem para evitar que um consumidor monopolize a API?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Bloquear o job em lote da 3a Delegacia e exigir que todas as verificações de mandados sejam manuais, uma por vez",
+          "correct": false,
+          "feedback": "Bloquear casos de uso legítimos não é a resposta. Verificações de mandados em lote são valiosas — você só precisa limitá-las. Uma boa estratégia de rate limiting permite que jobs em lote rodem a uma taxa controlada sem impactar operações em tempo real."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implementar rate limiting por cliente com cotas — cada delegacia recebe uma parcela justa, com prioridade maior para requisições de campo em tempo real sobre operações em lote",
+          "correct": true,
+          "feedback": "Correto! Rate limiting por cliente (ex.: usando algoritmo de token bucket ou janela deslizante) garante que cada delegacia receba uma cota justa. Níveis de prioridade adicionam outra dimensão: requisições de campo em tempo real (segurança do oficial) recebem prioridade maior que jobs em lote de background. Desta forma, o job em lote da 3a Delegacia roda a uma taxa sustentável (ex.: 50 req/seg em vez de 500), enquanto oficiais de campo de todas as delegacias recebem respostas em menos de um segundo. Rate limiting protege recursos compartilhados do problema do vizinho barulhento."
+        },
+        {
+          "id": "fix-3",
+          "text": "Escalar o Warrant Gateway horizontalmente para lidar com qualquer volume de requisições de qualquer cliente",
+          "correct": false,
+          "feedback": "Escalar ajuda com capacidade, mas sem rate limiting, um único cliente sempre poderia escalar suas requisições para acompanhar. Além disso, o Banco de Dados Federal de Mandados tem seus próprios limites que você não controla. Rate limiting é essencial independentemente de quanto você escale — é sobre justiça e proteção, não apenas capacidade."
+        },
+        {
+          "id": "fix-4",
+          "text": "Adicionar uma fila na frente do Warrant Gateway que processa requisições em ordem FIFO",
+          "correct": false,
+          "feedback": "Uma fila FIFO sem rate limiting ainda deixa a 3a Delegacia encher a fila com 500 req/seg, empurrando as requisições das outras delegacias para o final. A profundidade da fila cresceria ilimitadamente, e oficiais de campo esperariam atrás de dezenas de milhares de requisições em lote. Você precisa de cotas por cliente para garantir acesso justo."
+        }
+      ]
+    }
+  },
+  "conceptId": "rate-limiting",
+  "badge": {
+    "name": "Guardião de Rate Limit",
+    "icon": "🚦"
+  }
+}

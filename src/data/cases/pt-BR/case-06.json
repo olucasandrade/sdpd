@@ -1,0 +1,190 @@
+{
+  "id": "case-06",
+  "number": 6,
+  "title": "As Ordens Conflitantes",
+  "subtitle": "Dois líderes, duas designações, um policial muito confuso",
+  "brief": {
+    "narrative": "A Polícia de Distributia opera uma configuração de replicação multi-líder para que tanto a Delegacia Centro quanto a Delegacia do Porto possam designar casos independentemente, mesmo quando a rede entre elas está lenta. Esta noite, o Detetive Reyes no Centro e o Sargento Okonkwo no Porto designaram o Caso #2290 — um roubo de joias de alto perfil — para policiais diferentes. O Oficial Park recebeu o caso no Centro, enquanto o Oficial Chen o recebeu no Porto. Ambos os policiais apareceram na cena do crime e iniciaram investigações separadas e contraditórias. Testemunhas estão confusas, cadeias de evidência estão embaralhadas, e o Capitão quer saber como isso aconteceu.",
+    "symptoms": [
+      "O Caso #2290 foi designado a dois policiais diferentes por duas delegacias diferentes",
+      "Ambos os policiais chegaram à cena do crime com planos de investigação conflitantes",
+      "O sistema de gestão de casos mostra designações diferentes dependendo de qual delegacia você consulta",
+      "O atraso de replicação entre os bancos de dados do Centro e do Porto é de 45 segundos"
+    ],
+    "objective": "Entender como a replicação multi-líder causou um conflito de escrita e determinar a melhor estratégia para lidar com conflitos neste sistema."
+  },
+  "diagram": {
+    "nodes": [
+      {
+        "id": "db-downtown",
+        "type": "database",
+        "label": "Downtown DB (Leader)",
+        "status": "degraded",
+        "position": { "x": 100, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados do Centro (Líder)",
+          "logs": [
+            "[19:42:10] INFO: WRITE — Case #2290 assigned to Officer Park by Det. Reyes",
+            "[19:42:10] INFO: Write accepted locally, queued for replication to Harbor",
+            "[19:42:55] INFO: Received replication event from Harbor: Case #2290 assigned to Officer Chen",
+            "[19:42:55] ERROR: WRITE CONFLICT — Case #2290 has two different assignees",
+            "[19:42:55] WARN: Conflict resolution policy: LAST-WRITE-WINS (by timestamp)",
+            "[19:42:56] INFO: Harbor write timestamp 19:42:12 > Downtown write timestamp 19:42:10 — Harbor write wins",
+            "[19:42:56] WARN: Officer Park's assignment silently dropped"
+          ],
+          "data": {
+            "Role": "LEADER (multi-leader setup)",
+            "Case #2290 Assignee (local)": "Officer Park (OVERWRITTEN)",
+            "Case #2290 Assignee (after conflict resolution)": "Officer Chen",
+            "Conflict Resolution": "Last-Write-Wins (timestamp)",
+            "Replication Lag to Harbor": "45 seconds",
+            "Conflicts Today": "7"
+          },
+          "status": "Conflito de escrita detectado. Resolução LWW descartou silenciosamente a designação do Centro."
+        }
+      },
+      {
+        "id": "db-harbor",
+        "type": "database",
+        "label": "Harbor DB (Leader)",
+        "status": "degraded",
+        "position": { "x": 550, "y": 50 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Banco de Dados do Porto (Líder)",
+          "logs": [
+            "[19:42:12] INFO: WRITE — Case #2290 assigned to Officer Chen by Sgt. Okonkwo",
+            "[19:42:12] INFO: Write accepted locally, queued for replication to Downtown",
+            "[19:42:57] INFO: Received replication event from Downtown: Case #2290 assigned to Officer Park",
+            "[19:42:57] ERROR: WRITE CONFLICT — Case #2290 has two different assignees",
+            "[19:42:57] WARN: Conflict resolution policy: LAST-WRITE-WINS (by timestamp)",
+            "[19:42:58] INFO: Harbor write timestamp 19:42:12 > Downtown write timestamp 19:42:10 — Harbor write wins"
+          ],
+          "data": {
+            "Role": "LEADER (multi-leader setup)",
+            "Case #2290 Assignee": "Officer Chen",
+            "Conflict Resolution": "Last-Write-Wins (timestamp)",
+            "Replication Lag to Downtown": "45 seconds",
+            "Conflicts Today": "7"
+          },
+          "status": "Conflito de escrita resolvido via LWW. Escrita do Porto preservada, escrita do Centro descartada."
+        }
+      },
+      {
+        "id": "precinct-downtown",
+        "type": "client",
+        "label": "Downtown Precinct",
+        "status": "degraded",
+        "position": { "x": 100, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal da Delegacia Centro",
+          "logs": [
+            "[19:42:10] INFO: Det. Reyes assigned Case #2290 to Officer Park — confirmed",
+            "[19:42:15] INFO: Officer Park dispatched to crime scene",
+            "[19:43:00] WARN: Case #2290 assignee changed to Officer Chen (conflict resolution)",
+            "[19:43:00] ERROR: Officer Park already en route — no notification sent"
+          ],
+          "data": {
+            "Case #2290 Displayed Assignee": "Officer Chen (changed from Park)",
+            "Officer Park Status": "En route to crime scene (unaware of reassignment)",
+            "Det. Reyes Notified": "NO — silent overwrite"
+          },
+          "status": "A designação do Det. Reyes foi silenciosamente sobrescrita pela resolução de conflito. Nenhum alerta foi emitido."
+        }
+      },
+      {
+        "id": "precinct-harbor",
+        "type": "client",
+        "label": "Harbor Precinct",
+        "status": "healthy",
+        "position": { "x": 550, "y": 300 },
+        "inspectable": true,
+        "inspectData": {
+          "title": "Terminal da Delegacia do Porto",
+          "logs": [
+            "[19:42:12] INFO: Sgt. Okonkwo assigned Case #2290 to Officer Chen — confirmed",
+            "[19:42:18] INFO: Officer Chen dispatched to crime scene"
+          ],
+          "data": {
+            "Case #2290 Displayed Assignee": "Officer Chen",
+            "Officer Chen Status": "En route to crime scene"
+          },
+          "status": "A designação do Porto foi preservada pela resolução de conflito LWW."
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-dt-harbor-repl", "source": "db-downtown", "target": "db-harbor", "label": "async replication", "animated": true, "style": "slow" },
+      { "id": "e-harbor-dt-repl", "source": "db-harbor", "target": "db-downtown", "label": "async replication", "animated": true, "style": "slow" },
+      { "id": "e-dt-precinct", "source": "db-downtown", "target": "precinct-downtown", "label": "reads/writes", "animated": true, "style": "normal" },
+      { "id": "e-harbor-precinct", "source": "db-harbor", "target": "precinct-harbor", "label": "reads/writes", "animated": true, "style": "normal" }
+    ]
+  },
+  "diagnosis": {
+    "rootCause": {
+      "question": "Qual é a causa raiz das designações de caso conflitantes?",
+      "options": [
+        {
+          "id": "rc-1",
+          "text": "O atraso de replicação de 45 segundos é muito alto e deveria ser reduzido a zero",
+          "correct": false,
+          "feedback": "Reduzir o atraso de replicação ajuda, mas com replicação multi-líder, qualquer atraso diferente de zero pode gerar conflitos. Mesmo com 1ms de atraso, duas escritas acontecendo dentro dessa janela vão conflitar. O problema fundamental é que a replicação multi-líder inerentemente permite escritas concorrentes conflitantes."
+        },
+        {
+          "id": "rc-2",
+          "text": "A replicação multi-líder permite que ambos os bancos de dados aceitem escritas independentemente, então escritas concorrentes no mesmo registro criam conflitos que precisam ser resolvidos depois",
+          "correct": true,
+          "feedback": "Correto! Na replicação multi-líder, cada líder aceita escritas independentemente e as replica de forma assíncrona para os outros líderes. Quando dois líderes modificam o mesmo registro antes da replicação alcançá-los, ocorre um conflito de escrita. Este é o trade-off inerente de configurações multi-líder: você ganha disponibilidade e menor latência para escritas, mas precisa lidar com conflitos. A estratégia LWW descartou silenciosamente a designação do Det. Reyes — um resultado perigoso para dados críticos."
+        },
+        {
+          "id": "rc-3",
+          "text": "O Det. Reyes e o Sgt. Okonkwo deveriam ter se coordenado antes de fazer as designações",
+          "correct": false,
+          "feedback": "Coordenação humana não é uma solução confiável em escala. O sistema deveria prevenir ou tratar adequadamente escritas concorrentes. Se o sistema permitiu escritas conflitantes silenciosamente, é um problema de design do sistema, não erro humano."
+        },
+        {
+          "id": "rc-4",
+          "text": "A estratégia de resolução de conflito last-write-wins tem um bug na comparação de timestamps",
+          "correct": false,
+          "feedback": "O LWW funcionou como projetado — escolheu a escrita com o timestamp mais recente. O problema é que o LWW em si é uma estratégia com perdas: ele descarta silenciosamente uma escrita sem alertar ninguém. Para designações de caso, perder uma escrita significa perder a designação de um policial sem notificação."
+        }
+      ]
+    },
+    "fix": {
+      "question": "Qual é a melhor abordagem para lidar com conflitos de escrita neste sistema multi-líder?",
+      "options": [
+        {
+          "id": "fix-1",
+          "text": "Mudar para replicação de líder único para designações de caso, para que apenas uma delegacia possa escrever por vez",
+          "correct": false,
+          "feedback": "Líder único elimina conflitos de escrita mas sacrifica a disponibilidade que o multi-líder oferece. Se a rede do líder cair, nenhuma delegacia pode designar casos. Uma abordagem melhor preserva o benefício do multi-líder enquanto trata conflitos adequadamente."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implementar resolução de conflitos no nível da aplicação que detecte conflitos e os apresente a um supervisor para resolução manual",
+          "correct": true,
+          "feedback": "Correto! Para dados críticos como designações de caso, a melhor abordagem é detectar conflitos e apresentá-los aos usuários em vez de resolvê-los silenciosamente. Quando um conflito é detectado, o sistema deve sinalizá-lo e apresentar ambas as versões a um supervisor que possa tomar a decisão correta. É assim que CRDTs e funções de merge customizadas funcionam na prática — a lógica da aplicação decide como tratar conflitos com base no conhecimento do domínio."
+        },
+        {
+          "id": "fix-3",
+          "text": "Usar last-write-wins mas com timestamps mais precisos de um servidor NTP",
+          "correct": false,
+          "feedback": "Timestamps melhores tornam o LWW mais determinístico, mas o problema central permanece: uma escrita é silenciosamente descartada. Para dados críticos como designações de caso, descartar silenciosamente uma escrita é inaceitável independentemente de qual escrita vença."
+        },
+        {
+          "id": "fix-4",
+          "text": "Adicionar um lock global para que apenas uma delegacia possa modificar um registro de caso por vez",
+          "correct": false,
+          "feedback": "Um lock global entre data centers anula o propósito da replicação multi-líder — reintroduz os problemas de latência e disponibilidade que você estava tentando evitar. Se o serviço de lock cair, ninguém pode escrever. Detecção e resolução de conflitos é uma abordagem melhor que preserva os benefícios do multi-líder."
+        }
+      ]
+    }
+  },
+  "conceptId": "multi-leader-replication",
+  "badge": {
+    "name": "Resolvedor de Conflitos",
+    "icon": "⚔️"
+  }
+}

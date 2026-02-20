@@ -339,14 +339,6 @@ npm run build
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
-You are free to:
-- ✅ Use commercially
-- ✅ Modify the code
-- ✅ Distribute copies
-- ✅ Use privately
-
-Just include the license notice.
-
 ---
 
 ## 🐛 Troubleshooting
@@ -396,7 +388,7 @@ Just include the license notice.
 - [ ] Mobile app (React Native)
 
 ### Community Requests
-- Help us prioritize! Open an issue to request features
+- Help me prioritize! Open an issue to request features
 
 ---
 
@@ -428,14 +420,6 @@ SDPD teaches:
 
 ---
 
-## 📞 Support & Contact
-
-- **Issues & Bugs** — [GitHub Issues](https://github.com/yourusername/sdpd/issues)
-- **Discussions** — [GitHub Discussions](https://github.com/yourusername/sdpd/discussions)
-- **Email** — [your-email@example.com]
-
----
-
 ## 🙏 Acknowledgments
 
 - Inspired by distributed systems challenges encountered in production
@@ -443,6 +427,7 @@ SDPD teaches:
   - "Designing Data-Intensive Applications" by Martin Kleppmann
   - Papers on distributed consensus, replication, and storage
   - Real-world incident postmortems
+- And based primarily from [sqlpd](https://sqlpd.com)
 
 ---
 
@@ -468,16 +453,6 @@ SDPD teaches:
 
 ---
 
-## 📦 Version History
-
-**v0.0.0** — Initial release
-- 33 cases across 8 categories
-- 7 achievement ranks
-- English & Portuguese support
-- localStorage persistence
-
----
-
-**Made with ❤️ by the SDPD community**
+**Made with ❤️ by me**
 
 [⬆ back to top](#sdpd--systems-design-police-department-)

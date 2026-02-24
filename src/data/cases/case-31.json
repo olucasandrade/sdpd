@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Statistics Report Service",
         "status": "degraded",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Statistics Report Service",
@@ -48,7 +51,10 @@
         "type": "server",
         "label": "Crime Intake Service",
         "status": "healthy",
-        "position": { "x": 80, "y": 200 },
+        "position": {
+          "x": 80,
+          "y": 200
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Crime Intake Service",
@@ -72,7 +78,10 @@
         "type": "server",
         "label": "Case Resolution Service",
         "status": "healthy",
-        "position": { "x": 620, "y": 200 },
+        "position": {
+          "x": 620,
+          "y": 200
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Case Resolution Service",
@@ -94,7 +103,10 @@
         "type": "database",
         "label": "Crime Database",
         "status": "healthy",
-        "position": { "x": 350, "y": 350 },
+        "position": {
+          "x": 350,
+          "y": 350
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Crime Statistics Database",
@@ -115,9 +127,30 @@
       }
     ],
     "edges": [
-      { "id": "e-stats-db", "source": "stats-service", "target": "crime-db", "label": "12 queries (3.2s)", "animated": true, "style": "slow" },
-      { "id": "e-intake-db", "source": "crime-intake", "target": "crime-db", "label": "47 inserts", "animated": true, "style": "normal" },
-      { "id": "e-resolution-db", "source": "case-resolution", "target": "crime-db", "label": "13 updates", "animated": true, "style": "normal" }
+      {
+        "id": "e-stats-db",
+        "source": "stats-service",
+        "target": "crime-db",
+        "label": "12 queries (3.2s)",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-intake-db",
+        "source": "crime-intake",
+        "target": "crime-db",
+        "label": "47 inserts",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-resolution-db",
+        "source": "case-resolution",
+        "target": "crime-db",
+        "label": "13 updates",
+        "animated": true,
+        "style": "normal"
+      }
     ]
   },
   "diagnosis": {
@@ -154,6 +187,12 @@
       "question": "What is the best fix to ensure the crime statistics report reads consistent data?",
       "options": [
         {
+          "id": "fix-4",
+          "text": "Add a lock on the crimes table before generating the report to prevent concurrent modifications",
+          "correct": false,
+          "feedback": "Table-level locking would provide consistency but would block all crime intake during report generation — unacceptable for a police department where every second counts. SNAPSHOT isolation achieves the same consistency without blocking any writers through MVCC (Multi-Version Concurrency Control)."
+        },
+        {
           "id": "fix-1",
           "text": "Use SERIALIZABLE isolation level so the report blocks all other transactions while it runs",
           "correct": false,
@@ -170,12 +209,6 @@
           "text": "Use REPEATABLE READ or SNAPSHOT isolation so all queries in the report transaction see the same point-in-time snapshot",
           "correct": true,
           "feedback": "Correct! REPEATABLE READ (or SNAPSHOT isolation in databases that support it) ensures all queries within a transaction see the database as it was at the moment the transaction began. New inserts and updates committed by other transactions are invisible to the report. This eliminates phantom reads — the report sees a consistent snapshot even though the underlying data is being modified. Writers are not blocked, so the system remains fully operational."
-        },
-        {
-          "id": "fix-4",
-          "text": "Add a lock on the crimes table before generating the report to prevent concurrent modifications",
-          "correct": false,
-          "feedback": "Table-level locking would provide consistency but would block all crime intake during report generation — unacceptable for a police department where every second counts. SNAPSHOT isolation achieves the same consistency without blocking any writers through MVCC (Multi-Version Concurrency Control)."
         }
       ]
     }

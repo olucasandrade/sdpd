@@ -142,16 +142,56 @@
       }
     ],
     "edges": [
-      { "id": "e-east-db-link", "source": "db-east", "target": "network-link", "label": "replication", "animated": false, "style": "broken" },
-      { "id": "e-link-west-db", "source": "network-link", "target": "db-west", "label": "replication", "animated": false, "style": "broken" },
-      { "id": "e-east-precinct", "source": "db-east", "target": "precinct-east", "label": "queries/writes", "animated": true, "style": "normal" },
-      { "id": "e-west-precinct", "source": "db-west", "target": "precinct-west", "label": "queries/writes", "animated": true, "style": "normal" }
+      {
+        "id": "e-east-db-link",
+        "source": "db-east",
+        "target": "network-link",
+        "label": "replication",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-link-west-db",
+        "source": "network-link",
+        "target": "db-west",
+        "label": "replication",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-east-precinct",
+        "source": "db-east",
+        "target": "precinct-east",
+        "label": "queries/writes",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-west-precinct",
+        "source": "db-west",
+        "target": "precinct-west",
+        "label": "queries/writes",
+        "animated": true,
+        "style": "normal"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What is the root cause of the conflicting suspect records?",
       "options": [
+        {
+          "id": "rc-4",
+          "text": "The failover timeout was set too low, causing premature leader promotion",
+          "correct": false,
+          "feedback": "While a longer timeout might delay the split-brain, it wouldn't prevent it. The core issue is the lack of a proper consensus mechanism or quorum requirement. Without these, any timeout value eventually leads to the same problem during a sustained partition."
+        },
+        {
+          "id": "rc-3",
+          "text": "East Precinct's officer made an unauthorized change to the suspect's status",
+          "correct": false,
+          "feedback": "The East Precinct officer followed proper procedure — the DA's office cleared the suspect. The problem is that West Precinct simultaneously filed an arrest warrant, and the two databases weren't communicating due to the network partition. Both writes were legitimate but conflicting."
+        },
         {
           "id": "rc-1",
           "text": "A software bug caused the databases to corrupt suspect #4412's record",
@@ -163,18 +203,6 @@
           "text": "A network partition caused a split-brain — both databases promoted themselves to leader and accepted conflicting writes independently",
           "correct": true,
           "feedback": "Correct! When the network link between the two data centers failed, each replica lost contact with the other. Without a proper quorum or fencing mechanism, both promoted themselves to leader. This is the classic 'split-brain' problem in distributed systems — a network partition leads to two independent leaders accepting conflicting writes."
-        },
-        {
-          "id": "rc-3",
-          "text": "East Precinct's officer made an unauthorized change to the suspect's status",
-          "correct": false,
-          "feedback": "The East Precinct officer followed proper procedure — the DA's office cleared the suspect. The problem is that West Precinct simultaneously filed an arrest warrant, and the two databases weren't communicating due to the network partition. Both writes were legitimate but conflicting."
-        },
-        {
-          "id": "rc-4",
-          "text": "The failover timeout was set too low, causing premature leader promotion",
-          "correct": false,
-          "feedback": "While a longer timeout might delay the split-brain, it wouldn't prevent it. The core issue is the lack of a proper consensus mechanism or quorum requirement. Without these, any timeout value eventually leads to the same problem during a sustained partition."
         }
       ]
     },

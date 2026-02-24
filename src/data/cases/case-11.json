@@ -20,7 +20,10 @@
         "type": "database",
         "label": "Shard 1 (A-F)",
         "status": "healthy",
-        "position": { "x": 80, "y": 50 },
+        "position": {
+          "x": 80,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Database Shard 1 (A-F)",
@@ -44,7 +47,10 @@
         "type": "database",
         "label": "Shard 2 (G-L)",
         "status": "healthy",
-        "position": { "x": 280, "y": 50 },
+        "position": {
+          "x": 280,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Database Shard 2 (G-L)",
@@ -68,7 +74,10 @@
         "type": "database",
         "label": "Shard 3 (M-R)",
         "status": "healthy",
-        "position": { "x": 480, "y": 50 },
+        "position": {
+          "x": 480,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Database Shard 3 (M-R)",
@@ -92,7 +101,10 @@
         "type": "database",
         "label": "Shard 4 (S-Z)",
         "status": "failed",
-        "position": { "x": 680, "y": 50 },
+        "position": {
+          "x": 680,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Database Shard 4 (S-Z) — HOT PARTITION",
@@ -123,7 +135,10 @@
         "type": "server",
         "label": "Shard Router",
         "status": "healthy",
-        "position": { "x": 380, "y": 280 },
+        "position": {
+          "x": 380,
+          "y": 280
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Database Shard Router",
@@ -144,10 +159,38 @@
       }
     ],
     "edges": [
-      { "id": "e-router-s1", "source": "router", "target": "shard-1", "label": "3% traffic", "animated": true, "style": "normal" },
-      { "id": "e-router-s2", "source": "router", "target": "shard-2", "label": "4% traffic", "animated": true, "style": "normal" },
-      { "id": "e-router-s3", "source": "router", "target": "shard-3", "label": "4% traffic", "animated": true, "style": "normal" },
-      { "id": "e-router-s4", "source": "router", "target": "shard-4", "label": "89% traffic", "animated": true, "style": "broken" }
+      {
+        "id": "e-router-s1",
+        "source": "router",
+        "target": "shard-1",
+        "label": "3% traffic",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-router-s2",
+        "source": "router",
+        "target": "shard-2",
+        "label": "4% traffic",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-router-s3",
+        "source": "router",
+        "target": "shard-3",
+        "label": "4% traffic",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-router-s4",
+        "source": "router",
+        "target": "shard-4",
+        "label": "89% traffic",
+        "animated": true,
+        "style": "broken"
+      }
     ]
   },
   "diagnosis": {
@@ -161,16 +204,16 @@
           "feedback": "All shards have identical hardware. The problem is that Shard 4 receives disproportionate traffic because the partitioning strategy (first letter of surname) doesn't distribute data evenly. When a trending event involves suspects whose names cluster in one range (S-Z), that shard becomes a hot partition."
         },
         {
-          "id": "rc-2",
-          "text": "The key-range partitioning strategy creates a hot partition because data access patterns are not uniformly distributed across alphabet ranges",
-          "correct": true,
-          "feedback": "Correct! Key-range partitioning (A-F, G-L, M-R, S-Z) assumes data and access patterns are evenly distributed across the alphabet. But real-world data is not uniform — surname distributions vary by culture, and trending events can concentrate traffic on specific key ranges. When the celebrity crime wave hit S-surnames, Shard 4 became a 'hot partition' receiving 89% of all traffic while the others sat idle. This is the fundamental risk of range-based partitioning."
-        },
-        {
           "id": "rc-3",
           "text": "There are too many celebrity crime reports — the system wasn't designed for this volume",
           "correct": false,
           "feedback": "The total volume (50,000 reports) is manageable — spread across all four shards, each would handle only 12,500 extra records, well within capacity. The problem is concentration, not volume. All 50,000 reports end up on ONE shard because of the partitioning strategy."
+        },
+        {
+          "id": "rc-2",
+          "text": "The key-range partitioning strategy creates a hot partition because data access patterns are not uniformly distributed across alphabet ranges",
+          "correct": true,
+          "feedback": "Correct! Key-range partitioning (A-F, G-L, M-R, S-Z) assumes data and access patterns are evenly distributed across the alphabet. But real-world data is not uniform — surname distributions vary by culture, and trending events can concentrate traffic on specific key ranges. When the celebrity crime wave hit S-surnames, Shard 4 became a 'hot partition' receiving 89% of all traffic while the others sat idle. This is the fundamental risk of range-based partitioning."
         },
         {
           "id": "rc-4",
@@ -183,6 +226,12 @@
     "fix": {
       "question": "What is the best partitioning strategy to prevent hot partitions?",
       "options": [
+        {
+          "id": "fix-4",
+          "text": "Use round-robin distribution — assign each new record to the next shard in sequence",
+          "correct": false,
+          "feedback": "Round-robin distributes writes evenly but makes lookups impossible without querying all shards (you don't know which shard holds a given record). Hash-based partitioning distributes evenly AND allows direct lookups — compute the hash to know exactly which shard to query."
+        },
         {
           "id": "fix-1",
           "text": "Use hash-based partitioning — hash the record key and distribute based on the hash value, ensuring even distribution regardless of data patterns",
@@ -200,12 +249,6 @@
           "text": "Rebalance the ranges so each shard has equal records (e.g., move S to Shard 3)",
           "correct": false,
           "feedback": "Rebalancing based on current data helps now but requires constant manual adjustment as data patterns change. Tomorrow's trending topic might overload the newly rebalanced ranges. Hash-based partitioning provides automatic even distribution without manual intervention."
-        },
-        {
-          "id": "fix-4",
-          "text": "Use round-robin distribution — assign each new record to the next shard in sequence",
-          "correct": false,
-          "feedback": "Round-robin distributes writes evenly but makes lookups impossible without querying all shards (you don't know which shard holds a given record). Hash-based partitioning distributes evenly AND allows direct lookups — compute the hash to know exactly which shard to query."
         }
       ]
     }

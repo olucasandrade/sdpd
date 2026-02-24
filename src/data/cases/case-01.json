@@ -107,9 +107,30 @@
       }
     ],
     "edges": [
-      { "id": "e-db-north", "source": "db-central", "target": "precinct-north", "label": "queries", "animated": false, "style": "broken" },
-      { "id": "e-db-south", "source": "db-central", "target": "precinct-south", "label": "queries", "animated": false, "style": "broken" },
-      { "id": "e-db-east", "source": "db-central", "target": "precinct-east", "label": "queries", "animated": false, "style": "broken" }
+      {
+        "id": "e-db-north",
+        "source": "db-central",
+        "target": "precinct-north",
+        "label": "queries",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-db-south",
+        "source": "db-central",
+        "target": "precinct-south",
+        "label": "queries",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-db-east",
+        "source": "db-central",
+        "target": "precinct-east",
+        "label": "queries",
+        "animated": false,
+        "style": "broken"
+      }
     ]
   },
   "diagnosis": {
@@ -117,10 +138,10 @@
       "question": "What is the root cause of the system-wide outage?",
       "options": [
         {
-          "id": "rc-1",
-          "text": "A network partition is preventing precincts from reaching the database",
+          "id": "rc-4",
+          "text": "Too many simultaneous queries from the precincts overloaded the database",
           "correct": false,
-          "feedback": "Not quite. The database logs show a disk hardware failure, not a network issue. All precincts experience the same problem because they all depend on the same single server."
+          "feedback": "The logs show a hardware disk failure, not a performance overload. The queries are failing because the server is down, not because it's overwhelmed."
         },
         {
           "id": "rc-2",
@@ -129,22 +150,34 @@
           "feedback": "Correct! The entire system depends on one database server with no replicas. When that single server's disk failed, every precinct lost access. This is the classic Single Point of Failure (SPOF) problem."
         },
         {
+          "id": "rc-1",
+          "text": "A network partition is preventing precincts from reaching the database",
+          "correct": false,
+          "feedback": "Not quite. The database logs show a disk hardware failure, not a network issue. All precincts experience the same problem because they all depend on the same single server."
+        },
+        {
           "id": "rc-3",
           "text": "The database ran out of storage space due to too many records",
           "correct": false,
           "feedback": "The logs show a physical disk failure (hardware crash), not a storage capacity issue. But even if it were a storage problem, the real architectural issue is that there's only one server."
-        },
-        {
-          "id": "rc-4",
-          "text": "Too many simultaneous queries from the precincts overloaded the database",
-          "correct": false,
-          "feedback": "The logs show a hardware disk failure, not a performance overload. The queries are failing because the server is down, not because it's overwhelmed."
         }
       ]
     },
     "fix": {
       "question": "What is the best fix to prevent this from happening again?",
       "options": [
+        {
+          "id": "fix-4",
+          "text": "Install a better hard drive with RAID redundancy on the current server",
+          "correct": false,
+          "feedback": "RAID protects against disk failure on one machine, but doesn't help if the whole server goes down (power, motherboard, etc.). True redundancy requires separate machines — that's what replication provides."
+        },
+        {
+          "id": "fix-3",
+          "text": "Give each precinct its own complete copy of the database that works offline",
+          "correct": false,
+          "feedback": "While this removes the single point of failure, maintaining independent full copies at each precinct creates a data consistency nightmare. How do you keep all copies in sync? Replication with a leader-follower setup is the standard approach."
+        },
         {
           "id": "fix-1",
           "text": "Add database replication — maintain at least one replica that can take over if the primary fails",
@@ -156,18 +189,6 @@
           "text": "Increase the backup frequency from every 72 hours to every hour",
           "correct": false,
           "feedback": "More frequent backups help with data recovery, but they don't solve the availability problem. Restoring from backup takes time — you need a live replica that can take over immediately."
-        },
-        {
-          "id": "fix-3",
-          "text": "Give each precinct its own complete copy of the database that works offline",
-          "correct": false,
-          "feedback": "While this removes the single point of failure, maintaining independent full copies at each precinct creates a data consistency nightmare. How do you keep all copies in sync? Replication with a leader-follower setup is the standard approach."
-        },
-        {
-          "id": "fix-4",
-          "text": "Install a better hard drive with RAID redundancy on the current server",
-          "correct": false,
-          "feedback": "RAID protects against disk failure on one machine, but doesn't help if the whole server goes down (power, motherboard, etc.). True redundancy requires separate machines — that's what replication provides."
         }
       ]
     }

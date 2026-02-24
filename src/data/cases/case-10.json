@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Cache Server (Redis)",
         "status": "degraded",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Cache Server (Redis)",
@@ -49,7 +52,10 @@
         "type": "database",
         "label": "Records Database",
         "status": "failed",
-        "position": { "x": 350, "y": 250 },
+        "position": {
+          "x": 350,
+          "y": 250
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Central Records Database",
@@ -79,7 +85,10 @@
         "type": "client",
         "label": "Patrol Officers (2,400)",
         "status": "failed",
-        "position": { "x": 100, "y": 150 },
+        "position": {
+          "x": 100,
+          "y": 150
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Patrol Officer Mobile Terminals",
@@ -106,7 +115,10 @@
         "type": "client",
         "label": "Admin Terminal",
         "status": "degraded",
-        "position": { "x": 600, "y": 150 },
+        "position": {
+          "x": 600,
+          "y": 150
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Administrative Systems",
@@ -125,15 +137,42 @@
       }
     ],
     "edges": [
-      { "id": "e-officers-cache", "source": "precinct-officers", "target": "cache-server", "label": "2,400 requests", "animated": true, "style": "slow" },
-      { "id": "e-cache-db", "source": "cache-server", "target": "database", "label": "cache miss → DB", "animated": true, "style": "broken" },
-      { "id": "e-admin-db", "source": "admin-terminal", "target": "database", "label": "queries", "animated": true, "style": "slow" }
+      {
+        "id": "e-officers-cache",
+        "source": "precinct-officers",
+        "target": "cache-server",
+        "label": "2,400 requests",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-cache-db",
+        "source": "cache-server",
+        "target": "database",
+        "label": "cache miss → DB",
+        "animated": true,
+        "style": "broken"
+      },
+      {
+        "id": "e-admin-db",
+        "source": "admin-terminal",
+        "target": "database",
+        "label": "queries",
+        "animated": true,
+        "style": "slow"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What caused the database to become overwhelmed at exactly 06:00?",
       "options": [
+        {
+          "id": "rc-3",
+          "text": "The cache server crashed and lost all its data",
+          "correct": false,
+          "feedback": "The cache server is working correctly — it didn't crash. The cache entry legitimately expired after its 24-hour TTL. The cache is functioning as configured; the problem is that the TTL expiration pattern causes a thundering herd."
+        },
         {
           "id": "rc-1",
           "text": "The database hardware is too slow to handle normal shift-start queries",
@@ -145,12 +184,6 @@
           "text": "A cache stampede — the cache expired simultaneously for all users, causing thousands of concurrent requests to hit the database at the same instant",
           "correct": true,
           "feedback": "Correct! This is a cache stampede (also called a thundering herd). When a popular cache entry expires, every concurrent request finds the cache empty and falls through to the database simultaneously. The database is designed to handle 50 queries/sec but receives 2,400 in one second. It becomes so overloaded that it can't even respond to the single query needed to rebuild the cache, creating a vicious cycle."
-        },
-        {
-          "id": "rc-3",
-          "text": "The cache server crashed and lost all its data",
-          "correct": false,
-          "feedback": "The cache server is working correctly — it didn't crash. The cache entry legitimately expired after its 24-hour TTL. The cache is functioning as configured; the problem is that the TTL expiration pattern causes a thundering herd."
         },
         {
           "id": "rc-4",
@@ -170,16 +203,16 @@
           "feedback": "More connections doesn't help if the database CPU can't handle the load. And you'd be optimizing for a pathological case that should never happen with proper caching. The goal is to prevent the stampede, not to survive it."
         },
         {
-          "id": "fix-2",
-          "text": "Use cache lock (mutex) so only one request rebuilds the cache while others wait, combined with staggered TTLs (jitter) to prevent simultaneous expiration",
-          "correct": true,
-          "feedback": "Correct! Two complementary techniques solve this: (1) Cache lock / request coalescing: When the cache is empty, only ONE request is allowed through to the database to rebuild the cache. All other requests wait for that single rebuild to complete, then are served from the fresh cache. This turns 2,400 DB queries into 1. (2) TTL jitter: Add random variation to cache expiration times so entries don't all expire at the same instant. Together, these eliminate the stampede pattern entirely."
-        },
-        {
           "id": "fix-3",
           "text": "Never expire the cache — keep the Most Wanted list cached forever",
           "correct": false,
           "feedback": "An infinitely cached list would become stale — new suspects would never appear, and cleared suspects would remain listed. You need cache expiration to ensure data freshness. The solution is to manage HOW the cache refreshes, not to avoid refreshing entirely."
+        },
+        {
+          "id": "fix-2",
+          "text": "Use cache lock (mutex) so only one request rebuilds the cache while others wait, combined with staggered TTLs (jitter) to prevent simultaneous expiration",
+          "correct": true,
+          "feedback": "Correct! Two complementary techniques solve this: (1) Cache lock / request coalescing: When the cache is empty, only ONE request is allowed through to the database to rebuild the cache. All other requests wait for that single rebuild to complete, then are served from the fresh cache. This turns 2,400 DB queries into 1. (2) TTL jitter: Add random variation to cache expiration times so entries don't all expire at the same instant. Together, these eliminate the stampede pattern entirely."
         },
         {
           "id": "fix-4",

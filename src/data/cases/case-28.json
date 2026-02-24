@@ -20,7 +20,10 @@
         "type": "client",
         "label": "Call Routing Service",
         "status": "failed",
-        "position": { "x": 80, "y": 180 },
+        "position": {
+          "x": 80,
+          "y": 180
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Call Routing Service",
@@ -46,7 +49,10 @@
         "type": "server",
         "label": "Dispatch Service",
         "status": "failed",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Dispatch Service",
@@ -73,7 +79,10 @@
         "type": "server",
         "label": "Address Validation",
         "status": "failed",
-        "position": { "x": 620, "y": 50 },
+        "position": {
+          "x": 620,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Address Validation Service",
@@ -96,7 +105,10 @@
         "type": "server",
         "label": "Officer Assignment",
         "status": "failed",
-        "position": { "x": 350, "y": 320 },
+        "position": {
+          "x": 350,
+          "y": 320
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Officer Assignment Service",
@@ -117,9 +129,30 @@
       }
     ],
     "edges": [
-      { "id": "e-routing-dispatch", "source": "call-routing", "target": "dispatch-service", "label": "blocked (30s timeout)", "animated": false, "style": "broken" },
-      { "id": "e-dispatch-address", "source": "dispatch-service", "target": "address-validation", "label": "connection refused", "animated": false, "style": "broken" },
-      { "id": "e-dispatch-officer", "source": "dispatch-service", "target": "officer-assignment", "label": "no dispatches", "animated": false, "style": "broken" }
+      {
+        "id": "e-routing-dispatch",
+        "source": "call-routing",
+        "target": "dispatch-service",
+        "label": "blocked (30s timeout)",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-dispatch-address",
+        "source": "dispatch-service",
+        "target": "address-validation",
+        "label": "connection refused",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-dispatch-officer",
+        "source": "dispatch-service",
+        "target": "officer-assignment",
+        "label": "no dispatches",
+        "animated": false,
+        "style": "broken"
+      }
     ]
   },
   "diagnosis": {
@@ -133,12 +166,6 @@
           "feedback": "The maintenance was planned and communicated. Services go down — that's expected in distributed systems. The problem isn't that Address Validation went offline, it's that no service in the chain could gracefully handle its absence. A well-designed system should tolerate individual service failures."
         },
         {
-          "id": "rc-2",
-          "text": "The Dispatch Service has no circuit breaker, so it blocks all threads waiting on a dead service, cascading the failure upstream and downstream",
-          "correct": true,
-          "feedback": "Correct! Without a circuit breaker, the Dispatch Service keeps trying to call Address Validation with a 30-second timeout per attempt. This ties up every thread, making the Dispatch Service itself unresponsive. The failure then cascades to Call Routing and Officer Assignment. A circuit breaker would have detected the failures quickly, stopped calling the dead service, and either returned a fallback response or a fast failure — keeping the rest of the system alive."
-        },
-        {
           "id": "rc-3",
           "text": "The 30-second timeout is too long, causing threads to be blocked for too long",
           "correct": false,
@@ -149,6 +176,12 @@
           "text": "The Dispatch Service thread pool is too small to handle the request load",
           "correct": false,
           "feedback": "A larger thread pool would only delay the inevitable. If every thread blocks for 30 seconds on a dead service, even 500 threads would eventually fill up. The fix isn't more threads — it's stopping the futile calls to the dead service via a circuit breaker."
+        },
+        {
+          "id": "rc-2",
+          "text": "The Dispatch Service has no circuit breaker, so it blocks all threads waiting on a dead service, cascading the failure upstream and downstream",
+          "correct": true,
+          "feedback": "Correct! Without a circuit breaker, the Dispatch Service keeps trying to call Address Validation with a 30-second timeout per attempt. This ties up every thread, making the Dispatch Service itself unresponsive. The failure then cascades to Call Routing and Officer Assignment. A circuit breaker would have detected the failures quickly, stopped calling the dead service, and either returned a fallback response or a fast failure — keeping the rest of the system alive."
         }
       ]
     },
@@ -156,10 +189,10 @@
       "question": "What is the best approach to prevent cascading failures?",
       "options": [
         {
-          "id": "fix-1",
-          "text": "Implement a circuit breaker that opens after detecting repeated failures, returning fast failures or fallback responses instead of blocking",
-          "correct": true,
-          "feedback": "Correct! A circuit breaker monitors calls to a downstream service. After a threshold of failures (e.g., 5 in 10 seconds), it 'trips' and stops calling the dead service entirely. Subsequent requests immediately get a fast failure or a fallback response (like dispatching without address validation). Periodically, it lets a test request through to check if the service has recovered. This prevents one service's failure from consuming all resources in the calling service."
+          "id": "fix-3",
+          "text": "Remove the dependency on Address Validation by embedding address data directly in the Dispatch Service",
+          "correct": false,
+          "feedback": "Reducing unnecessary dependencies is good practice, but in a microservice architecture you'll always have inter-service calls. The same cascading failure pattern would occur with any dependency. You need a general solution (circuit breaker) that works for all downstream calls."
         },
         {
           "id": "fix-2",
@@ -168,10 +201,10 @@
           "feedback": "Zero-downtime deployments reduce planned outages, but services can still fail unexpectedly (bugs, resource exhaustion, network issues). Your system must handle downstream failures gracefully regardless. A circuit breaker is essential defense for any microservice architecture."
         },
         {
-          "id": "fix-3",
-          "text": "Remove the dependency on Address Validation by embedding address data directly in the Dispatch Service",
-          "correct": false,
-          "feedback": "Reducing unnecessary dependencies is good practice, but in a microservice architecture you'll always have inter-service calls. The same cascading failure pattern would occur with any dependency. You need a general solution (circuit breaker) that works for all downstream calls."
+          "id": "fix-1",
+          "text": "Implement a circuit breaker that opens after detecting repeated failures, returning fast failures or fallback responses instead of blocking",
+          "correct": true,
+          "feedback": "Correct! A circuit breaker monitors calls to a downstream service. After a threshold of failures (e.g., 5 in 10 seconds), it 'trips' and stops calling the dead service entirely. Subsequent requests immediately get a fast failure or a fallback response (like dispatching without address validation). Periodically, it lets a test request through to check if the service has recovered. This prevents one service's failure from consuming all resources in the calling service."
         },
         {
           "id": "fix-4",

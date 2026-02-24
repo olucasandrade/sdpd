@@ -20,7 +20,10 @@
         "type": "database",
         "label": "Records Database",
         "status": "healthy",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Criminal Records Database",
@@ -42,7 +45,10 @@
         "type": "server",
         "label": "Redis Cache",
         "status": "degraded",
-        "position": { "x": 350, "y": 200 },
+        "position": {
+          "x": 350,
+          "y": 200
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Redis Cache Layer",
@@ -67,7 +73,10 @@
         "type": "server",
         "label": "Lookup API",
         "status": "healthy",
-        "position": { "x": 100, "y": 350 },
+        "position": {
+          "x": 100,
+          "y": 350
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Record Lookup API",
@@ -89,7 +98,10 @@
         "type": "client",
         "label": "Officer MDT",
         "status": "degraded",
-        "position": { "x": 550, "y": 350 },
+        "position": {
+          "x": 550,
+          "y": 350
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Mobile Data Terminal",
@@ -107,21 +119,36 @@
       }
     ],
     "edges": [
-      { "id": "e-cache-db", "source": "cache-layer", "target": "records-db", "label": "read-through", "animated": false, "style": "normal" },
-      { "id": "e-api-cache", "source": "api-server", "target": "cache-layer", "label": "cache lookup", "animated": true, "style": "normal" },
-      { "id": "e-terminal-api", "source": "officer-terminal", "target": "api-server", "label": "lookup request", "animated": true, "style": "normal" }
+      {
+        "id": "e-cache-db",
+        "source": "cache-layer",
+        "target": "records-db",
+        "label": "read-through",
+        "animated": false,
+        "style": "normal"
+      },
+      {
+        "id": "e-api-cache",
+        "source": "api-server",
+        "target": "cache-layer",
+        "label": "cache lookup",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-terminal-api",
+        "source": "officer-terminal",
+        "target": "api-server",
+        "label": "lookup request",
+        "animated": true,
+        "style": "normal"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What is the root cause of the deleted record still appearing in lookups?",
       "options": [
-        {
-          "id": "rc-1",
-          "text": "The database deletion failed silently and the record still exists",
-          "correct": false,
-          "feedback": "The database logs confirm the record was successfully deleted — querying the database directly returns 'NO RECORD FOUND.' The stale data is coming from elsewhere in the system."
-        },
         {
           "id": "rc-2",
           "text": "The cache was never invalidated when the record was deleted — it's serving stale data until TTL expires",
@@ -135,6 +162,12 @@
           "feedback": "The terminal fetches data from the API in real-time. The stale data is being served by the Redis cache layer, not a local terminal cache. The terminal is displaying exactly what the API returns."
         },
         {
+          "id": "rc-1",
+          "text": "The database deletion failed silently and the record still exists",
+          "correct": false,
+          "feedback": "The database logs confirm the record was successfully deleted — querying the database directly returns 'NO RECORD FOUND.' The stale data is coming from elsewhere in the system."
+        },
+        {
           "id": "rc-4",
           "text": "A database replication lag is causing the deletion to not propagate yet",
           "correct": false,
@@ -145,6 +178,12 @@
     "fix": {
       "question": "What is the best fix to prevent ghost records from appearing after deletion?",
       "options": [
+        {
+          "id": "fix-4",
+          "text": "Add a manual 'flush cache' button for database administrators to use after deletions",
+          "correct": false,
+          "feedback": "Manual cache flushing is error-prone and doesn't scale. Humans will forget. Cache invalidation should be automated and triggered by database write operations, not by manual processes."
+        },
         {
           "id": "fix-1",
           "text": "Reduce the cache TTL from 30 days to 5 minutes so stale data clears quickly",
@@ -162,12 +201,6 @@
           "text": "Disable caching entirely for criminal records to always get fresh data",
           "correct": false,
           "feedback": "Disabling the cache would solve the staleness issue but would dramatically increase database load. With a 94% cache hit rate, removing the cache means 16x more database queries. The right approach is smarter caching, not no caching."
-        },
-        {
-          "id": "fix-4",
-          "text": "Add a manual 'flush cache' button for database administrators to use after deletions",
-          "correct": false,
-          "feedback": "Manual cache flushing is error-prone and doesn't scale. Humans will forget. Cache invalidation should be automated and triggered by database write operations, not by manual processes."
         }
       ]
     }

@@ -20,7 +20,10 @@
         "type": "client",
         "label": "Report Ingestion API",
         "status": "healthy",
-        "position": { "x": 100, "y": 180 },
+        "position": {
+          "x": 100,
+          "y": 180
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Report Ingestion API",
@@ -44,7 +47,10 @@
         "type": "server",
         "label": "Report Processing Queue",
         "status": "healthy",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Report Processing Queue",
@@ -73,7 +79,10 @@
         "type": "server",
         "label": "Consumer A",
         "status": "healthy",
-        "position": { "x": 550, "y": 30 },
+        "position": {
+          "x": 550,
+          "y": 30
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Consumer Worker A",
@@ -96,7 +105,10 @@
         "type": "server",
         "label": "Consumer B",
         "status": "healthy",
-        "position": { "x": 550, "y": 180 },
+        "position": {
+          "x": 550,
+          "y": 180
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Consumer Worker B",
@@ -117,7 +129,10 @@
         "type": "database",
         "label": "DA Case File DB",
         "status": "degraded",
-        "position": { "x": 550, "y": 340 },
+        "position": {
+          "x": 550,
+          "y": 340
+        },
         "inspectable": true,
         "inspectData": {
           "title": "DA Case File Database",
@@ -138,17 +153,58 @@
       }
     ],
     "edges": [
-      { "id": "e-ingest-queue", "source": "report-ingestion", "target": "message-queue", "label": "enqueue reports", "animated": true, "style": "normal" },
-      { "id": "e-queue-a", "source": "message-queue", "target": "consumer-a", "label": "round-robin", "animated": true, "style": "normal" },
-      { "id": "e-queue-b", "source": "message-queue", "target": "consumer-b", "label": "round-robin", "animated": true, "style": "normal" },
-      { "id": "e-a-da", "source": "consumer-a", "target": "da-system", "label": "write reports", "animated": true, "style": "slow" },
-      { "id": "e-b-da", "source": "consumer-b", "target": "da-system", "label": "write reports", "animated": true, "style": "normal" }
+      {
+        "id": "e-ingest-queue",
+        "source": "report-ingestion",
+        "target": "message-queue",
+        "label": "enqueue reports",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-queue-a",
+        "source": "message-queue",
+        "target": "consumer-a",
+        "label": "round-robin",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-queue-b",
+        "source": "message-queue",
+        "target": "consumer-b",
+        "label": "round-robin",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-a-da",
+        "source": "consumer-a",
+        "target": "da-system",
+        "label": "write reports",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-b-da",
+        "source": "consumer-b",
+        "target": "da-system",
+        "label": "write reports",
+        "animated": true,
+        "style": "normal"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "Why are the crime reports arriving out of order in the DA's system?",
       "options": [
+        {
+          "id": "rc-4",
+          "text": "The message queue has a bug that delivers messages out of sequence",
+          "correct": false,
+          "feedback": "The queue delivers messages in FIFO order to each consumer. The issue is that round-robin distribution across multiple consumers doesn't preserve global ordering when processing times vary."
+        },
         {
           "id": "rc-1",
           "text": "The ingestion API is enqueuing reports in the wrong order",
@@ -166,12 +222,6 @@
           "text": "The DA database is sorting records incorrectly",
           "correct": false,
           "feedback": "The database is storing records in the order they arrive, which is standard. The problem is that they arrive out of order because of the parallel consumer architecture."
-        },
-        {
-          "id": "rc-4",
-          "text": "The message queue has a bug that delivers messages out of sequence",
-          "correct": false,
-          "feedback": "The queue delivers messages in FIFO order to each consumer. The issue is that round-robin distribution across multiple consumers doesn't preserve global ordering when processing times vary."
         }
       ]
     },
@@ -179,16 +229,16 @@
       "question": "What is the best fix to guarantee crime reports arrive in the correct order?",
       "options": [
         {
-          "id": "fix-1",
-          "text": "Reduce to a single consumer so all messages are processed sequentially",
-          "correct": false,
-          "feedback": "This would fix ordering but destroys throughput. A single consumer becomes a bottleneck. There's a better solution that preserves both parallelism and ordering."
-        },
-        {
           "id": "fix-2",
           "text": "Use partition keys (case ID) so all reports for the same case go to the same consumer, preserving per-case ordering",
           "correct": true,
           "feedback": "Correct! By partitioning on case ID, all reports for Case-77 go to the same consumer and are processed sequentially. Different cases can still be processed in parallel across consumers. This gives you both ordering guarantees and parallel throughput."
+        },
+        {
+          "id": "fix-1",
+          "text": "Reduce to a single consumer so all messages are processed sequentially",
+          "correct": false,
+          "feedback": "This would fix ordering but destroys throughput. A single consumer becomes a bottleneck. There's a better solution that preserves both parallelism and ordering."
         },
         {
           "id": "fix-3",

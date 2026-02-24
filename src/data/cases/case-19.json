@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Warrant Issuing System",
         "status": "healthy",
-        "position": { "x": 100, "y": 50 },
+        "position": {
+          "x": 100,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Warrant Issuing System",
@@ -42,7 +45,10 @@
         "type": "server",
         "label": "Dispatch Queue",
         "status": "degraded",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Dispatch Message Queue",
@@ -68,7 +74,10 @@
         "type": "server",
         "label": "Warrant Processor",
         "status": "degraded",
-        "position": { "x": 600, "y": 50 },
+        "position": {
+          "x": 600,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Warrant Processor Service",
@@ -95,7 +104,10 @@
         "type": "database",
         "label": "Booking Database",
         "status": "degraded",
-        "position": { "x": 350, "y": 250 },
+        "position": {
+          "x": 350,
+          "y": 250
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Booking Database",
@@ -117,7 +129,10 @@
         "type": "client",
         "label": "Patrol Officers",
         "status": "degraded",
-        "position": { "x": 600, "y": 250 },
+        "position": {
+          "x": 600,
+          "y": 250
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Patrol Officers",
@@ -135,10 +150,38 @@
       }
     ],
     "edges": [
-      { "id": "e-warrant-queue", "source": "warrant-system", "target": "message-queue", "label": "publish (1x)", "animated": true, "style": "normal" },
-      { "id": "e-queue-processor", "source": "message-queue", "target": "warrant-processor", "label": "delivered 2x", "animated": true, "style": "slow" },
-      { "id": "e-processor-db", "source": "warrant-processor", "target": "booking-db", "label": "duplicate writes", "animated": true, "style": "slow" },
-      { "id": "e-processor-officers", "source": "warrant-processor", "target": "officers", "label": "duplicate dispatch", "animated": true, "style": "slow" }
+      {
+        "id": "e-warrant-queue",
+        "source": "warrant-system",
+        "target": "message-queue",
+        "label": "publish (1x)",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-queue-processor",
+        "source": "message-queue",
+        "target": "warrant-processor",
+        "label": "delivered 2x",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-processor-db",
+        "source": "warrant-processor",
+        "target": "booking-db",
+        "label": "duplicate writes",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-processor-officers",
+        "source": "warrant-processor",
+        "target": "officers",
+        "label": "duplicate dispatch",
+        "animated": true,
+        "style": "slow"
+      }
     ]
   },
   "diagnosis": {
@@ -152,12 +195,6 @@
           "feedback": "The warrant system published exactly one message. The duplication happened because the queue re-delivered the message after an ACK timeout — which is normal 'at-least-once' delivery behavior."
         },
         {
-          "id": "rc-2",
-          "text": "The warrant processor lacks idempotency — it processes every message as new without checking if it already handled that warrant",
-          "correct": true,
-          "feedback": "Correct! The warrant processor blindly processes every message it receives without tracking which warrants it has already handled. In an at-least-once delivery system, duplicate deliveries are expected. Consumers must be idempotent — they must detect and safely handle duplicate messages to produce the same result regardless of how many times a message is delivered."
-        },
-        {
           "id": "rc-3",
           "text": "The message queue has a bug causing it to deliver messages twice",
           "correct": false,
@@ -168,12 +205,24 @@
           "text": "The ACK timeout of 30 seconds is too short, causing premature re-delivery",
           "correct": false,
           "feedback": "A longer timeout would reduce the frequency of re-deliveries but cannot eliminate them. Network issues, consumer restarts, and other failures can all trigger re-delivery. The consumer must be idempotent regardless of timeout settings."
+        },
+        {
+          "id": "rc-2",
+          "text": "The warrant processor lacks idempotency — it processes every message as new without checking if it already handled that warrant",
+          "correct": true,
+          "feedback": "Correct! The warrant processor blindly processes every message it receives without tracking which warrants it has already handled. In an at-least-once delivery system, duplicate deliveries are expected. Consumers must be idempotent — they must detect and safely handle duplicate messages to produce the same result regardless of how many times a message is delivered."
         }
       ]
     },
     "fix": {
       "question": "What is the best fix to prevent duplicate processing of re-delivered messages?",
       "options": [
+        {
+          "id": "fix-4",
+          "text": "Add a deduplication layer in the message queue to filter duplicate deliveries",
+          "correct": false,
+          "feedback": "Queue-level deduplication can help but only catches re-deliveries of the exact same message. It doesn't protect against application-level duplicates or different messages for the same business entity. Consumer-side idempotency is the more comprehensive and reliable approach."
+        },
         {
           "id": "fix-1",
           "text": "Switch to exactly-once delivery in the message queue",
@@ -191,12 +240,6 @@
           "text": "Increase the ACK timeout to 5 minutes to prevent premature re-delivery",
           "correct": false,
           "feedback": "A longer timeout reduces re-deliveries but introduces a worse problem: if a consumer genuinely crashes, the message won't be re-delivered for 5 minutes. And duplicates can still happen from other causes (network partitions, consumer restarts). Idempotency is the robust solution."
-        },
-        {
-          "id": "fix-4",
-          "text": "Add a deduplication layer in the message queue to filter duplicate deliveries",
-          "correct": false,
-          "feedback": "Queue-level deduplication can help but only catches re-deliveries of the exact same message. It doesn't protect against application-level duplicates or different messages for the same business entity. Consumer-side idempotency is the more comprehensive and reliable approach."
         }
       ]
     }

@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Weapon Registry",
         "status": "failed",
-        "position": { "x": 100, "y": 50 },
+        "position": {
+          "x": 100,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Weapon Registry Service",
@@ -48,7 +51,10 @@
         "type": "server",
         "label": "Officer Duty Service",
         "status": "failed",
-        "position": { "x": 550, "y": 50 },
+        "position": {
+          "x": 550,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Officer Duty Service",
@@ -76,7 +82,10 @@
         "type": "client",
         "label": "Shift Change Terminal",
         "status": "failed",
-        "position": { "x": 325, "y": 300 },
+        "position": {
+          "x": 325,
+          "y": 300
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Shift Change Terminal",
@@ -101,7 +110,10 @@
         "type": "database",
         "label": "Distributed Lock Store",
         "status": "degraded",
-        "position": { "x": 325, "y": 50 },
+        "position": {
+          "x": 325,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Redis Lock Store",
@@ -123,22 +135,44 @@
       }
     ],
     "edges": [
-      { "id": "e-weapon-lock", "source": "weapon-registry", "target": "lock-manager", "label": "holds weapon lock, wants duty lock", "animated": false, "style": "slow" },
-      { "id": "e-duty-lock", "source": "officer-duty", "target": "lock-manager", "label": "holds duty lock, wants weapon lock", "animated": false, "style": "slow" },
-      { "id": "e-terminal-weapon", "source": "shift-terminal", "target": "weapon-registry", "label": "no response", "animated": false, "style": "broken" },
-      { "id": "e-terminal-duty", "source": "shift-terminal", "target": "officer-duty", "label": "no response", "animated": false, "style": "broken" }
+      {
+        "id": "e-weapon-lock",
+        "source": "weapon-registry",
+        "target": "lock-manager",
+        "label": "holds weapon lock, wants duty lock",
+        "animated": false,
+        "style": "slow"
+      },
+      {
+        "id": "e-duty-lock",
+        "source": "officer-duty",
+        "target": "lock-manager",
+        "label": "holds duty lock, wants weapon lock",
+        "animated": false,
+        "style": "slow"
+      },
+      {
+        "id": "e-terminal-weapon",
+        "source": "shift-terminal",
+        "target": "weapon-registry",
+        "label": "no response",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-terminal-duty",
+        "source": "shift-terminal",
+        "target": "officer-duty",
+        "label": "no response",
+        "animated": false,
+        "style": "broken"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What is the root cause of both services being completely frozen?",
       "options": [
-        {
-          "id": "rc-1",
-          "text": "The distributed lock store (Redis) has a bug that prevents locks from being released",
-          "correct": false,
-          "feedback": "Redis is working correctly — it granted the locks as requested and is faithfully waiting for release commands. The lock store is just doing what it was told. The problem is the order in which the services acquire locks: they each grab one lock and then try to grab the other, creating a circular wait."
-        },
         {
           "id": "rc-2",
           "text": "A distributed deadlock — two services each hold a lock the other needs, with no timeout or ordering to break the cycle",
@@ -152,6 +186,12 @@
           "feedback": "The services didn't crash — they're still running with 100% thread utilization. They're alive but blocked, which is actually worse than a crash (a crash would at least be detected by health checks). The threads are sleeping, waiting for locks they'll never get."
         },
         {
+          "id": "rc-1",
+          "text": "The distributed lock store (Redis) has a bug that prevents locks from being released",
+          "correct": false,
+          "feedback": "Redis is working correctly — it granted the locks as requested and is faithfully waiting for release commands. The lock store is just doing what it was told. The problem is the order in which the services acquire locks: they each grab one lock and then try to grab the other, creating a circular wait."
+        },
+        {
           "id": "rc-4",
           "text": "The shift change process sends too many concurrent requests, overwhelming the lock store",
           "correct": false,
@@ -162,6 +202,12 @@
     "fix": {
       "question": "What is the best approach to prevent distributed deadlocks?",
       "options": [
+        {
+          "id": "fix-4",
+          "text": "Merge Weapon Registry and Officer Duty into a single service so locks are local, not distributed",
+          "correct": false,
+          "feedback": "While consolidation eliminates the distributed aspect, local deadlocks can still occur within a single service. Plus, merging services violates the single-responsibility principle and creates a larger blast radius. The correct fix — lock ordering and timeouts — works for both local and distributed deadlocks."
+        },
         {
           "id": "fix-1",
           "text": "Add more threads to both services so some threads remain available even when others are blocked",
@@ -179,12 +225,6 @@
           "text": "Remove distributed locking entirely and use optimistic concurrency with version numbers",
           "correct": false,
           "feedback": "Optimistic concurrency works well for low-contention scenarios, but weapon assignments during shift change have high contention — 400 officers simultaneously. You'd see constant conflicts and retries. The better approach is to keep locking but enforce ordering and add timeouts."
-        },
-        {
-          "id": "fix-4",
-          "text": "Merge Weapon Registry and Officer Duty into a single service so locks are local, not distributed",
-          "correct": false,
-          "feedback": "While consolidation eliminates the distributed aspect, local deadlocks can still occur within a single service. Plus, merging services violates the single-responsibility principle and creates a larger blast radius. The correct fix — lock ordering and timeouts — works for both local and distributed deadlocks."
         }
       ]
     }

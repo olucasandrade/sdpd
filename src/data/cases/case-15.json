@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Redis Cache",
         "status": "degraded",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Redis Cache Cluster",
@@ -46,7 +49,10 @@
         "type": "database",
         "label": "Crime Database",
         "status": "failed",
-        "position": { "x": 350, "y": 220 },
+        "position": {
+          "x": 350,
+          "y": 220
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Crime Database",
@@ -72,7 +78,10 @@
         "type": "server",
         "label": "API Services",
         "status": "degraded",
-        "position": { "x": 100, "y": 380 },
+        "position": {
+          "x": 100,
+          "y": 380
+        },
         "inspectable": true,
         "inspectData": {
           "title": "API Service Fleet",
@@ -94,7 +103,10 @@
         "type": "client",
         "label": "Dispatch Center",
         "status": "failed",
-        "position": { "x": 550, "y": 380 },
+        "position": {
+          "x": 550,
+          "y": 380
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Central Dispatch",
@@ -112,10 +124,38 @@
       }
     ],
     "edges": [
-      { "id": "e-api-cache", "source": "api-services", "target": "redis-cache", "label": "cache miss", "animated": true, "style": "broken" },
-      { "id": "e-api-db", "source": "api-services", "target": "crime-db", "label": "fallback queries", "animated": true, "style": "slow" },
-      { "id": "e-cache-db", "source": "redis-cache", "target": "crime-db", "label": "cache rebuild", "animated": true, "style": "slow" },
-      { "id": "e-dispatch-api", "source": "dispatch", "target": "api-services", "label": "requests", "animated": false, "style": "broken" }
+      {
+        "id": "e-api-cache",
+        "source": "api-services",
+        "target": "redis-cache",
+        "label": "cache miss",
+        "animated": true,
+        "style": "broken"
+      },
+      {
+        "id": "e-api-db",
+        "source": "api-services",
+        "target": "crime-db",
+        "label": "fallback queries",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-cache-db",
+        "source": "redis-cache",
+        "target": "crime-db",
+        "label": "cache rebuild",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-dispatch-api",
+        "source": "dispatch",
+        "target": "api-services",
+        "label": "requests",
+        "animated": false,
+        "style": "broken"
+      }
     ]
   },
   "diagnosis": {

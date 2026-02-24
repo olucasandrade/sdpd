@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Redis Cache",
         "status": "degraded",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Redis Cache",
@@ -46,7 +49,10 @@
         "type": "server",
         "label": "API Servers (x8)",
         "status": "degraded",
-        "position": { "x": 100, "y": 200 },
+        "position": {
+          "x": 100,
+          "y": 200
+        },
         "inspectable": true,
         "inspectData": {
           "title": "API Server Fleet",
@@ -69,7 +75,10 @@
         "type": "database",
         "label": "Wanted Persons DB",
         "status": "degraded",
-        "position": { "x": 600, "y": 200 },
+        "position": {
+          "x": 600,
+          "y": 200
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Wanted Persons Database",
@@ -93,7 +102,10 @@
         "type": "client",
         "label": "Public Portal",
         "status": "degraded",
-        "position": { "x": 350, "y": 370 },
+        "position": {
+          "x": 350,
+          "y": 370
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Public Most Wanted Portal",
@@ -111,21 +123,36 @@
       }
     ],
     "edges": [
-      { "id": "e-api-cache", "source": "api-fleet", "target": "cache", "label": "cache miss", "animated": true, "style": "broken" },
-      { "id": "e-api-db", "source": "api-fleet", "target": "database", "label": "100x same query", "animated": true, "style": "slow" },
-      { "id": "e-users-api", "source": "users", "target": "api-fleet", "label": "500 req/sec", "animated": true, "style": "slow" }
+      {
+        "id": "e-api-cache",
+        "source": "api-fleet",
+        "target": "cache",
+        "label": "cache miss",
+        "animated": true,
+        "style": "broken"
+      },
+      {
+        "id": "e-api-db",
+        "source": "api-fleet",
+        "target": "database",
+        "label": "100x same query",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-users-api",
+        "source": "users",
+        "target": "api-fleet",
+        "label": "500 req/sec",
+        "animated": true,
+        "style": "slow"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What is the root cause of the database being overwhelmed by duplicate queries?",
       "options": [
-        {
-          "id": "rc-1",
-          "text": "The cache TTL is too short, causing frequent expirations",
-          "correct": false,
-          "feedback": "The TTL length isn't the core issue. Even with a longer TTL, the same dog pile would happen when it eventually expires. The problem is what happens at the moment of expiration — multiple callers independently trying to rebuild the same entry."
-        },
         {
           "id": "rc-2",
           "text": "There's no cache lock or single-writer mechanism — when the key expires, all concurrent requests independently rebuild it instead of just one",
@@ -143,6 +170,12 @@
           "text": "There are too many API servers, causing too many concurrent cache misses",
           "correct": false,
           "feedback": "Fewer servers would mean fewer duplicate queries, but the dog pile would still happen with even 2 servers. The fix isn't reducing servers — it's ensuring only one request rebuilds the cache while others wait."
+        },
+        {
+          "id": "rc-1",
+          "text": "The cache TTL is too short, causing frequent expirations",
+          "correct": false,
+          "feedback": "The TTL length isn't the core issue. Even with a longer TTL, the same dog pile would happen when it eventually expires. The problem is what happens at the moment of expiration — multiple callers independently trying to rebuild the same entry."
         }
       ]
     },
@@ -162,16 +195,16 @@
           "feedback": "Correct! Cache locking (also called mutex/lock-based cache rebuild) ensures only one process rebuilds the expired entry. Other concurrent requests either wait for the lock holder to finish, or serve a slightly stale version. This eliminates the duplicate database queries entirely."
         },
         {
-          "id": "fix-3",
-          "text": "Add rate limiting to the database to prevent too many simultaneous queries",
-          "correct": false,
-          "feedback": "Rate limiting the database would prevent overload but would also reject legitimate different queries during the spike. The problem is duplicate queries for the same key — the solution should target that duplication, not limit all database access."
-        },
-        {
           "id": "fix-4",
           "text": "Pre-compute the most wanted list and store it as a static file",
           "correct": false,
           "feedback": "This works for one specific endpoint but doesn't solve the general problem. Any popular cached key could cause a dog pile when it expires. A cache locking mechanism solves the problem for all keys."
+        },
+        {
+          "id": "fix-3",
+          "text": "Add rate limiting to the database to prevent too many simultaneous queries",
+          "correct": false,
+          "feedback": "Rate limiting the database would prevent overload but would also reject legitimate different queries during the spike. The problem is duplicate queries for the same key — the solution should target that duplication, not limit all database access."
         }
       ]
     }

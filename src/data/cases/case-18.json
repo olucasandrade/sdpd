@@ -20,7 +20,10 @@
         "type": "server",
         "label": "911 Dispatch Intake",
         "status": "healthy",
-        "position": { "x": 100, "y": 50 },
+        "position": {
+          "x": 100,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "911 Dispatch Intake System",
@@ -43,7 +46,10 @@
         "type": "server",
         "label": "Message Queue",
         "status": "failed",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Dispatch Message Queue",
@@ -70,7 +76,10 @@
         "type": "client",
         "label": "Patrol Units",
         "status": "degraded",
-        "position": { "x": 600, "y": 50 },
+        "position": {
+          "x": 600,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Patrol Unit Fleet",
@@ -93,7 +102,10 @@
         "type": "client",
         "label": "911 Callers",
         "status": "failed",
-        "position": { "x": 350, "y": 250 },
+        "position": {
+          "x": 350,
+          "y": 250
+        },
         "inspectable": true,
         "inspectData": {
           "title": "911 Callers",
@@ -111,21 +123,36 @@
       }
     ],
     "edges": [
-      { "id": "e-intake-queue", "source": "dispatch-intake", "target": "message-queue", "label": "enqueue calls", "animated": true, "style": "normal" },
-      { "id": "e-queue-patrol", "source": "message-queue", "target": "patrol-units", "label": "dispatch (lost)", "animated": false, "style": "broken" },
-      { "id": "e-callers-intake", "source": "callers", "target": "dispatch-intake", "label": "911 calls", "animated": true, "style": "normal" }
+      {
+        "id": "e-intake-queue",
+        "source": "dispatch-intake",
+        "target": "message-queue",
+        "label": "enqueue calls",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-queue-patrol",
+        "source": "message-queue",
+        "target": "patrol-units",
+        "label": "dispatch (lost)",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-callers-intake",
+        "source": "callers",
+        "target": "dispatch-intake",
+        "label": "911 calls",
+        "animated": true,
+        "style": "normal"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What is the root cause of the 23 dispatch messages being lost?",
       "options": [
-        {
-          "id": "rc-1",
-          "text": "The 911 intake system failed to send the messages to the queue properly",
-          "correct": false,
-          "feedback": "The intake system successfully sent all 23 messages and received acknowledgments from the queue. The messages were accepted and stored — they were just stored only in volatile memory."
-        },
         {
           "id": "rc-2",
           "text": "The message queue stored messages only in memory with no persistence — when it crashed, all pending messages were permanently lost",
@@ -139,6 +166,12 @@
           "feedback": "The patrol units never received the messages at all. The messages were sitting in the queue waiting to be consumed when the server crashed. The messages were lost before delivery, not after."
         },
         {
+          "id": "rc-1",
+          "text": "The 911 intake system failed to send the messages to the queue properly",
+          "correct": false,
+          "feedback": "The intake system successfully sent all 23 messages and received acknowledgments from the queue. The messages were accepted and stored — they were just stored only in volatile memory."
+        },
+        {
           "id": "rc-4",
           "text": "The queue server's crash recovery process has a bug that clears the queue on restart",
           "correct": false,
@@ -150,6 +183,12 @@
       "question": "What is the best fix to prevent message loss during queue server crashes?",
       "options": [
         {
+          "id": "fix-3",
+          "text": "Have the intake system retry sending messages if the queue doesn't respond within 5 seconds",
+          "correct": false,
+          "feedback": "Retries help when the queue is temporarily unavailable, but the queue acknowledged all 23 messages before it crashed. The intake system has no reason to retry — it thinks delivery was successful. The messages need to be durable within the queue itself."
+        },
+        {
           "id": "fix-1",
           "text": "Enable message persistence — write messages to disk (write-ahead log) before acknowledging them so they survive server crashes",
           "correct": true,
@@ -160,12 +199,6 @@
           "text": "Add a second in-memory queue server as a backup",
           "correct": false,
           "feedback": "A second in-memory server helps with availability but both servers still lose data on crash. If the primary crashes before replicating to the backup, messages are still lost. True durability requires disk persistence, not just more memory."
-        },
-        {
-          "id": "fix-3",
-          "text": "Have the intake system retry sending messages if the queue doesn't respond within 5 seconds",
-          "correct": false,
-          "feedback": "Retries help when the queue is temporarily unavailable, but the queue acknowledged all 23 messages before it crashed. The intake system has no reason to retry — it thinks delivery was successful. The messages need to be durable within the queue itself."
         },
         {
           "id": "fix-4",

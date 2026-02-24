@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Load Balancer",
         "status": "healthy",
-        "position": { "x": 350, "y": 30 },
+        "position": {
+          "x": 350,
+          "y": 30
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Load Balancer (Sticky Sessions)",
@@ -45,7 +48,10 @@
         "type": "server",
         "label": "Dispatch Server 1",
         "status": "healthy",
-        "position": { "x": 100, "y": 200 },
+        "position": {
+          "x": 100,
+          "y": 200
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Dispatch Server 1",
@@ -66,7 +72,10 @@
         "type": "server",
         "label": "Dispatch Server 2",
         "status": "failed",
-        "position": { "x": 350, "y": 200 },
+        "position": {
+          "x": 350,
+          "y": 200
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Dispatch Server 2",
@@ -88,7 +97,10 @@
         "type": "server",
         "label": "Dispatch Server 3",
         "status": "healthy",
-        "position": { "x": 600, "y": 200 },
+        "position": {
+          "x": 600,
+          "y": 200
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Dispatch Server 3",
@@ -109,7 +121,10 @@
         "type": "client",
         "label": "Officer Terminals",
         "status": "degraded",
-        "position": { "x": 350, "y": 380 },
+        "position": {
+          "x": 350,
+          "y": 380
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Officer Terminals",
@@ -127,10 +142,38 @@
       }
     ],
     "edges": [
-      { "id": "e-lb-s1", "source": "load-balancer", "target": "server-1", "label": "sticky route", "animated": true, "style": "normal" },
-      { "id": "e-lb-s2", "source": "load-balancer", "target": "server-2", "label": "sticky route", "animated": false, "style": "broken" },
-      { "id": "e-lb-s3", "source": "load-balancer", "target": "server-3", "label": "sticky route", "animated": true, "style": "normal" },
-      { "id": "e-officers-lb", "source": "officers", "target": "load-balancer", "label": "requests", "animated": true, "style": "normal" }
+      {
+        "id": "e-lb-s1",
+        "source": "load-balancer",
+        "target": "server-1",
+        "label": "sticky route",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-lb-s2",
+        "source": "load-balancer",
+        "target": "server-2",
+        "label": "sticky route",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-lb-s3",
+        "source": "load-balancer",
+        "target": "server-3",
+        "label": "sticky route",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-officers-lb",
+        "source": "officers",
+        "target": "load-balancer",
+        "label": "requests",
+        "animated": true,
+        "style": "normal"
+      }
     ]
   },
   "diagnosis": {
@@ -167,6 +210,12 @@
       "question": "What is the best fix to prevent session loss when a server crashes?",
       "options": [
         {
+          "id": "fix-4",
+          "text": "Implement automatic server restart so crashed servers come back quickly",
+          "correct": false,
+          "feedback": "Fast restarts help availability, but in-memory sessions are still lost when a process dies. The server comes back empty. The real fix is to not store sessions in server memory at all."
+        },
+        {
           "id": "fix-1",
           "text": "Add more servers so each one handles fewer sessions, reducing crash impact",
           "correct": false,
@@ -183,12 +232,6 @@
           "text": "Replicate session data between all three servers in real-time",
           "correct": false,
           "feedback": "Server-to-server session replication is complex and expensive. It doesn't scale well — every new server increases replication traffic. An external session store is simpler and more scalable."
-        },
-        {
-          "id": "fix-4",
-          "text": "Implement automatic server restart so crashed servers come back quickly",
-          "correct": false,
-          "feedback": "Fast restarts help availability, but in-memory sessions are still lost when a process dies. The server comes back empty. The real fix is to not store sessions in server memory at all."
         }
       ]
     }

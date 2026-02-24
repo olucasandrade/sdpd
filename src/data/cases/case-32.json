@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Booking Orchestrator",
         "status": "failed",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Booking Orchestrator",
@@ -48,7 +51,10 @@
         "type": "server",
         "label": "Arrest Service",
         "status": "degraded",
-        "position": { "x": 80, "y": 250 },
+        "position": {
+          "x": 80,
+          "y": 250
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Arrest Service",
@@ -73,7 +79,10 @@
         "type": "server",
         "label": "Booking Service",
         "status": "degraded",
-        "position": { "x": 350, "y": 250 },
+        "position": {
+          "x": 350,
+          "y": 250
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Booking Service",
@@ -98,7 +107,10 @@
         "type": "server",
         "label": "Cell Assignment",
         "status": "failed",
-        "position": { "x": 620, "y": 250 },
+        "position": {
+          "x": 620,
+          "y": 250
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Cell Assignment Service",
@@ -119,15 +131,42 @@
       }
     ],
     "edges": [
-      { "id": "e-orch-arrest", "source": "booking-orchestrator", "target": "arrest-service", "label": "Step 1: SUCCESS", "animated": false, "style": "normal" },
-      { "id": "e-orch-booking", "source": "booking-orchestrator", "target": "booking-service", "label": "Step 2: SUCCESS", "animated": false, "style": "normal" },
-      { "id": "e-orch-cell", "source": "booking-orchestrator", "target": "cell-assignment", "label": "Step 3: FAILED", "animated": false, "style": "broken" }
+      {
+        "id": "e-orch-arrest",
+        "source": "booking-orchestrator",
+        "target": "arrest-service",
+        "label": "Step 1: SUCCESS",
+        "animated": false,
+        "style": "normal"
+      },
+      {
+        "id": "e-orch-booking",
+        "source": "booking-orchestrator",
+        "target": "booking-service",
+        "label": "Step 2: SUCCESS",
+        "animated": false,
+        "style": "normal"
+      },
+      {
+        "id": "e-orch-cell",
+        "source": "booking-orchestrator",
+        "target": "cell-assignment",
+        "label": "Step 3: FAILED",
+        "animated": false,
+        "style": "broken"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What is the root cause of the inconsistent data after the booking failure?",
       "options": [
+        {
+          "id": "rc-4",
+          "text": "The Booking Orchestrator should have checked cell availability before starting the process",
+          "correct": false,
+          "feedback": "Pre-checking availability helps but doesn't solve the fundamental problem. A cell could fill up between the check and the assignment (a race condition). Any step in any distributed process can fail at any time. You must plan for failure and have compensating actions ready — that's the Saga pattern."
+        },
         {
           "id": "rc-1",
           "text": "The Cell Assignment Service has a bug that incorrectly reports full capacity",
@@ -145,12 +184,6 @@
           "text": "The three services should share a single database so a traditional transaction could roll everything back",
           "correct": false,
           "feedback": "A shared database would allow a single ACID transaction, but it defeats the purpose of microservices (independent deployment, scaling, and ownership). In a microservice architecture, each service owns its data. The Saga pattern is the standard solution for maintaining consistency across service boundaries."
-        },
-        {
-          "id": "rc-4",
-          "text": "The Booking Orchestrator should have checked cell availability before starting the process",
-          "correct": false,
-          "feedback": "Pre-checking availability helps but doesn't solve the fundamental problem. A cell could fill up between the check and the assignment (a race condition). Any step in any distributed process can fail at any time. You must plan for failure and have compensating actions ready — that's the Saga pattern."
         }
       ]
     },
@@ -158,16 +191,16 @@
       "question": "What is the best approach to handle failures in multi-step distributed processes?",
       "options": [
         {
-          "id": "fix-1",
-          "text": "Implement the Saga pattern with compensating transactions — each step defines an undo action that executes if a later step fails",
-          "correct": true,
-          "feedback": "Correct! The Saga pattern breaks a distributed transaction into a sequence of local transactions, each with a compensating action. If Step 3 (cell assignment) fails, the orchestrator automatically triggers: 'compensate Step 2' (release booking number BK-90441) and 'compensate Step 1' (void arrest record A-2847). This ensures the system returns to a consistent state. Sagas can be orchestrated (central coordinator) or choreographed (event-driven), and they're the standard pattern for distributed transactions in microservice architectures."
-        },
-        {
           "id": "fix-2",
           "text": "Use a two-phase commit (2PC) protocol so all three services atomically commit or abort together",
           "correct": false,
           "feedback": "Two-phase commit provides atomicity but has serious drawbacks in microservices: it requires all participants to be available simultaneously, holds locks across services during the prepare phase (blocking), and a coordinator failure can leave participants stuck in a prepared state. Sagas are preferred in microservice architectures because they're more resilient and don't require cross-service locking."
+        },
+        {
+          "id": "fix-1",
+          "text": "Implement the Saga pattern with compensating transactions — each step defines an undo action that executes if a later step fails",
+          "correct": true,
+          "feedback": "Correct! The Saga pattern breaks a distributed transaction into a sequence of local transactions, each with a compensating action. If Step 3 (cell assignment) fails, the orchestrator automatically triggers: 'compensate Step 2' (release booking number BK-90441) and 'compensate Step 1' (void arrest record A-2847). This ensures the system returns to a consistent state. Sagas can be orchestrated (central coordinator) or choreographed (event-driven), and they're the standard pattern for distributed transactions in microservice architectures."
         },
         {
           "id": "fix-3",

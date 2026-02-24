@@ -20,7 +20,10 @@
         "type": "client",
         "label": "Call Center (Producer)",
         "status": "healthy",
-        "position": { "x": 100, "y": 50 },
+        "position": {
+          "x": 100,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Call Center Producer",
@@ -44,7 +47,10 @@
         "type": "server",
         "label": "Dispatch Queue Broker",
         "status": "degraded",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Dispatch Queue Broker",
@@ -72,7 +78,10 @@
         "type": "server",
         "label": "Patrol Dispatcher (Consumer)",
         "status": "failed",
-        "position": { "x": 600, "y": 50 },
+        "position": {
+          "x": 600,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Patrol Dispatcher Consumer",
@@ -96,7 +105,10 @@
         "type": "client",
         "label": "Patrol Units",
         "status": "degraded",
-        "position": { "x": 600, "y": 280 },
+        "position": {
+          "x": 600,
+          "y": 280
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Patrol Units",
@@ -116,9 +128,30 @@
       }
     ],
     "edges": [
-      { "id": "e-cc-broker", "source": "call-center", "target": "queue-broker", "label": "publish orders", "animated": true, "style": "normal" },
-      { "id": "e-broker-consumer", "source": "queue-broker", "target": "consumer-service", "label": "consume orders", "animated": false, "style": "broken" },
-      { "id": "e-consumer-patrols", "source": "consumer-service", "target": "patrol-units", "label": "assign patrols", "animated": false, "style": "broken" }
+      {
+        "id": "e-cc-broker",
+        "source": "call-center",
+        "target": "queue-broker",
+        "label": "publish orders",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-broker-consumer",
+        "source": "queue-broker",
+        "target": "consumer-service",
+        "label": "consume orders",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-consumer-patrols",
+        "source": "consumer-service",
+        "target": "patrol-units",
+        "label": "assign patrols",
+        "animated": false,
+        "style": "broken"
+      }
     ]
   },
   "diagnosis": {
@@ -155,10 +188,10 @@
       "question": "What is the best fix to prevent this pipeline backup in the future?",
       "options": [
         {
-          "id": "fix-1",
-          "text": "Implement backpressure controls: auto-restart consumers, set queue size limits, and slow producers when the queue is full",
-          "correct": true,
-          "feedback": "Correct! A proper backpressure strategy includes: (1) auto-restarting crashed consumers, (2) setting max queue depth to prevent unbounded growth, and (3) signaling producers to slow down when consumers can't keep up. This prevents the system from spiraling out of control."
+          "id": "fix-3",
+          "text": "Have the call center write dispatch orders directly to the patrol units, bypassing the queue",
+          "correct": false,
+          "feedback": "Removing the queue eliminates the buffering that helps handle traffic spikes. The queue is a good architectural choice — it just needs proper backpressure controls and consumer resilience."
         },
         {
           "id": "fix-2",
@@ -167,10 +200,10 @@
           "feedback": "More memory just delays the problem — if consumers are down, the queue will eventually fill any amount of memory. You need backpressure to stop unbounded growth and ensure consumers stay alive."
         },
         {
-          "id": "fix-3",
-          "text": "Have the call center write dispatch orders directly to the patrol units, bypassing the queue",
-          "correct": false,
-          "feedback": "Removing the queue eliminates the buffering that helps handle traffic spikes. The queue is a good architectural choice — it just needs proper backpressure controls and consumer resilience."
+          "id": "fix-1",
+          "text": "Implement backpressure controls: auto-restart consumers, set queue size limits, and slow producers when the queue is full",
+          "correct": true,
+          "feedback": "Correct! A proper backpressure strategy includes: (1) auto-restarting crashed consumers, (2) setting max queue depth to prevent unbounded growth, and (3) signaling producers to slow down when consumers can't keep up. This prevents the system from spiraling out of control."
         },
         {
           "id": "fix-4",

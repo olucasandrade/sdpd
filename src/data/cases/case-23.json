@@ -20,7 +20,10 @@
         "type": "client",
         "label": "North Precinct",
         "status": "healthy",
-        "position": { "x": 100, "y": 50 },
+        "position": {
+          "x": 100,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "North Precinct Terminal",
@@ -43,7 +46,10 @@
         "type": "database",
         "label": "DC-North (Replica)",
         "status": "degraded",
-        "position": { "x": 100, "y": 230 },
+        "position": {
+          "x": 100,
+          "y": 230
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Data Center North — Database Replica",
@@ -67,7 +73,10 @@
         "type": "client",
         "label": "South Precinct",
         "status": "healthy",
-        "position": { "x": 600, "y": 50 },
+        "position": {
+          "x": 600,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "South Precinct Terminal",
@@ -91,7 +100,10 @@
         "type": "database",
         "label": "DC-South (Primary)",
         "status": "healthy",
-        "position": { "x": 600, "y": 230 },
+        "position": {
+          "x": 600,
+          "y": 230
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Data Center South — Primary Database",
@@ -112,9 +124,30 @@
       }
     ],
     "edges": [
-      { "id": "e-north-dcn", "source": "north-precinct", "target": "dc-north", "label": "read (stale)", "animated": true, "style": "slow" },
-      { "id": "e-south-dcs", "source": "south-precinct", "target": "dc-south", "label": "read/write", "animated": true, "style": "normal" },
-      { "id": "e-dcs-dcn", "source": "dc-south", "target": "dc-north", "label": "async replication (lagging)", "animated": true, "style": "slow" }
+      {
+        "id": "e-north-dcn",
+        "source": "north-precinct",
+        "target": "dc-north",
+        "label": "read (stale)",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-south-dcs",
+        "source": "south-precinct",
+        "target": "dc-south",
+        "label": "read/write",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-dcs-dcn",
+        "source": "dc-south",
+        "target": "dc-north",
+        "label": "async replication (lagging)",
+        "animated": true,
+        "style": "slow"
+      }
     ]
   },
   "diagnosis": {
@@ -163,16 +196,16 @@
           "feedback": "Correct! A tunable consistency approach lets you require strong consistency for safety-critical data (suspect status, warrant info) while allowing eventual consistency for less critical data (case notes, statistics). This balances the CAP tradeoff intelligently — you pay the latency cost of consistency only where it truly matters."
         },
         {
-          "id": "fix-3",
-          "text": "Remove DC-North and have all precincts read from DC-South only",
-          "correct": false,
-          "feedback": "This eliminates the consistency problem but also eliminates the availability benefit of having two data centers. If DC-South goes down, everyone loses access."
-        },
-        {
           "id": "fix-4",
           "text": "Add a 15-minute delay before officers can act on any database query results",
           "correct": false,
           "feedback": "Making officers wait defeats the purpose of having a database. The replication lag is the problem — adding artificial delays on top doesn't fix it, it just slows everyone down equally."
+        },
+        {
+          "id": "fix-3",
+          "text": "Remove DC-North and have all precincts read from DC-South only",
+          "correct": false,
+          "feedback": "This eliminates the consistency problem but also eliminates the availability benefit of having two data centers. If DC-South goes down, everyone loses access."
         }
       ]
     }

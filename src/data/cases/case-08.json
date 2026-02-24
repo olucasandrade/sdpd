@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Forensics Node 1",
         "status": "healthy",
-        "position": { "x": 80, "y": 50 },
+        "position": {
+          "x": 80,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Forensics Analysis Node 1 (Honest)",
@@ -50,7 +53,10 @@
         "type": "server",
         "label": "Forensics Node 3",
         "status": "failed",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Forensics Analysis Node 3 (COMPROMISED)",
@@ -79,7 +85,10 @@
         "type": "server",
         "label": "Forensics Node 5",
         "status": "healthy",
-        "position": { "x": 620, "y": 50 },
+        "position": {
+          "x": 620,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Forensics Analysis Node 5 (Honest)",
@@ -109,7 +118,10 @@
         "type": "client",
         "label": "Court Evidence System",
         "status": "degraded",
-        "position": { "x": 350, "y": 300 },
+        "position": {
+          "x": 350,
+          "y": 300
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Court Evidence Submission System",
@@ -130,10 +142,38 @@
       }
     ],
     "edges": [
-      { "id": "e-n1-n3", "source": "node-1", "target": "node-3", "label": "peer messages", "animated": true, "style": "normal" },
-      { "id": "e-n3-n5", "source": "node-3", "target": "node-5", "label": "conflicting messages", "animated": true, "style": "broken" },
-      { "id": "e-n1-court", "source": "node-1", "target": "evidence-court", "label": "evidence", "animated": false, "style": "slow" },
-      { "id": "e-n5-court", "source": "node-5", "target": "evidence-court", "label": "evidence", "animated": false, "style": "slow" }
+      {
+        "id": "e-n1-n3",
+        "source": "node-1",
+        "target": "node-3",
+        "label": "peer messages",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-n3-n5",
+        "source": "node-3",
+        "target": "node-5",
+        "label": "conflicting messages",
+        "animated": true,
+        "style": "broken"
+      },
+      {
+        "id": "e-n1-court",
+        "source": "node-1",
+        "target": "evidence-court",
+        "label": "evidence",
+        "animated": false,
+        "style": "slow"
+      },
+      {
+        "id": "e-n5-court",
+        "source": "node-5",
+        "target": "evidence-court",
+        "label": "evidence",
+        "animated": false,
+        "style": "slow"
+      }
     ]
   },
   "diagnosis": {
@@ -147,12 +187,6 @@
           "feedback": "A crash fault means the node stops entirely. Node 3 is still running and responding — it's just lying. This is far more dangerous than a crash because the other nodes can't simply detect it as 'down.' Node 3 actively sends contradictory information to different peers."
         },
         {
-          "id": "rc-2",
-          "text": "A Byzantine fault — Node 3 is compromised and deliberately sending conflicting messages to different nodes to prevent consensus",
-          "correct": true,
-          "feedback": "Correct! This is a Byzantine fault — named after the Byzantine Generals Problem. A Byzantine node can behave arbitrarily: it can lie, send different messages to different peers, or selectively delay responses. This is the most challenging type of failure in distributed systems because the faulty node appears to be functioning normally to each individual peer, but tells different peers different things."
-        },
-        {
           "id": "rc-3",
           "text": "A network partition — some messages from Node 3 are being lost in transit",
           "correct": false,
@@ -163,6 +197,12 @@
           "text": "A software bug in Node 3's analysis algorithm producing random results",
           "correct": false,
           "feedback": "Node 3's actual local analysis produced MATCH (correct). The logs show it deliberately overrode this result and sent MATCH to some nodes and NO MATCH to others. A bug would produce consistently wrong results, not selectively different results to different peers."
+        },
+        {
+          "id": "rc-2",
+          "text": "A Byzantine fault — Node 3 is compromised and deliberately sending conflicting messages to different nodes to prevent consensus",
+          "correct": true,
+          "feedback": "Correct! This is a Byzantine fault — named after the Byzantine Generals Problem. A Byzantine node can behave arbitrarily: it can lie, send different messages to different peers, or selectively delay responses. This is the most challenging type of failure in distributed systems because the faulty node appears to be functioning normally to each individual peer, but tells different peers different things."
         }
       ]
     },
@@ -170,10 +210,10 @@
       "question": "How should the forensics network be designed to handle Byzantine faults?",
       "options": [
         {
-          "id": "fix-1",
-          "text": "Use a Byzantine Fault Tolerant (BFT) protocol that can tolerate up to f faulty nodes with at least 3f+1 total nodes",
-          "correct": true,
-          "feedback": "Correct! A BFT protocol (like PBFT) can reach consensus even when up to f nodes are Byzantine, as long as the total number of nodes is at least 3f+1. With 5 nodes, you can tolerate 1 Byzantine node (3*1+1 = 4, and 5 >= 4). The key insight: honest nodes share what they heard from all other nodes, so they can detect inconsistencies. Instead of requiring unanimity, the system uses a 2/3+ supermajority — in this case, 4 of the 5 honest nodes all computed MATCH, which would override Node 3's conflicting messages."
+          "id": "fix-3",
+          "text": "Use majority voting — accept whatever result more than half the nodes agree on",
+          "correct": false,
+          "feedback": "Simple majority voting doesn't handle Byzantine faults because a Byzantine node can send different votes to different nodes, causing each node to see a different majority. BFT protocols add an extra round of communication where nodes share what they heard from all peers, making it impossible for a Byzantine node to trick different honest nodes into seeing different majorities."
         },
         {
           "id": "fix-2",
@@ -182,10 +222,10 @@
           "feedback": "Unanimous agreement is exactly what the current system requires, and it's why one Byzantine node can block consensus entirely. With unanimity, a single faulty node can veto any result. BFT protocols use supermajority (2/3+) instead, allowing the system to make progress despite faulty nodes."
         },
         {
-          "id": "fix-3",
-          "text": "Use majority voting — accept whatever result more than half the nodes agree on",
-          "correct": false,
-          "feedback": "Simple majority voting doesn't handle Byzantine faults because a Byzantine node can send different votes to different nodes, causing each node to see a different majority. BFT protocols add an extra round of communication where nodes share what they heard from all peers, making it impossible for a Byzantine node to trick different honest nodes into seeing different majorities."
+          "id": "fix-1",
+          "text": "Use a Byzantine Fault Tolerant (BFT) protocol that can tolerate up to f faulty nodes with at least 3f+1 total nodes",
+          "correct": true,
+          "feedback": "Correct! A BFT protocol (like PBFT) can reach consensus even when up to f nodes are Byzantine, as long as the total number of nodes is at least 3f+1. With 5 nodes, you can tolerate 1 Byzantine node (3*1+1 = 4, and 5 >= 4). The key insight: honest nodes share what they heard from all other nodes, so they can detect inconsistencies. Instead of requiring unanimity, the system uses a 2/3+ supermajority — in this case, 4 of the 5 honest nodes all computed MATCH, which would override Node 3's conflicting messages."
         },
         {
           "id": "fix-4",

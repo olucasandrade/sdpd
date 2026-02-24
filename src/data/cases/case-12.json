@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Analytics Server",
         "status": "degraded",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Crime Analytics Server",
@@ -47,7 +50,10 @@
         "type": "server",
         "label": "District API Gateway",
         "status": "degraded",
-        "position": { "x": 350, "y": 220 },
+        "position": {
+          "x": 350,
+          "y": 220
+        },
         "inspectable": true,
         "inspectData": {
           "title": "District API Gateway",
@@ -69,7 +75,10 @@
         "type": "client",
         "label": "Precinct Dashboards",
         "status": "degraded",
-        "position": { "x": 100, "y": 380 },
+        "position": {
+          "x": 100,
+          "y": 380
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Precinct Dashboard Clients",
@@ -90,7 +99,10 @@
         "type": "client",
         "label": "Batch Processor",
         "status": "degraded",
-        "position": { "x": 600, "y": 380 },
+        "position": {
+          "x": 600,
+          "y": 380
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Overnight Batch Processor",
@@ -109,15 +121,42 @@
       }
     ],
     "edges": [
-      { "id": "e-api-analytics", "source": "district-api", "target": "analytics-server", "label": "queries", "animated": true, "style": "slow" },
-      { "id": "e-dashboard-api", "source": "precinct-dashboard", "target": "district-api", "label": "requests", "animated": true, "style": "slow" },
-      { "id": "e-batch-analytics", "source": "batch-processor", "target": "analytics-server", "label": "batch jobs", "animated": true, "style": "slow" }
+      {
+        "id": "e-api-analytics",
+        "source": "district-api",
+        "target": "analytics-server",
+        "label": "queries",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-dashboard-api",
+        "source": "precinct-dashboard",
+        "target": "district-api",
+        "label": "requests",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-batch-analytics",
+        "source": "batch-processor",
+        "target": "analytics-server",
+        "label": "batch jobs",
+        "animated": true,
+        "style": "slow"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What is the root cause of the analytics server's performance problem?",
       "options": [
+        {
+          "id": "rc-4",
+          "text": "The batch processor is running during peak hours and should be rescheduled",
+          "correct": false,
+          "feedback": "Rescheduling the batch job might provide temporary relief, but the core issue is that one machine can't handle the total workload. The batch job has grown from 3h to 14h — it now overlaps with daytime traffic regardless of when it starts."
+        },
         {
           "id": "rc-1",
           "text": "The server's hardware is defective and not performing to specifications",
@@ -135,12 +174,6 @@
           "text": "The database queries are poorly optimized and need index tuning",
           "correct": false,
           "feedback": "While query optimization can help, the fundamental issue is that all work is concentrated on a single machine that's already at its hardware limit. Even perfectly optimized queries would still saturate one server at this scale."
-        },
-        {
-          "id": "rc-4",
-          "text": "The batch processor is running during peak hours and should be rescheduled",
-          "correct": false,
-          "feedback": "Rescheduling the batch job might provide temporary relief, but the core issue is that one machine can't handle the total workload. The batch job has grown from 3h to 14h — it now overlaps with daytime traffic regardless of when it starts."
         }
       ]
     },
@@ -148,10 +181,10 @@
       "question": "What is the best fix to scale the analytics system beyond its current limits?",
       "options": [
         {
-          "id": "fix-1",
-          "text": "Implement horizontal scaling — add multiple analytics servers behind a load balancer to distribute the workload",
-          "correct": true,
-          "feedback": "Correct! Horizontal scaling (scaling out) adds more machines to share the load. A load balancer distributes queries across multiple analytics servers, and batch processing can run on dedicated nodes. Unlike vertical scaling, horizontal scaling has no hard ceiling — you can keep adding machines."
+          "id": "fix-3",
+          "text": "Reduce the amount of crime data retained to lower the processing load",
+          "correct": false,
+          "feedback": "Deleting data to fit within hardware limits is a poor solution. The analytics division needs historical data for trend analysis. The architecture should scale to meet data needs, not the other way around."
         },
         {
           "id": "fix-2",
@@ -160,10 +193,10 @@
           "feedback": "This just kicks the can down the road. Even if a bigger machine becomes available, demand will eventually outgrow it too. Horizontal scaling provides a sustainable path that doesn't depend on hardware generations."
         },
         {
-          "id": "fix-3",
-          "text": "Reduce the amount of crime data retained to lower the processing load",
-          "correct": false,
-          "feedback": "Deleting data to fit within hardware limits is a poor solution. The analytics division needs historical data for trend analysis. The architecture should scale to meet data needs, not the other way around."
+          "id": "fix-1",
+          "text": "Implement horizontal scaling — add multiple analytics servers behind a load balancer to distribute the workload",
+          "correct": true,
+          "feedback": "Correct! Horizontal scaling (scaling out) adds more machines to share the load. A load balancer distributes queries across multiple analytics servers, and batch processing can run on dedicated nodes. Unlike vertical scaling, horizontal scaling has no hard ceiling — you can keep adding machines."
         },
         {
           "id": "fix-4",

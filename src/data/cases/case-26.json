@@ -20,7 +20,10 @@
         "type": "client",
         "label": "Officer Mobile App",
         "status": "failed",
-        "position": { "x": 80, "y": 180 },
+        "position": {
+          "x": 80,
+          "y": 180
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Officer Mobile App",
@@ -45,7 +48,10 @@
         "type": "server",
         "label": "Mobile Gateway (Service A)",
         "status": "degraded",
-        "position": { "x": 270, "y": 50 },
+        "position": {
+          "x": 270,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Mobile Gateway (Service A)",
@@ -71,7 +77,10 @@
         "type": "server",
         "label": "Dispatch Service (Service B)",
         "status": "degraded",
-        "position": { "x": 460, "y": 180 },
+        "position": {
+          "x": 460,
+          "y": 180
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Dispatch Service (Service B)",
@@ -97,7 +106,10 @@
         "type": "server",
         "label": "Forensics Service (Service C)",
         "status": "degraded",
-        "position": { "x": 650, "y": 50 },
+        "position": {
+          "x": 650,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Forensics Analysis Service (Service C)",
@@ -122,7 +134,10 @@
         "type": "database",
         "label": "Forensics Database",
         "status": "healthy",
-        "position": { "x": 650, "y": 300 },
+        "position": {
+          "x": 650,
+          "y": 300
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Forensics Database",
@@ -140,22 +155,44 @@
       }
     ],
     "edges": [
-      { "id": "e-app-gateway", "source": "mobile-app", "target": "gateway", "label": "HTTP (timeout 30s)", "animated": false, "style": "broken" },
-      { "id": "e-gateway-dispatch", "source": "gateway", "target": "dispatch", "label": "HTTP (timeout 25s)", "animated": true, "style": "slow" },
-      { "id": "e-dispatch-forensics", "source": "dispatch", "target": "forensics", "label": "HTTP (timeout 20s)", "animated": true, "style": "slow" },
-      { "id": "e-forensics-db", "source": "forensics", "target": "forensics-db", "label": "queries", "animated": true, "style": "normal" }
+      {
+        "id": "e-app-gateway",
+        "source": "mobile-app",
+        "target": "gateway",
+        "label": "HTTP (timeout 30s)",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-gateway-dispatch",
+        "source": "gateway",
+        "target": "dispatch",
+        "label": "HTTP (timeout 25s)",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-dispatch-forensics",
+        "source": "dispatch",
+        "target": "forensics",
+        "label": "HTTP (timeout 20s)",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-forensics-db",
+        "source": "forensics",
+        "target": "forensics-db",
+        "label": "queries",
+        "animated": true,
+        "style": "normal"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "Why does a slow forensics service make the entire system appear down?",
       "options": [
-        {
-          "id": "rc-1",
-          "text": "The forensics database is overloaded and slowing down all queries",
-          "correct": false,
-          "feedback": "The forensics database is operating normally with 5ms query latency. The bottleneck is the Forensics service's CPU being consumed by the batch job."
-        },
         {
           "id": "rc-2",
           "text": "Service C's slowness cascades upward: B blocks waiting on C, A blocks waiting on B, and all thread pools fill up with waiting requests — cascading timeouts with no circuit breakers to fail fast",
@@ -169,6 +206,12 @@
           "feedback": "The services can connect and send requests — they're just waiting a very long time for responses. This is a latency issue, not a connectivity issue."
         },
         {
+          "id": "rc-1",
+          "text": "The forensics database is overloaded and slowing down all queries",
+          "correct": false,
+          "feedback": "The forensics database is operating normally with 5ms query latency. The bottleneck is the Forensics service's CPU being consumed by the batch job."
+        },
+        {
           "id": "rc-4",
           "text": "The mobile app's 30-second timeout is too short",
           "correct": false,
@@ -179,6 +222,12 @@
     "fix": {
       "question": "What is the best fix to prevent a slow service from taking down the entire system?",
       "options": [
+        {
+          "id": "fix-4",
+          "text": "Make all service calls asynchronous so nothing ever blocks",
+          "correct": false,
+          "feedback": "Async calls help with thread utilization but don't solve the timeout cascade by themselves. You still need circuit breakers to stop sending requests to a slow service and timeouts to bound how long you wait for a response."
+        },
         {
           "id": "fix-1",
           "text": "Increase all timeout values so services have more time to wait for responses",
@@ -196,12 +245,6 @@
           "text": "Prevent batch jobs from running on the forensics service",
           "correct": false,
           "feedback": "Batch jobs are a valid use case. The problem isn't that the forensics service is slow sometimes — it's that the upstream services have no way to handle a slow dependency gracefully. Any service can become slow for any reason."
-        },
-        {
-          "id": "fix-4",
-          "text": "Make all service calls asynchronous so nothing ever blocks",
-          "correct": false,
-          "feedback": "Async calls help with thread utilization but don't solve the timeout cascade by themselves. You still need circuit breakers to stop sending requests to a slow service and timeouts to bound how long you wait for a response."
         }
       ]
     }

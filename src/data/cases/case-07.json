@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Evidence Collection",
         "status": "degraded",
-        "position": { "x": 100, "y": 50 },
+        "position": {
+          "x": 100,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Evidence Collection Server",
@@ -47,7 +50,10 @@
         "type": "server",
         "label": "Forensic Lab Server",
         "status": "degraded",
-        "position": { "x": 550, "y": 50 },
+        "position": {
+          "x": 550,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Forensic Lab Analysis Server",
@@ -73,7 +79,10 @@
         "type": "database",
         "label": "Evidence Database",
         "status": "degraded",
-        "position": { "x": 325, "y": 200 },
+        "position": {
+          "x": 325,
+          "y": 200
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Central Evidence Database",
@@ -98,7 +107,10 @@
         "type": "server",
         "label": "NTP Server",
         "status": "failed",
-        "position": { "x": 325, "y": 50 },
+        "position": {
+          "x": 325,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "NTP Time Server (ntp.distributia.gov)",
@@ -119,22 +131,44 @@
       }
     ],
     "edges": [
-      { "id": "e-collect-db", "source": "collection-server", "target": "evidence-db", "label": "timestamps", "animated": true, "style": "normal" },
-      { "id": "e-lab-db", "source": "lab-server", "target": "evidence-db", "label": "timestamps", "animated": true, "style": "normal" },
-      { "id": "e-ntp-collect", "source": "ntp-server", "target": "collection-server", "label": "time sync", "animated": false, "style": "broken" },
-      { "id": "e-ntp-lab", "source": "ntp-server", "target": "lab-server", "label": "time sync", "animated": false, "style": "broken" }
+      {
+        "id": "e-collect-db",
+        "source": "collection-server",
+        "target": "evidence-db",
+        "label": "timestamps",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-lab-db",
+        "source": "lab-server",
+        "target": "evidence-db",
+        "label": "timestamps",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-ntp-collect",
+        "source": "ntp-server",
+        "target": "collection-server",
+        "label": "time sync",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-ntp-lab",
+        "source": "ntp-server",
+        "target": "lab-server",
+        "label": "time sync",
+        "animated": false,
+        "style": "broken"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What is the root cause of the impossible evidence timestamps?",
       "options": [
-        {
-          "id": "rc-1",
-          "text": "The evidence was actually fabricated — the timestamps prove it",
-          "correct": false,
-          "feedback": "The timestamps don't prove fabrication — they prove clock skew. The Collection server's clock is 3 minutes ahead of UTC while the Lab server's clock is 5 minutes behind UTC, creating an 8-minute total skew. Events that actually happened in the correct order appear reversed because each server stamped events with its own drifted local clock."
-        },
         {
           "id": "rc-2",
           "text": "Clock skew between servers — the NTP service failed, causing server clocks to drift apart, so timestamps from different servers are not comparable",
@@ -148,6 +182,12 @@
           "feedback": "The database is correctly recording the timestamps it receives. The problem is upstream — the timestamps themselves are wrong because the servers' clocks are out of sync. The database has no way to know the timestamps are skewed."
         },
         {
+          "id": "rc-1",
+          "text": "The evidence was actually fabricated — the timestamps prove it",
+          "correct": false,
+          "feedback": "The timestamps don't prove fabrication — they prove clock skew. The Collection server's clock is 3 minutes ahead of UTC while the Lab server's clock is 5 minutes behind UTC, creating an 8-minute total skew. Events that actually happened in the correct order appear reversed because each server stamped events with its own drifted local clock."
+        },
+        {
           "id": "rc-4",
           "text": "Network latency is causing events to arrive at the database in the wrong order",
           "correct": false,
@@ -158,6 +198,12 @@
     "fix": {
       "question": "What is the best way to establish reliable event ordering across servers?",
       "options": [
+        {
+          "id": "fix-4",
+          "text": "Add a buffer delay before recording timestamps to account for clock skew",
+          "correct": false,
+          "feedback": "An arbitrary buffer doesn't solve the problem — you'd need to know the exact skew in advance, which varies over time. And it adds unnecessary latency to every operation. Logical clocks solve ordering without adding delays or requiring knowledge of clock skew."
+        },
         {
           "id": "fix-1",
           "text": "Fix the NTP server and ensure all clocks are perfectly synchronized",
@@ -175,12 +221,6 @@
           "text": "Have all events timestamped by a single central time server",
           "correct": false,
           "feedback": "A central timestamp server creates a single point of failure and a performance bottleneck — every event across the entire system must wait for a response from this one server. It also adds network latency to every operation. Logical clocks achieve reliable ordering without any central coordination."
-        },
-        {
-          "id": "fix-4",
-          "text": "Add a buffer delay before recording timestamps to account for clock skew",
-          "correct": false,
-          "feedback": "An arbitrary buffer doesn't solve the problem — you'd need to know the exact skew in advance, which varies over time. And it adds unnecessary latency to every operation. Logical clocks solve ordering without adding delays or requiring knowledge of clock skew."
         }
       ]
     }

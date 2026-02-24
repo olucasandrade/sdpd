@@ -122,9 +122,30 @@
       }
     ],
     "edges": [
-      { "id": "e-forensics-leader", "source": "forensics", "target": "db-leader", "label": "upload (47 photos)", "animated": false, "style": "normal" },
-      { "id": "e-leader-follower", "source": "db-leader", "target": "db-follower", "label": "async replication (31 of 47)", "animated": false, "style": "slow" },
-      { "id": "e-follower-detective", "source": "db-follower", "target": "detective", "label": "query (31 photos)", "animated": true, "style": "normal" }
+      {
+        "id": "e-forensics-leader",
+        "source": "forensics",
+        "target": "db-leader",
+        "label": "upload (47 photos)",
+        "animated": false,
+        "style": "normal"
+      },
+      {
+        "id": "e-leader-follower",
+        "source": "db-leader",
+        "target": "db-follower",
+        "label": "async replication (31 of 47)",
+        "animated": false,
+        "style": "slow"
+      },
+      {
+        "id": "e-follower-detective",
+        "source": "db-follower",
+        "target": "detective",
+        "label": "query (31 photos)",
+        "animated": true,
+        "style": "normal"
+      }
     ]
   },
   "diagnosis": {
@@ -132,40 +153,34 @@
       "question": "Why were 16 of the 47 photos lost?",
       "options": [
         {
-          "id": "rc-1",
-          "text": "The forensics team's upload was interrupted before all photos were sent",
-          "correct": false,
-          "feedback": "The upload logs clearly show all 47 photos were uploaded and acknowledged by the leader. The uploads completed successfully at 22:03."
-        },
-        {
-          "id": "rc-2",
-          "text": "The follower database rejected the photos due to storage limits",
-          "correct": false,
-          "feedback": "The follower successfully stored the 31 photos it received. The issue is that 16 photos were never sent to it — they were still queued for replication on the leader when it crashed."
-        },
-        {
           "id": "rc-3",
           "text": "Asynchronous replication allowed the leader to acknowledge writes before replicating them — when the leader crashed, unreplicated data was lost",
           "correct": true,
           "feedback": "Correct! With async replication, the leader acknowledges a write as soon as it's stored locally, without waiting for the follower to confirm. Photos 32-47 were stored on the leader and acknowledged to the client, but hadn't been sent to the follower yet. When the leader crashed, those 16 photos existed only on the failed server — gone forever."
         },
         {
+          "id": "rc-1",
+          "text": "The forensics team's upload was interrupted before all photos were sent",
+          "correct": false,
+          "feedback": "The upload logs clearly show all 47 photos were uploaded and acknowledged by the leader. The uploads completed successfully at 22:03."
+        },
+        {
           "id": "rc-4",
           "text": "A network partition between leader and follower blocked replication",
           "correct": false,
           "feedback": "The replication logs show photos 1-31 were successfully replicated. The remaining photos were queued — the leader simply hadn't sent them yet before crashing. This is the nature of async replication, not a network issue."
+        },
+        {
+          "id": "rc-2",
+          "text": "The follower database rejected the photos due to storage limits",
+          "correct": false,
+          "feedback": "The follower successfully stored the 31 photos it received. The issue is that 16 photos were never sent to it — they were still queued for replication on the leader when it crashed."
         }
       ]
     },
     "fix": {
       "question": "How should the evidence system be changed to prevent data loss during failover?",
       "options": [
-        {
-          "id": "fix-1",
-          "text": "Use synchronous replication for critical data — the leader waits for the follower to confirm before acknowledging the write",
-          "correct": true,
-          "feedback": "Correct! With synchronous (sync) replication, the leader doesn't acknowledge a write until at least one follower confirms it has received the data. This guarantees that if the leader crashes, the follower has all acknowledged data. The trade-off is higher write latency, but for critical evidence data, durability is more important than speed."
-        },
         {
           "id": "fix-2",
           "text": "Add a second follower to increase the chances of replication",
@@ -183,6 +198,12 @@
           "text": "Don't allow automatic failover — wait for the leader to come back online",
           "correct": false,
           "feedback": "This would recover the data (if the disk survived), but at the cost of availability. The system would be offline until the leader is repaired, which could take hours or days. The better approach is sync replication, which ensures the follower always has the data AND can take over immediately."
+        },
+        {
+          "id": "fix-1",
+          "text": "Use synchronous replication for critical data — the leader waits for the follower to confirm before acknowledging the write",
+          "correct": true,
+          "feedback": "Correct! With synchronous (sync) replication, the leader doesn't acknowledge a write until at least one follower confirms it has received the data. This guarantees that if the leader crashes, the follower has all acknowledged data. The trade-off is higher write latency, but for critical evidence data, durability is more important than speed."
         }
       ]
     }

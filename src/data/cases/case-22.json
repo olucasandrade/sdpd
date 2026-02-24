@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Query Router",
         "status": "degraded",
-        "position": { "x": 350, "y": 30 },
+        "position": {
+          "x": 350,
+          "y": 30
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Query Router",
@@ -47,7 +50,10 @@
         "type": "database",
         "label": "Shard A-F",
         "status": "healthy",
-        "position": { "x": 80, "y": 250 },
+        "position": {
+          "x": 80,
+          "y": 250
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Shard A-F",
@@ -69,7 +75,10 @@
         "type": "database",
         "label": "Shard G-L",
         "status": "healthy",
-        "position": { "x": 280, "y": 250 },
+        "position": {
+          "x": 280,
+          "y": 250
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Shard G-L",
@@ -90,7 +99,10 @@
         "type": "database",
         "label": "Shard M-R",
         "status": "failed",
-        "position": { "x": 480, "y": 250 },
+        "position": {
+          "x": 480,
+          "y": 250
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Shard M-R",
@@ -115,7 +127,10 @@
         "type": "database",
         "label": "Shard S-Z",
         "status": "healthy",
-        "position": { "x": 680, "y": 250 },
+        "position": {
+          "x": 680,
+          "y": 250
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Shard S-Z",
@@ -133,22 +148,44 @@
       }
     ],
     "edges": [
-      { "id": "e-router-af", "source": "query-router", "target": "shard-af", "label": "A-F queries", "animated": true, "style": "normal" },
-      { "id": "e-router-gl", "source": "query-router", "target": "shard-gl", "label": "G-L queries", "animated": true, "style": "normal" },
-      { "id": "e-router-mr", "source": "query-router", "target": "shard-mr", "label": "M-R queries", "animated": false, "style": "broken" },
-      { "id": "e-router-sz", "source": "query-router", "target": "shard-sz", "label": "S-Z queries", "animated": true, "style": "normal" }
+      {
+        "id": "e-router-af",
+        "source": "query-router",
+        "target": "shard-af",
+        "label": "A-F queries",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-router-gl",
+        "source": "query-router",
+        "target": "shard-gl",
+        "label": "G-L queries",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-router-mr",
+        "source": "query-router",
+        "target": "shard-mr",
+        "label": "M-R queries",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-router-sz",
+        "source": "query-router",
+        "target": "shard-sz",
+        "label": "S-Z queries",
+        "animated": true,
+        "style": "normal"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "Why does losing one database shard make an entire range of criminals inaccessible?",
       "options": [
-        {
-          "id": "rc-1",
-          "text": "The query router has a bug that sends all queries to the failed shard",
-          "correct": false,
-          "feedback": "The router is working correctly — it routes A-F, G-L, and S-Z queries to their respective shards successfully. Only M-R queries fail because that specific shard is down."
-        },
         {
           "id": "rc-2",
           "text": "Each shard holds an exclusive range of data with no replication, so when Shard M-R fails, that entire data range has zero copies available",
@@ -162,6 +199,12 @@
           "feedback": "While the shard sizes vary slightly (570K-640K), the distribution is reasonably even. The problem isn't the shard key — it's the lack of replication for each shard."
         },
         {
+          "id": "rc-1",
+          "text": "The query router has a bug that sends all queries to the failed shard",
+          "correct": false,
+          "feedback": "The router is working correctly — it routes A-F, G-L, and S-Z queries to their respective shards successfully. Only M-R queries fail because that specific shard is down."
+        },
+        {
           "id": "rc-4",
           "text": "The other shards should be able to serve M-R queries as a fallback",
           "correct": false,
@@ -172,6 +215,12 @@
     "fix": {
       "question": "What is the best fix to prevent a single shard failure from causing data loss?",
       "options": [
+        {
+          "id": "fix-4",
+          "text": "Change the shard key from alphabetical to hash-based so failures affect random records instead of a contiguous range",
+          "correct": false,
+          "feedback": "Hash-based sharding spreads the impact but doesn't solve it — you'd still lose whichever records were hashed to the failed shard. The fix is replication per shard, regardless of shard key strategy."
+        },
         {
           "id": "fix-1",
           "text": "Stop sharding and put all data back on a single large server",
@@ -189,12 +238,6 @@
           "text": "Store a complete copy of all data on every shard so any shard can answer any query",
           "correct": false,
           "feedback": "If every shard has all the data, you've eliminated the benefit of sharding (distributing data to scale). You'd essentially have replication, not sharding. The correct approach is shard for scale plus replicate each shard for resilience."
-        },
-        {
-          "id": "fix-4",
-          "text": "Change the shard key from alphabetical to hash-based so failures affect random records instead of a contiguous range",
-          "correct": false,
-          "feedback": "Hash-based sharding spreads the impact but doesn't solve it — you'd still lose whichever records were hashed to the failed shard. The fix is replication per shard, regardless of shard key strategy."
         }
       ]
     }

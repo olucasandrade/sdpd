@@ -20,7 +20,10 @@
         "type": "client",
         "label": "Patrol App (x200)",
         "status": "degraded",
-        "position": { "x": 100, "y": 50 },
+        "position": {
+          "x": 100,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Patrol Car Mobile Terminals",
@@ -47,7 +50,10 @@
         "type": "server",
         "label": "API Gateway",
         "status": "degraded",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "API Gateway",
@@ -73,7 +79,10 @@
         "type": "server",
         "label": "Records Service",
         "status": "failed",
-        "position": { "x": 600, "y": 50 },
+        "position": {
+          "x": 600,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Records Service",
@@ -99,7 +108,10 @@
         "type": "database",
         "label": "Records Database",
         "status": "degraded",
-        "position": { "x": 600, "y": 300 },
+        "position": {
+          "x": 600,
+          "y": 300
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Records Database",
@@ -120,15 +132,42 @@
       }
     ],
     "edges": [
-      { "id": "e-patrol-gateway", "source": "patrol-app", "target": "api-gateway", "label": "retries (50x volume)", "animated": true, "style": "slow" },
-      { "id": "e-gateway-records", "source": "api-gateway", "target": "records-service", "label": "overwhelmed", "animated": false, "style": "broken" },
-      { "id": "e-records-db", "source": "records-service", "target": "records-db", "label": "queries", "animated": false, "style": "broken" }
+      {
+        "id": "e-patrol-gateway",
+        "source": "patrol-app",
+        "target": "api-gateway",
+        "label": "retries (50x volume)",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-gateway-records",
+        "source": "api-gateway",
+        "target": "records-service",
+        "label": "overwhelmed",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-records-db",
+        "source": "records-service",
+        "target": "records-db",
+        "label": "queries",
+        "animated": false,
+        "style": "broken"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What is the root cause of the Records Service total outage?",
       "options": [
+        {
+          "id": "rc-4",
+          "text": "Too many patrol cars were active simultaneously, exceeding system capacity",
+          "correct": false,
+          "feedback": "200 patrol cars generating 600 requests/min was well within normal capacity. The system handles that load daily. The problem was that each car's retry policy multiplied its request rate by 5x or more during the slowdown, turning normal load into a crushing storm."
+        },
         {
           "id": "rc-1",
           "text": "The database maintenance operation corrupted the Records Service data",
@@ -146,30 +185,12 @@
           "text": "The API Gateway crashed due to insufficient memory allocation",
           "correct": false,
           "feedback": "The API Gateway was overwhelmed but didn't crash — it was a victim, not the cause. The root issue is the retry behavior of the clients. Even with a larger gateway, the retry storm would still have overwhelmed the Records Service."
-        },
-        {
-          "id": "rc-4",
-          "text": "Too many patrol cars were active simultaneously, exceeding system capacity",
-          "correct": false,
-          "feedback": "200 patrol cars generating 600 requests/min was well within normal capacity. The system handles that load daily. The problem was that each car's retry policy multiplied its request rate by 5x or more during the slowdown, turning normal load into a crushing storm."
         }
       ]
     },
     "fix": {
       "question": "What is the best strategy to prevent retry storms?",
       "options": [
-        {
-          "id": "fix-1",
-          "text": "Disable all retries so failed requests simply fail without any retry attempt",
-          "correct": false,
-          "feedback": "Disabling retries entirely means transient errors (a momentary network blip) would cause permanent failures. Retries are valuable — the problem is how they're implemented. You need smart retries, not no retries."
-        },
-        {
-          "id": "fix-2",
-          "text": "Implement exponential backoff with jitter so retries are spaced out with randomized delays",
-          "correct": true,
-          "feedback": "Correct! Exponential backoff (wait 1s, then 2s, then 4s, etc.) prevents the thundering herd by spreading retries over time. Adding jitter (random variation) prevents synchronized retry waves where all clients retry at the exact same moment. Combined with a reasonable max retry count, this lets transient issues resolve naturally without amplifying load."
-        },
         {
           "id": "fix-3",
           "text": "Increase the Records Service thread pool from 200 to 2000 to handle more concurrent requests",
@@ -181,6 +202,18 @@
           "text": "Add a load balancer with more Records Service instances to distribute the retry traffic",
           "correct": false,
           "feedback": "Scaling out helps with normal load growth, but a retry storm is a positive feedback loop — more capacity just means it takes slightly longer to overwhelm. Each timed-out retry still generates more retries. The fundamental fix must address the retry behavior at the client level."
+        },
+        {
+          "id": "fix-1",
+          "text": "Disable all retries so failed requests simply fail without any retry attempt",
+          "correct": false,
+          "feedback": "Disabling retries entirely means transient errors (a momentary network blip) would cause permanent failures. Retries are valuable — the problem is how they're implemented. You need smart retries, not no retries."
+        },
+        {
+          "id": "fix-2",
+          "text": "Implement exponential backoff with jitter so retries are spaced out with randomized delays",
+          "correct": true,
+          "feedback": "Correct! Exponential backoff (wait 1s, then 2s, then 4s, etc.) prevents the thundering herd by spreading retries over time. Adding jitter (random variation) prevents synchronized retry waves where all clients retry at the exact same moment. Combined with a reasonable max retry count, this lets transient issues resolve naturally without amplifying load."
         }
       ]
     }

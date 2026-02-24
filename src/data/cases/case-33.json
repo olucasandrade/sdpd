@@ -20,7 +20,10 @@
         "type": "client",
         "label": "Precinct 3 (batch job)",
         "status": "degraded",
-        "position": { "x": 80, "y": 50 },
+        "position": {
+          "x": 80,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Precinct 3 — Automated Background Check System",
@@ -47,7 +50,10 @@
         "type": "client",
         "label": "Precincts 1,2,4,5",
         "status": "failed",
-        "position": { "x": 80, "y": 300 },
+        "position": {
+          "x": 80,
+          "y": 300
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Precincts 1, 2, 4, 5 — Field Operations",
@@ -74,7 +80,10 @@
         "type": "server",
         "label": "Warrant Gateway API",
         "status": "failed",
-        "position": { "x": 400, "y": 180 },
+        "position": {
+          "x": 400,
+          "y": 180
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Warrant Gateway API",
@@ -103,7 +112,10 @@
         "type": "database",
         "label": "Federal Warrant DB",
         "status": "degraded",
-        "position": { "x": 650, "y": 180 },
+        "position": {
+          "x": 650,
+          "y": 180
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Federal Warrant Database",
@@ -123,15 +135,42 @@
       }
     ],
     "edges": [
-      { "id": "e-p3-gateway", "source": "precinct-3", "target": "warrant-gateway", "label": "500 req/sec (no limit)", "animated": true, "style": "slow" },
-      { "id": "e-others-gateway", "source": "other-precincts", "target": "warrant-gateway", "label": "20 req/sec (starved)", "animated": false, "style": "broken" },
-      { "id": "e-gateway-db", "source": "warrant-gateway", "target": "federal-db", "label": "overwhelmed", "animated": true, "style": "slow" }
+      {
+        "id": "e-p3-gateway",
+        "source": "precinct-3",
+        "target": "warrant-gateway",
+        "label": "500 req/sec (no limit)",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-others-gateway",
+        "source": "other-precincts",
+        "target": "warrant-gateway",
+        "label": "20 req/sec (starved)",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-gateway-db",
+        "source": "warrant-gateway",
+        "target": "federal-db",
+        "label": "overwhelmed",
+        "animated": true,
+        "style": "slow"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What is the root cause of four precincts losing access to warrant checks?",
       "options": [
+        {
+          "id": "rc-3",
+          "text": "The Warrant Gateway has no rate limiting or per-client quotas, allowing one consumer to monopolize the shared API and starve all others",
+          "correct": true,
+          "feedback": "Correct! Without rate limiting, the Warrant Gateway treats all requests equally on a first-come, first-served basis. Precinct 3's 500 req/sec flood consumes 96% of the API's capacity, leaving crumbs for the other four precincts. This is the 'noisy neighbor' problem — one tenant's usage degrades service for all others. Rate limiting with per-client quotas ensures fair access to shared resources."
+        },
         {
           "id": "rc-1",
           "text": "Precinct 3's batch job is malicious and should not have been deployed without approval",
@@ -145,12 +184,6 @@
           "feedback": "The database would handle the normal load of 20 requests/second just fine. Even Precinct 3's 500 req/sec might be manageable if properly queued and throttled. The issue is that the API gateway has no mechanism to control the flow, so the raw unthrottled volume crushes both the gateway and the database."
         },
         {
-          "id": "rc-3",
-          "text": "The Warrant Gateway has no rate limiting or per-client quotas, allowing one consumer to monopolize the shared API and starve all others",
-          "correct": true,
-          "feedback": "Correct! Without rate limiting, the Warrant Gateway treats all requests equally on a first-come, first-served basis. Precinct 3's 500 req/sec flood consumes 96% of the API's capacity, leaving crumbs for the other four precincts. This is the 'noisy neighbor' problem — one tenant's usage degrades service for all others. Rate limiting with per-client quotas ensures fair access to shared resources."
-        },
-        {
           "id": "rc-4",
           "text": "The Warrant Gateway thread pool is too small and should be increased to handle peak load",
           "correct": false,
@@ -161,6 +194,12 @@
     "fix": {
       "question": "What is the best approach to prevent one consumer from monopolizing the API?",
       "options": [
+        {
+          "id": "fix-4",
+          "text": "Add a queue in front of the Warrant Gateway that processes requests in FIFO order",
+          "correct": false,
+          "feedback": "A FIFO queue without rate limiting still lets Precinct 3 fill the queue with 500 req/sec, pushing other precincts' requests to the back. Queue depth would grow unboundedly, and field officers would wait behind tens of thousands of batch requests. You need per-client quotas to ensure fair access."
+        },
         {
           "id": "fix-1",
           "text": "Block Precinct 3's batch job and require all warrant checks to be manual, one at a time",
@@ -178,12 +217,6 @@
           "text": "Scale the Warrant Gateway horizontally to handle any request volume from any client",
           "correct": false,
           "feedback": "Scaling helps with capacity, but without rate limiting, a single client could always scale their requests to match. Plus, the Federal Warrant Database has its own limits you can't control. Rate limiting is essential regardless of how much you scale — it's about fairness and protection, not just capacity."
-        },
-        {
-          "id": "fix-4",
-          "text": "Add a queue in front of the Warrant Gateway that processes requests in FIFO order",
-          "correct": false,
-          "feedback": "A FIFO queue without rate limiting still lets Precinct 3 fill the queue with 500 req/sec, pushing other precincts' requests to the back. Queue depth would grow unboundedly, and field officers would wait behind tens of thousands of batch requests. You need per-client quotas to ensure fair access."
         }
       ]
     }

@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Origin Server",
         "status": "healthy",
-        "position": { "x": 350, "y": 50 },
+        "position": {
+          "x": 350,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Origin Web Server",
@@ -44,7 +47,10 @@
         "type": "server",
         "label": "CDN Edge (North)",
         "status": "degraded",
-        "position": { "x": 100, "y": 220 },
+        "position": {
+          "x": 100,
+          "y": 220
+        },
         "inspectable": true,
         "inspectData": {
           "title": "CDN Edge Node — North District",
@@ -67,7 +73,10 @@
         "type": "server",
         "label": "CDN Edge (South)",
         "status": "degraded",
-        "position": { "x": 600, "y": 220 },
+        "position": {
+          "x": 600,
+          "y": 220
+        },
         "inspectable": true,
         "inspectData": {
           "title": "CDN Edge Node — South District",
@@ -88,7 +97,10 @@
         "type": "client",
         "label": "Citizens",
         "status": "degraded",
-        "position": { "x": 350, "y": 380 },
+        "position": {
+          "x": 350,
+          "y": 380
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Public Citizens",
@@ -106,16 +118,50 @@
       }
     ],
     "edges": [
-      { "id": "e-cdn-north-origin", "source": "cdn-edge-north", "target": "origin-server", "label": "no revalidation", "animated": false, "style": "normal" },
-      { "id": "e-cdn-south-origin", "source": "cdn-edge-south", "target": "origin-server", "label": "no revalidation", "animated": false, "style": "normal" },
-      { "id": "e-citizens-north", "source": "citizens", "target": "cdn-edge-north", "label": "stale content", "animated": true, "style": "slow" },
-      { "id": "e-citizens-south", "source": "citizens", "target": "cdn-edge-south", "label": "stale content", "animated": true, "style": "slow" }
+      {
+        "id": "e-cdn-north-origin",
+        "source": "cdn-edge-north",
+        "target": "origin-server",
+        "label": "no revalidation",
+        "animated": false,
+        "style": "normal"
+      },
+      {
+        "id": "e-cdn-south-origin",
+        "source": "cdn-edge-south",
+        "target": "origin-server",
+        "label": "no revalidation",
+        "animated": false,
+        "style": "normal"
+      },
+      {
+        "id": "e-citizens-north",
+        "source": "citizens",
+        "target": "cdn-edge-north",
+        "label": "stale content",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-citizens-south",
+        "source": "citizens",
+        "target": "cdn-edge-south",
+        "label": "stale content",
+        "animated": true,
+        "style": "slow"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What is the root cause of the CDN serving outdated content?",
       "options": [
+        {
+          "id": "rc-4",
+          "text": "Citizens' browsers are caching the old page locally",
+          "correct": false,
+          "feedback": "Even if citizens hard-refresh their browsers, the CDN edge nodes will serve the stale version. The problem is at the CDN layer, not the browser layer."
+        },
         {
           "id": "rc-1",
           "text": "The origin server failed to update the Most Wanted list properly",
@@ -133,12 +179,6 @@
           "text": "The CDN edge nodes are experiencing a bug and not respecting cache headers",
           "correct": false,
           "feedback": "The CDN is working exactly as configured — it's respecting the 24-hour TTL perfectly. The problem is that 24 hours is too long for frequently-changing content when there's no purge mechanism."
-        },
-        {
-          "id": "rc-4",
-          "text": "Citizens' browsers are caching the old page locally",
-          "correct": false,
-          "feedback": "Even if citizens hard-refresh their browsers, the CDN edge nodes will serve the stale version. The problem is at the CDN layer, not the browser layer."
         }
       ]
     },

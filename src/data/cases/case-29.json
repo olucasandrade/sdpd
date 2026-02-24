@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Evidence Tracker (new)",
         "status": "healthy",
-        "position": { "x": 400, "y": 50 },
+        "position": {
+          "x": 400,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Evidence Tracker Service (New Server)",
@@ -46,7 +49,10 @@
         "type": "client",
         "label": "Forensics Lab",
         "status": "failed",
-        "position": { "x": 80, "y": 50 },
+        "position": {
+          "x": 80,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Forensics Lab Portal",
@@ -71,7 +77,10 @@
         "type": "client",
         "label": "Court Liaison",
         "status": "failed",
-        "position": { "x": 80, "y": 220 },
+        "position": {
+          "x": 80,
+          "y": 220
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Court Liaison Portal",
@@ -94,7 +103,10 @@
         "type": "client",
         "label": "Patrol Evidence Upload",
         "status": "failed",
-        "position": { "x": 80, "y": 390 },
+        "position": {
+          "x": 80,
+          "y": 390
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Patrol Evidence Upload App",
@@ -115,15 +127,42 @@
       }
     ],
     "edges": [
-      { "id": "e-forensics-evidence", "source": "forensics-lab", "target": "evidence-tracker", "label": "10.0.5.31 (wrong IP)", "animated": false, "style": "broken" },
-      { "id": "e-court-evidence", "source": "court-liaison", "target": "evidence-tracker", "label": "10.0.5.31 (wrong IP)", "animated": false, "style": "broken" },
-      { "id": "e-patrol-evidence", "source": "patrol-upload", "target": "evidence-tracker", "label": "10.0.5.31 (wrong IP)", "animated": false, "style": "broken" }
+      {
+        "id": "e-forensics-evidence",
+        "source": "forensics-lab",
+        "target": "evidence-tracker",
+        "label": "10.0.5.31 (wrong IP)",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-court-evidence",
+        "source": "court-liaison",
+        "target": "evidence-tracker",
+        "label": "10.0.5.31 (wrong IP)",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-patrol-evidence",
+        "source": "patrol-upload",
+        "target": "evidence-tracker",
+        "label": "10.0.5.31 (wrong IP)",
+        "animated": false,
+        "style": "broken"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What is the root cause of all services losing contact with the Evidence Tracker?",
       "options": [
+        {
+          "id": "rc-3",
+          "text": "Hardcoded IP addresses with no service discovery mechanism means any infrastructure change breaks inter-service communication",
+          "correct": true,
+          "feedback": "Correct! When services find each other by hardcoded IPs, every infrastructure change (server replacement, scaling, failover, migration) requires manually updating every dependent service's configuration. This doesn't scale and is extremely fragile. Service discovery — whether via DNS, a service registry like Consul/Eureka, or Kubernetes service abstractions — decouples service identity from network location, letting infrastructure change without breaking communication."
+        },
         {
           "id": "rc-1",
           "text": "The infrastructure team failed to update the IP address in all dependent services' config files after the server replacement",
@@ -137,12 +176,6 @@
           "feedback": "Reusing IPs is fragile and not always possible (different subnet, cloud environment, etc.). The real problem is that services depend on a specific IP address at all. Proper service discovery decouples service identity from network location."
         },
         {
-          "id": "rc-3",
-          "text": "Hardcoded IP addresses with no service discovery mechanism means any infrastructure change breaks inter-service communication",
-          "correct": true,
-          "feedback": "Correct! When services find each other by hardcoded IPs, every infrastructure change (server replacement, scaling, failover, migration) requires manually updating every dependent service's configuration. This doesn't scale and is extremely fragile. Service discovery — whether via DNS, a service registry like Consul/Eureka, or Kubernetes service abstractions — decouples service identity from network location, letting infrastructure change without breaking communication."
-        },
-        {
           "id": "rc-4",
           "text": "The Evidence Tracker should have been configured to listen on 10.0.5.31 even though it's on a new server",
           "correct": false,
@@ -154,16 +187,16 @@
       "question": "What is the best long-term solution to prevent this class of outage?",
       "options": [
         {
-          "id": "fix-1",
-          "text": "Create a shared configuration file with all service IPs so there's only one place to update",
-          "correct": false,
-          "feedback": "A centralized config file is slightly better than scattered configs, but still requires manual updates when IPs change. It also creates a single point of failure. True service discovery is dynamic — services register themselves automatically when they start."
-        },
-        {
           "id": "fix-2",
           "text": "Implement a service discovery system where services register themselves and clients look up endpoints dynamically",
           "correct": true,
           "feedback": "Correct! With service discovery (DNS-based like CoreDNS, registry-based like Consul/Eureka, or platform-native like Kubernetes Services), the Evidence Tracker registers itself at startup with its current IP. Clients look up 'evidence-tracker' by name rather than by IP. When the server is replaced, the new instance registers automatically and clients find it immediately. No manual config changes, no hardcoded IPs, and infrastructure can change freely."
+        },
+        {
+          "id": "fix-1",
+          "text": "Create a shared configuration file with all service IPs so there's only one place to update",
+          "correct": false,
+          "feedback": "A centralized config file is slightly better than scattered configs, but still requires manual updates when IPs change. It also creates a single point of failure. True service discovery is dynamic — services register themselves automatically when they start."
         },
         {
           "id": "fix-3",

@@ -20,7 +20,10 @@
         "type": "server",
         "label": "Lock Node 1",
         "status": "degraded",
-        "position": { "x": 100, "y": 50 },
+        "position": {
+          "x": 100,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Lock Service Node 1",
@@ -50,7 +53,10 @@
         "type": "server",
         "label": "Lock Node 2",
         "status": "degraded",
-        "position": { "x": 400, "y": 50 },
+        "position": {
+          "x": 400,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Lock Service Node 2",
@@ -79,7 +85,10 @@
         "type": "server",
         "label": "Lock Node 0 (Old Leader)",
         "status": "failed",
-        "position": { "x": 250, "y": 200 },
+        "position": {
+          "x": 250,
+          "y": 200
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Lock Service Node 0 (Former Leader)",
@@ -104,7 +113,10 @@
         "type": "client",
         "label": "Evidence Room System",
         "status": "degraded",
-        "position": { "x": 250, "y": 370 },
+        "position": {
+          "x": 250,
+          "y": 370
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Evidence Room Access Control",
@@ -126,16 +138,50 @@
       }
     ],
     "edges": [
-      { "id": "e-node1-evidence", "source": "lock-node-1", "target": "evidence-room", "label": "lock grant", "animated": true, "style": "normal" },
-      { "id": "e-node2-evidence", "source": "lock-node-2", "target": "evidence-room", "label": "lock grant", "animated": true, "style": "normal" },
-      { "id": "e-node0-node1", "source": "lock-node-0", "target": "lock-node-1", "label": "heartbeat", "animated": false, "style": "broken" },
-      { "id": "e-node0-node2", "source": "lock-node-0", "target": "lock-node-2", "label": "heartbeat", "animated": false, "style": "broken" }
+      {
+        "id": "e-node1-evidence",
+        "source": "lock-node-1",
+        "target": "evidence-room",
+        "label": "lock grant",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-node2-evidence",
+        "source": "lock-node-2",
+        "target": "evidence-room",
+        "label": "lock grant",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-node0-node1",
+        "source": "lock-node-0",
+        "target": "lock-node-1",
+        "label": "heartbeat",
+        "animated": false,
+        "style": "broken"
+      },
+      {
+        "id": "e-node0-node2",
+        "source": "lock-node-0",
+        "target": "lock-node-2",
+        "label": "heartbeat",
+        "animated": false,
+        "style": "broken"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "What caused multiple nodes to claim leadership simultaneously?",
       "options": [
+        {
+          "id": "rc-4",
+          "text": "The network between Node 1 and Node 2 is partitioned, so they can't see each other's leadership claim",
+          "correct": false,
+          "feedback": "The logs show both nodes are aware of each other's leadership claim (they log warnings about it). The nodes can communicate — they just don't have a rule preventing multiple leaders. The fix is requiring a majority quorum, which mathematically prevents two leaders."
+        },
         {
           "id": "rc-1",
           "text": "The old leader (Node 0) crashed and sent corrupted data that confused the other nodes",
@@ -153,12 +199,6 @@
           "text": "Both nodes started their elections at the exact same time, causing a race condition",
           "correct": false,
           "feedback": "Simultaneous election starts are expected in distributed systems — that's why protocols like Raft use randomized election timeouts to reduce the chance of split votes. But the real problem is that the nodes accepted leadership with only 2/5 votes instead of requiring the majority (3/5)."
-        },
-        {
-          "id": "rc-4",
-          "text": "The network between Node 1 and Node 2 is partitioned, so they can't see each other's leadership claim",
-          "correct": false,
-          "feedback": "The logs show both nodes are aware of each other's leadership claim (they log warnings about it). The nodes can communicate — they just don't have a rule preventing multiple leaders. The fix is requiring a majority quorum, which mathematically prevents two leaders."
         }
       ]
     },
@@ -166,10 +206,10 @@
       "question": "How should the leader election process be fixed?",
       "options": [
         {
-          "id": "fix-1",
-          "text": "Require a strict majority quorum (3 of 5 nodes) to win an election, and ensure each node only votes once per term",
-          "correct": true,
-          "feedback": "Correct! A strict majority quorum guarantees at most one leader per term because a majority of a set can only overlap — not split completely. If Node 1 gets 3 votes, there aren't enough remaining votes for Node 2 to also get 3. Combined with the rule that each node votes only once per term, this is the foundation of the Raft consensus algorithm."
+          "id": "fix-4",
+          "text": "Add a delay after the old leader crashes before allowing elections to start",
+          "correct": false,
+          "feedback": "A delay reduces the chance of simultaneous elections but doesn't prevent the fundamental problem — multiple leaders due to lack of quorum. You'd still need the quorum rule. Plus, longer delays mean longer outages when a real failover is needed."
         },
         {
           "id": "fix-2",
@@ -178,16 +218,16 @@
           "feedback": "Clock synchronization in distributed systems is unreliable — nodes may disagree on what time it is (this is covered in a future case!). Leader election must not depend on synchronized clocks. Quorum-based voting doesn't need clocks at all."
         },
         {
+          "id": "fix-1",
+          "text": "Require a strict majority quorum (3 of 5 nodes) to win an election, and ensure each node only votes once per term",
+          "correct": true,
+          "feedback": "Correct! A strict majority quorum guarantees at most one leader per term because a majority of a set can only overlap — not split completely. If Node 1 gets 3 votes, there aren't enough remaining votes for Node 2 to also get 3. Combined with the rule that each node votes only once per term, this is the foundation of the Raft consensus algorithm."
+        },
+        {
           "id": "fix-3",
           "text": "Designate a fixed backup leader so there's no need for an election",
           "correct": false,
           "feedback": "A fixed backup introduces a new single point of failure — what happens when both the primary and the designated backup are down? Quorum-based elections allow any node to become leader, providing flexibility and fault tolerance."
-        },
-        {
-          "id": "fix-4",
-          "text": "Add a delay after the old leader crashes before allowing elections to start",
-          "correct": false,
-          "feedback": "A delay reduces the chance of simultaneous elections but doesn't prevent the fundamental problem — multiple leaders due to lack of quorum. You'd still need the quorum rule. Plus, longer delays mean longer outages when a real failover is needed."
         }
       ]
     }

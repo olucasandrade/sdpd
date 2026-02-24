@@ -135,28 +135,44 @@
       }
     ],
     "edges": [
-      { "id": "e-judge-leader", "source": "judge", "target": "db-leader", "label": "write", "animated": true, "style": "normal" },
-      { "id": "e-leader-north", "source": "db-leader", "target": "db-north", "label": "replication (fast)", "animated": true, "style": "normal" },
-      { "id": "e-leader-south", "source": "db-leader", "target": "db-south", "label": "replication (lagging!)", "animated": true, "style": "slow" },
-      { "id": "e-south-chen", "source": "db-south", "target": "officer-chen", "label": "stale read", "animated": false, "style": "broken" }
+      {
+        "id": "e-judge-leader",
+        "source": "judge",
+        "target": "db-leader",
+        "label": "write",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-leader-north",
+        "source": "db-leader",
+        "target": "db-north",
+        "label": "replication (fast)",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-leader-south",
+        "source": "db-leader",
+        "target": "db-south",
+        "label": "replication (lagging!)",
+        "animated": true,
+        "style": "slow"
+      },
+      {
+        "id": "e-south-chen",
+        "source": "db-south",
+        "target": "officer-chen",
+        "label": "stale read",
+        "animated": false,
+        "style": "broken"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "Why did Officer Chen see an active warrant that had already been dismissed?",
       "options": [
-        {
-          "id": "rc-1",
-          "text": "The judge's dismissal was never saved to the database",
-          "correct": false,
-          "feedback": "The leader database logs confirm the warrant was updated to DISMISSED. The write succeeded — the issue is on the read side."
-        },
-        {
-          "id": "rc-2",
-          "text": "Officer Chen's terminal was routed to a follower database with high replication lag, serving stale data",
-          "correct": true,
-          "feedback": "Correct! The South Precinct follower had 4+ hours of replication lag. When Officer Chen queried it, the warrant dismissal hadn't been replicated yet. This is the 'stale read' problem in leader-follower replication — followers may serve outdated data."
-        },
         {
           "id": "rc-3",
           "text": "A network partition prevented the South Precinct from receiving any updates",
@@ -168,6 +184,18 @@
           "text": "The leader database had a bug that didn't send the update to the South follower",
           "correct": false,
           "feedback": "The leader logs show the replication event was sent but is PENDING on the south follower. The follower received it but hasn't applied it yet due to its own lag."
+        },
+        {
+          "id": "rc-2",
+          "text": "Officer Chen's terminal was routed to a follower database with high replication lag, serving stale data",
+          "correct": true,
+          "feedback": "Correct! The South Precinct follower had 4+ hours of replication lag. When Officer Chen queried it, the warrant dismissal hadn't been replicated yet. This is the 'stale read' problem in leader-follower replication — followers may serve outdated data."
+        },
+        {
+          "id": "rc-1",
+          "text": "The judge's dismissal was never saved to the database",
+          "correct": false,
+          "feedback": "The leader database logs confirm the warrant was updated to DISMISSED. The write succeeded — the issue is on the read side."
         }
       ]
     },
@@ -175,16 +203,16 @@
       "question": "What is the best approach to prevent officers from acting on stale warrant data?",
       "options": [
         {
+          "id": "fix-4",
+          "text": "Cache the warrant data locally on each officer's terminal",
+          "correct": false,
+          "feedback": "Local caching would make the staleness problem even worse! If the database is already lagging, adding another layer of caching means data could be even more out of date."
+        },
+        {
           "id": "fix-1",
           "text": "Route critical queries (like warrant checks) to the leader database instead of followers",
           "correct": true,
           "feedback": "Correct! For safety-critical reads like warrant status, querying the leader ensures you always get the most current data. This is the 'read-from-leader' pattern for critical queries. Less-critical queries (like statistics) can still use followers to distribute load."
-        },
-        {
-          "id": "fix-2",
-          "text": "Switch from asynchronous to synchronous replication on all followers",
-          "correct": false,
-          "feedback": "Synchronous replication would ensure all followers are up-to-date, but it means every write must wait for ALL followers to confirm — including the slow South follower. This would make the entire system as slow as the slowest follower. A better approach is selective: route critical reads to the leader."
         },
         {
           "id": "fix-3",
@@ -193,10 +221,10 @@
           "feedback": "More followers don't solve replication lag — they could make it worse. The issue isn't load; it's that the South follower is behind and serving stale data for critical queries."
         },
         {
-          "id": "fix-4",
-          "text": "Cache the warrant data locally on each officer's terminal",
+          "id": "fix-2",
+          "text": "Switch from asynchronous to synchronous replication on all followers",
           "correct": false,
-          "feedback": "Local caching would make the staleness problem even worse! If the database is already lagging, adding another layer of caching means data could be even more out of date."
+          "feedback": "Synchronous replication would ensure all followers are up-to-date, but it means every write must wait for ALL followers to confirm — including the slow South follower. This would make the entire system as slow as the slowest follower. A better approach is selective: route critical reads to the leader."
         }
       ]
     }

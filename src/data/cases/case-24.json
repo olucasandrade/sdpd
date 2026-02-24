@@ -20,7 +20,10 @@
         "type": "client",
         "label": "Officer Upload Terminal",
         "status": "healthy",
-        "position": { "x": 80, "y": 180 },
+        "position": {
+          "x": 80,
+          "y": 180
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Officer Upload Terminal",
@@ -45,7 +48,10 @@
         "type": "server",
         "label": "Upload Gateway",
         "status": "healthy",
-        "position": { "x": 270, "y": 50 },
+        "position": {
+          "x": 270,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Upload Gateway",
@@ -69,7 +75,10 @@
         "type": "server",
         "label": "Transcoding Service",
         "status": "degraded",
-        "position": { "x": 460, "y": 180 },
+        "position": {
+          "x": 460,
+          "y": 180
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Transcoding Service",
@@ -95,7 +104,10 @@
         "type": "database",
         "label": "Evidence Storage Vault",
         "status": "healthy",
-        "position": { "x": 650, "y": 50 },
+        "position": {
+          "x": 650,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Evidence Storage Vault",
@@ -116,15 +128,42 @@
       }
     ],
     "edges": [
-      { "id": "e-officer-gateway", "source": "officer-upload", "target": "upload-gateway", "label": "upload file", "animated": true, "style": "normal" },
-      { "id": "e-gateway-transcode", "source": "upload-gateway", "target": "transcoder", "label": "forward file", "animated": true, "style": "normal" },
-      { "id": "e-transcode-vault", "source": "transcoder", "target": "evidence-vault", "label": "store transcoded", "animated": true, "style": "slow" }
+      {
+        "id": "e-officer-gateway",
+        "source": "officer-upload",
+        "target": "upload-gateway",
+        "label": "upload file",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-gateway-transcode",
+        "source": "upload-gateway",
+        "target": "transcoder",
+        "label": "forward file",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-transcode-vault",
+        "source": "transcoder",
+        "target": "evidence-vault",
+        "label": "store transcoded",
+        "animated": true,
+        "style": "slow"
+      }
     ]
   },
   "diagnosis": {
     "rootCause": {
       "question": "Where was the evidence file corrupted, and why wasn't it caught?",
       "options": [
+        {
+          "id": "rc-4",
+          "text": "Network packet loss during the transfer between gateway and transcoder corrupted the file",
+          "correct": false,
+          "feedback": "TCP guarantees in-order delivery and retransmits lost packets. Network transfers over TCP don't silently corrupt data. The transcoder logs show the actual cause: memory pressure and buffer overflow during processing."
+        },
         {
           "id": "rc-1",
           "text": "The file was already corrupted when the officer uploaded it",
@@ -142,30 +181,12 @@
           "text": "The evidence vault's storage disk has bad sectors that corrupted the file on write",
           "correct": false,
           "feedback": "The vault logs show a successful write. The file was already corrupted when it arrived — note the suspiciously smaller file size (2.1 GB vs 2.4 GB original). The transcoder lost data before the vault even received it."
-        },
-        {
-          "id": "rc-4",
-          "text": "Network packet loss during the transfer between gateway and transcoder corrupted the file",
-          "correct": false,
-          "feedback": "TCP guarantees in-order delivery and retransmits lost packets. Network transfers over TCP don't silently corrupt data. The transcoder logs show the actual cause: memory pressure and buffer overflow during processing."
         }
       ]
     },
     "fix": {
       "question": "What is the best fix to prevent undetected evidence corruption in the future?",
       "options": [
-        {
-          "id": "fix-1",
-          "text": "Compute a checksum at upload and verify it at every pipeline stage, rejecting files that don't match and alerting operators",
-          "correct": true,
-          "feedback": "Correct! End-to-end data integrity requires computing a checksum (e.g., SHA-256) at the source and verifying it at every handoff point. If the transcoder's output doesn't match expected integrity, the system can reject it immediately and alert operators — rather than silently passing corrupted data downstream."
-        },
-        {
-          "id": "fix-2",
-          "text": "Skip the transcoding step and store the original file directly",
-          "correct": false,
-          "feedback": "This avoids the specific transcoder bug but doesn't solve the general problem. Any service can corrupt data — you need integrity checks at every stage, not just removing stages."
-        },
         {
           "id": "fix-3",
           "text": "Add more memory to the transcoding service so it doesn't overflow",
@@ -177,6 +198,18 @@
           "text": "Have two officers independently upload the same file and compare the results",
           "correct": false,
           "feedback": "This is manual, error-prone, and doubles the work. Automated checksums achieve the same goal (detecting corruption) reliably and at every stage without human intervention."
+        },
+        {
+          "id": "fix-1",
+          "text": "Compute a checksum at upload and verify it at every pipeline stage, rejecting files that don't match and alerting operators",
+          "correct": true,
+          "feedback": "Correct! End-to-end data integrity requires computing a checksum (e.g., SHA-256) at the source and verifying it at every handoff point. If the transcoder's output doesn't match expected integrity, the system can reject it immediately and alert operators — rather than silently passing corrupted data downstream."
+        },
+        {
+          "id": "fix-2",
+          "text": "Skip the transcoding step and store the original file directly",
+          "correct": false,
+          "feedback": "This avoids the specific transcoder bug but doesn't solve the general problem. Any service can corrupt data — you need integrity checks at every stage, not just removing stages."
         }
       ]
     }

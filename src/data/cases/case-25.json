@@ -20,7 +20,10 @@
         "type": "client",
         "label": "Body Camera Ingest",
         "status": "healthy",
-        "position": { "x": 80, "y": 50 },
+        "position": {
+          "x": 80,
+          "y": 50
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Body Camera Ingestion Service",
@@ -43,7 +46,10 @@
         "type": "client",
         "label": "Radio Log Ingest",
         "status": "healthy",
-        "position": { "x": 80, "y": 250 },
+        "position": {
+          "x": 80,
+          "y": 250
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Radio Log Ingestion Service",
@@ -64,7 +70,10 @@
         "type": "server",
         "label": "LSM-Tree Storage Engine",
         "status": "degraded",
-        "position": { "x": 380, "y": 150 },
+        "position": {
+          "x": 380,
+          "y": 150
+        },
         "inspectable": true,
         "inspectData": {
           "title": "LSM-Tree Storage Engine",
@@ -94,7 +103,10 @@
         "type": "database",
         "label": "Evidence Disk Array",
         "status": "degraded",
-        "position": { "x": 620, "y": 150 },
+        "position": {
+          "x": 620,
+          "y": 150
+        },
         "inspectable": true,
         "inspectData": {
           "title": "Evidence Disk Array",
@@ -116,9 +128,30 @@
       }
     ],
     "edges": [
-      { "id": "e-bodycam-lsm", "source": "bodycam-ingest", "target": "lsm-engine", "label": "500 writes/sec", "animated": true, "style": "normal" },
-      { "id": "e-radio-lsm", "source": "radio-ingest", "target": "lsm-engine", "label": "200 writes/sec", "animated": true, "style": "normal" },
-      { "id": "e-lsm-disk", "source": "lsm-engine", "target": "disk-storage", "label": "compaction I/O (42x amplified)", "animated": true, "style": "slow" }
+      {
+        "id": "e-bodycam-lsm",
+        "source": "bodycam-ingest",
+        "target": "lsm-engine",
+        "label": "500 writes/sec",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-radio-lsm",
+        "source": "radio-ingest",
+        "target": "lsm-engine",
+        "label": "200 writes/sec",
+        "animated": true,
+        "style": "normal"
+      },
+      {
+        "id": "e-lsm-disk",
+        "source": "lsm-engine",
+        "target": "disk-storage",
+        "label": "compaction I/O (42x amplified)",
+        "animated": true,
+        "style": "slow"
+      }
     ]
   },
   "diagnosis": {
@@ -155,16 +188,16 @@
       "question": "What is the best fix to reduce write amplification in this LSM-tree storage system?",
       "options": [
         {
-          "id": "fix-1",
-          "text": "Switch to a B-tree based storage engine that modifies data in-place",
-          "correct": false,
-          "feedback": "B-trees have lower write amplification but much worse write throughput for sequential inserts. For a write-heavy workload of 700 writes/sec, an LSM-tree is the right choice — it just needs tuning."
-        },
-        {
           "id": "fix-2",
           "text": "Tune LSM compaction: increase memtable size, use leveled compaction with size-tiered L0, and limit concurrent compactions to reduce I/O contention",
           "correct": true,
           "feedback": "Correct! Tuning the LSM-tree reduces write amplification: larger memtables mean fewer flushes, leveled compaction controls space amplification, and limiting concurrent compactions prevents I/O starvation for writes. These are the standard knobs for managing write amplification in LSM-tree systems like RocksDB and Cassandra."
+        },
+        {
+          "id": "fix-1",
+          "text": "Switch to a B-tree based storage engine that modifies data in-place",
+          "correct": false,
+          "feedback": "B-trees have lower write amplification but much worse write throughput for sequential inserts. For a write-heavy workload of 700 writes/sec, an LSM-tree is the right choice — it just needs tuning."
         },
         {
           "id": "fix-3",

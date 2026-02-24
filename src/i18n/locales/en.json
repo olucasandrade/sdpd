@@ -68,5 +68,9 @@
   "rank.detective": "Detective",
   "rank.sergeant": "Sergeant",
   "rank.lieutenant": "Lieutenant",
-  "rank.chief": "Chief"
+  "rank.chief": "Chief",
+
+  "social.github": "Star on GitHub",
+  "social.linkedin": "Add me on LinkedIn",
+  "social.blog": "Support my blog"
 }

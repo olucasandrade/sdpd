@@ -255,7 +255,7 @@ export function HomePage() {
         <div className="border-t border-noir-700/30 pt-8">
           <div className="flex flex-wrap items-center justify-center gap-4">
             <a
-              href="https://github.com/olucasandrade"
+              href="https://github.com/olucasandrade/sdpd"
               target="_blank"
               rel="noopener noreferrer"
               className="group flex items-center gap-2 px-4 py-2 rounded-lg border border-noir-600/30 bg-noir-800/30 hover:border-amber-500/30 hover:bg-noir-700/40 transition-all duration-200"

@@ -165,19 +165,19 @@
         },
         {
           "id": "rc-1",
-          "text": "The infrastructure team failed to update the IP address in all dependent services' config files after the server replacement",
+          "text": "The infrastructure team forgot to update the IP address in all 23 dependent services' config files after the replacement, causing the system to fail",
           "correct": false,
           "feedback": "While the immediate fix is to update the configs, blaming the ops team misses the systemic issue. With 23+ dependent services each hardcoding an IP, manual config updates are error-prone and don't scale. The root cause is the architecture: there's no service discovery mechanism, so any IP change requires manually hunting down and updating every client."
         },
         {
           "id": "rc-2",
-          "text": "The new server should have been assigned the same IP address as the old one",
+          "text": "The new replacement server should have been assigned the same static IP address as the decommissioned old one",
           "correct": false,
           "feedback": "Reusing IPs is fragile and not always possible (different subnet, cloud environment, etc.). The real problem is that services depend on a specific IP address at all. Proper service discovery decouples service identity from network location."
         },
         {
           "id": "rc-4",
-          "text": "The Evidence Tracker should have been configured to listen on 10.0.5.31 even though it's on a new server",
+          "text": "The Evidence Tracker server should have been configured to listen on IP 10.0.5.31, even though it is on new hardware",
           "correct": false,
           "feedback": "Binding to an IP that belongs to a different machine is a network misconfiguration waiting to happen. The solution isn't to force new infrastructure to mimic old IPs — it's to have a discovery layer that abstracts away IP addresses entirely."
         }
@@ -194,19 +194,19 @@
         },
         {
           "id": "fix-1",
-          "text": "Create a shared configuration file with all service IPs so there's only one place to update",
+          "text": "Create a shared central configuration file listing all service IPs so there is only one single place that needs updating",
           "correct": false,
           "feedback": "A centralized config file is slightly better than scattered configs, but still requires manual updates when IPs change. It also creates a single point of failure. True service discovery is dynamic — services register themselves automatically when they start."
         },
         {
           "id": "fix-3",
-          "text": "Use a load balancer with a static IP in front of the Evidence Tracker so clients always connect to the same address",
+          "text": "Put a load balancer with a static virtual IP in front of the Evidence Tracker so clients always connect to the same address",
           "correct": false,
           "feedback": "A load balancer helps with a single service, but doesn't solve the systemic problem. You'd need a load balancer for every service, and those load balancers themselves need to be discovered. A proper service discovery system is the general solution that handles all inter-service communication."
         },
         {
           "id": "fix-4",
-          "text": "Write an automated script that updates all config files whenever a server IP changes",
+          "text": "Build an automated configuration management script that updates all affected config files whenever any server IP address changes",
           "correct": false,
           "feedback": "Automating config updates is better than manual changes, but still requires restarting services to pick up new configs, knowing which services depend on which, and handling the gap between IP change and config propagation. Service discovery makes this entirely dynamic and real-time."
         }

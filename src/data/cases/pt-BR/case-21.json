@@ -151,7 +151,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "A API de ingestão está enfileirando relatórios na ordem errada",
+          "text": "A API de ingestão está enfileirando os relatórios de ocorrências na ordem errada ao recebê-los",
           "correct": false,
           "feedback": "Os logs da API de ingestão mostram claramente que os relatórios são enfileirados na ordem cronológica correta. A desordem acontece mais adiante no fluxo."
         },
@@ -163,13 +163,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O banco de dados do Promotor está ordenando os registros incorretamente",
+          "text": "O banco de dados do Promotor está ordenando os registros de forma incorreta ao armazená-los",
           "correct": false,
           "feedback": "O banco de dados está armazenando registros na ordem em que chegam, o que é padrão. O problema é que eles chegam fora de ordem por causa da arquitetura de consumidores paralelos."
         },
         {
           "id": "rc-4",
-          "text": "A fila de mensagens tem um bug que entrega mensagens fora de sequência",
+          "text": "A fila de mensagens tem um bug no algoritmo de entrega que faz mensagens sairerem fora de sequência",
           "correct": false,
           "feedback": "A fila entrega mensagens em ordem FIFO para cada consumidor. O problema é que a distribuição round-robin entre múltiplos consumidores não preserva a ordenação global quando os tempos de processamento variam."
         }
@@ -180,7 +180,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Reduzir para um único consumidor para que todas as mensagens sejam processadas sequencialmente",
+          "text": "Reduzir para um único consumidor na fila para que todas as mensagens sejam processadas sequencialmente",
           "correct": false,
           "feedback": "Isso corrigiria a ordenação, mas destruiria o throughput. Um único consumidor se torna um gargalo. Existe uma solução melhor que preserva tanto o paralelismo quanto a ordenação."
         },
@@ -192,13 +192,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Adicionar timestamps a cada relatório e ordená-los no banco de dados após a inserção",
+          "text": "Adicionar timestamps explícitos a cada relatório e ordená-los corretamente no banco de dados após a inserção",
           "correct": false,
           "feedback": "Ordenação posterior é frágil — você precisaria saber quando todos os relatórios de uma janela de tempo chegaram antes de ordenar. Adiciona complexidade e latência. Ordenação baseada em partições é mais simples e confiável."
         },
         {
           "id": "fix-4",
-          "text": "Fazer todos os consumidores processarem na mesma velocidade padronizando o hardware",
+          "text": "Fazer todos os consumidores processarem na mesma velocidade padronizando o hardware e a configuração",
           "correct": false,
           "feedback": "O tempo de processamento varia com base no conteúdo da mensagem, não apenas no hardware. Jitter de rede, pausas de garbage collection e I/O causam latência variável. Você não pode garantir tempos iguais de processamento — precisa de uma solução arquitetural."
         }

@@ -153,13 +153,13 @@
       "options": [
         {
           "id": "rc-4",
-          "text": "The batch processor is running during peak hours and should be rescheduled",
+          "text": "The batch processor is scheduled to run during peak hours and should be moved to an off-peak maintenance window",
           "correct": false,
           "feedback": "Rescheduling the batch job might provide temporary relief, but the core issue is that one machine can't handle the total workload. The batch job has grown from 3h to 14h — it now overlaps with daytime traffic regardless of when it starts."
         },
         {
           "id": "rc-1",
-          "text": "The server's hardware is defective and not performing to specifications",
+          "text": "The server's physical hardware components are defective and not performing to their official specifications",
           "correct": false,
           "feedback": "The hardware is working correctly — it's simply at its maximum capacity. The server is using all 128 cores and nearly all 1TB of RAM as designed."
         },
@@ -171,7 +171,7 @@
         },
         {
           "id": "rc-3",
-          "text": "The database queries are poorly optimized and need index tuning",
+          "text": "The SQL queries powering the analytics dashboard are poorly optimized and require proper indexing and tuning",
           "correct": false,
           "feedback": "While query optimization can help, the fundamental issue is that all work is concentrated on a single machine that's already at its hardware limit. Even perfectly optimized queries would still saturate one server at this scale."
         }
@@ -182,13 +182,13 @@
       "options": [
         {
           "id": "fix-3",
-          "text": "Reduce the amount of crime data retained to lower the processing load",
+          "text": "Reduce the total volume of crime data being stored and retained to lower the overall processing load on the system",
           "correct": false,
           "feedback": "Deleting data to fit within hardware limits is a poor solution. The analytics division needs historical data for trend analysis. The architecture should scale to meet data needs, not the other way around."
         },
         {
           "id": "fix-2",
-          "text": "Wait for the next generation of server hardware with more cores and RAM",
+          "text": "Wait for the release of the next generation of server hardware that offers more CPU cores and larger RAM capacity",
           "correct": false,
           "feedback": "This just kicks the can down the road. Even if a bigger machine becomes available, demand will eventually outgrow it too. Horizontal scaling provides a sustainable path that doesn't depend on hardware generations."
         },
@@ -200,7 +200,7 @@
         },
         {
           "id": "fix-4",
-          "text": "Upgrade to a faster programming language to squeeze more performance from the same hardware",
+          "text": "Rewrite the analytics engine in a faster programming language to extract more performance from the existing hardware",
           "correct": false,
           "feedback": "Even a perfectly optimized program can only use 100% of one machine's resources — which is exactly where we already are. The bottleneck is the single-machine architecture, not the software's efficiency."
         }

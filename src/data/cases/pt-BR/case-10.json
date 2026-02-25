@@ -136,7 +136,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O hardware do banco de dados é lento demais para lidar com as consultas normais de início de turno",
+          "text": "O hardware do banco de dados é muito lento para lidar com as consultas normais feitas no início do turno",
           "correct": false,
           "feedback": "O banco de dados processa 50 consultas/seg com tempo de resposta de 50ms em condições normais — é perfeitamente capaz. O problema é que 2.400 consultas chegam em 1 segundo (48x a taxa normal) porque o cache expirou para todos simultaneamente. Em operação normal de cache, o banco recebe apenas 1 consulta a cada 24 horas para esses dados."
         },
@@ -148,13 +148,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O servidor de cache caiu e perdeu todos os dados",
+          "text": "O servidor de cache sofreu uma falha e perdeu permanentemente todos os dados armazenados em memória",
           "correct": false,
           "feedback": "O servidor de cache está funcionando corretamente — ele não caiu. A entrada do cache expirou legitimamente após seu TTL de 24 horas. O cache está funcionando conforme configurado; o problema é que o padrão de expiração do TTL causa uma debandada."
         },
         {
           "id": "rc-4",
-          "text": "Muitos policiais iniciando seus turnos ao mesmo tempo",
+          "text": "Muitos policiais iniciando simultaneamente seus turnos às 06:00 sobrecarregando o sistema de consultas",
           "correct": false,
           "feedback": "Policiais iniciando turnos às 06:00 é normal e esperado. Com cache funcionando corretamente, a primeira requisição reconstrói o cache e as outras 2.399 são atendidas pelo cache em microssegundos. O problema é que o cache expira justamente quando a demanda é mais alta, fazendo todas as requisições ignorarem o cache."
         }
@@ -165,7 +165,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Aumentar o pool de conexões do banco de dados para suportar 2.400 consultas simultâneas",
+          "text": "Aumentar o pool de conexões do banco de dados para suportar 2.400 consultas simultâneas durante picos",
           "correct": false,
           "feedback": "Mais conexões não ajudam se a CPU do banco de dados não consegue processar a carga. E você estaria otimizando para um caso patológico que nunca deveria acontecer com cache adequado. O objetivo é prevenir a debandada, não sobreviver a ela."
         },
@@ -177,13 +177,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Nunca expirar o cache — manter a lista de Mais Procurados em cache para sempre",
+          "text": "Nunca expirar o cache — manter a lista de Mais Procurados em cache permanentemente, sem TTL definido",
           "correct": false,
           "feedback": "Uma lista com cache infinito ficaria desatualizada — novos suspeitos nunca apareceriam e suspeitos liberados continuariam listados. Você precisa da expiração do cache para garantir a atualização dos dados. A solução é gerenciar COMO o cache é atualizado, não evitar a atualização por completo."
         },
         {
           "id": "fix-4",
-          "text": "Pré-aquecer o cache às 05:59 executando a consulta antes do cache antigo expirar",
+          "text": "Pré-aquecer o cache às 05:59 executando a consulta antes do cache antigo expirar automaticamente",
           "correct": false,
           "feedback": "O pré-aquecimento ajuda para este caso específico, mas não resolve o problema geral. E quanto a outros dados em cache com padrões de acesso imprevisíveis? Cache lock e jitter no TTL são soluções de propósito geral que funcionam para qualquer dado em cache, não apenas para atualizações programadas."
         }

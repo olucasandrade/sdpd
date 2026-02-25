@@ -147,7 +147,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "A revogação da juíza nunca foi salva no banco de dados",
+          "text": "A revogação da juíza nunca chegou a ser salva nem confirmada no banco de dados líder central",
           "correct": false,
           "feedback": "Os logs do banco de dados líder confirmam que o mandado foi atualizado para REVOGADO. A escrita foi bem-sucedida — o problema está no lado da leitura."
         },
@@ -159,13 +159,13 @@
         },
         {
           "id": "rc-3",
-          "text": "Uma partição de rede impediu a Delegacia Sul de receber atualizações",
+          "text": "Uma partição de rede bloqueou completamente o seguidor da Delegacia Sul de receber qualquer atualização do líder",
           "correct": false,
           "feedback": "O seguidor Sul está online e recebendo eventos de replicação — eles só estão atrasados. Os logs mostram que os eventos estão enfileirados, não bloqueados. Isso é atraso de replicação, não uma partição de rede."
         },
         {
           "id": "rc-4",
-          "text": "O banco de dados líder teve um bug que não enviou a atualização para o seguidor Sul",
+          "text": "O banco de dados líder teve um bug que fez com que não enviasse o evento de replicação para o seguidor Sul",
           "correct": false,
           "feedback": "Os logs do líder mostram que o evento de replicação foi enviado mas está PENDENTE no seguidor Sul. O seguidor recebeu, mas ainda não aplicou devido ao seu próprio atraso."
         }
@@ -182,19 +182,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Mudar de replicação assíncrona para síncrona em todos os seguidores",
+          "text": "Mudar de replicação assíncrona para síncrona em todos os seguidores, garantindo consistência imediata",
           "correct": false,
           "feedback": "Replicação síncrona garantiria que todos os seguidores estejam atualizados, mas significa que cada escrita deve esperar TODOS os seguidores confirmarem — incluindo o lento seguidor Sul. Isso tornaria o sistema inteiro tão lento quanto o seguidor mais lento. Uma abordagem melhor é seletiva: direcionar leituras críticas para o líder."
         },
         {
           "id": "fix-3",
-          "text": "Adicionar mais bancos de dados seguidores para distribuir a carga",
+          "text": "Adicionar mais bancos de dados seguidores para distribuir melhor a carga de leitura entre as delegacias",
           "correct": false,
           "feedback": "Mais seguidores não resolvem o atraso de replicação — podem até piorá-lo. O problema não é carga; é que o seguidor Sul está atrasado e servindo dados desatualizados para consultas críticas."
         },
         {
           "id": "fix-4",
-          "text": "Fazer cache dos dados de mandados localmente no terminal de cada policial",
+          "text": "Fazer cache dos dados de mandados localmente no terminal de cada policial para consultas mais rápidas offline",
           "correct": false,
           "feedback": "Cache local tornaria o problema de desatualização ainda pior! Se o banco de dados já está atrasado, adicionar outra camada de cache significa que os dados podem estar ainda mais defasados."
         }

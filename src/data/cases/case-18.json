@@ -161,19 +161,19 @@
         },
         {
           "id": "rc-3",
-          "text": "The patrol units consumed the messages but failed to process them",
+          "text": "The patrol units received the messages from the queue but encountered an error during processing and failed to dispatch",
           "correct": false,
           "feedback": "The patrol units never received the messages at all. The messages were sitting in the queue waiting to be consumed when the server crashed. The messages were lost before delivery, not after."
         },
         {
           "id": "rc-1",
-          "text": "The 911 intake system failed to send the messages to the queue properly",
+          "text": "The 911 intake system had a connection error and failed to properly deliver the dispatch messages to the queue",
           "correct": false,
           "feedback": "The intake system successfully sent all 23 messages and received acknowledgments from the queue. The messages were accepted and stored — they were just stored only in volatile memory."
         },
         {
           "id": "rc-4",
-          "text": "The queue server's crash recovery process has a bug that clears the queue on restart",
+          "text": "The queue server's crash recovery logic has a bug that incorrectly wipes all pending messages whenever it restarts",
           "correct": false,
           "feedback": "There's no bug — the queue genuinely has nothing to recover. With in-memory-only storage, there's no data on disk to restore from. The empty queue after restart is the expected (if unfortunate) behavior."
         }
@@ -184,7 +184,7 @@
       "options": [
         {
           "id": "fix-3",
-          "text": "Have the intake system retry sending messages if the queue doesn't respond within 5 seconds",
+          "text": "Have the 911 intake system automatically retry unacknowledged dispatch messages if the queue doesn't respond within 5 seconds",
           "correct": false,
           "feedback": "Retries help when the queue is temporarily unavailable, but the queue acknowledged all 23 messages before it crashed. The intake system has no reason to retry — it thinks delivery was successful. The messages need to be durable within the queue itself."
         },
@@ -196,13 +196,13 @@
         },
         {
           "id": "fix-2",
-          "text": "Add a second in-memory queue server as a backup",
+          "text": "Add a second in-memory queue server as an active-active backup with real-time message mirroring",
           "correct": false,
           "feedback": "A second in-memory server helps with availability but both servers still lose data on crash. If the primary crashes before replicating to the backup, messages are still lost. True durability requires disk persistence, not just more memory."
         },
         {
           "id": "fix-4",
-          "text": "Increase the queue server's memory allocation to prevent OOM crashes",
+          "text": "Increase the queue server's total memory allocation to prevent it from reaching OOM limits and crashing unexpectedly",
           "correct": false,
           "feedback": "More memory reduces the likelihood of OOM crashes but doesn't eliminate it. Any crash — OOM, hardware failure, power loss — would still destroy all in-memory messages. The fix must ensure messages survive any type of crash."
         }

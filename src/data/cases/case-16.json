@@ -161,19 +161,19 @@
         },
         {
           "id": "rc-3",
-          "text": "The database query is too slow and needs optimization",
+          "text": "The underlying database aggregation query is too slow and needs significant SQL performance optimization",
           "correct": false,
           "feedback": "The query normally takes 200ms, which is reasonable for an aggregation. It only slowed to 3 seconds because 100 copies of it were running simultaneously. One query at 200ms is fine — 100 simultaneous copies is the problem."
         },
         {
           "id": "rc-4",
-          "text": "There are too many API servers, causing too many concurrent cache misses",
+          "text": "There are too many API server instances, resulting in too many concurrent processes checking the cache simultaneously",
           "correct": false,
           "feedback": "Fewer servers would mean fewer duplicate queries, but the dog pile would still happen with even 2 servers. The fix isn't reducing servers — it's ensuring only one request rebuilds the cache while others wait."
         },
         {
           "id": "rc-1",
-          "text": "The cache TTL is too short, causing frequent expirations",
+          "text": "The cache key TTL is too short, causing the most wanted list to expire too frequently and trigger repeated rebuilds",
           "correct": false,
           "feedback": "The TTL length isn't the core issue. Even with a longer TTL, the same dog pile would happen when it eventually expires. The problem is what happens at the moment of expiration — multiple callers independently trying to rebuild the same entry."
         }
@@ -184,7 +184,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Increase the cache TTL so the key expires less frequently",
+          "text": "Increase the cache TTL duration significantly so the most wanted list key expires much less frequently under load",
           "correct": false,
           "feedback": "A longer TTL only delays the problem. When the key eventually expires, the same stampede will happen. You need a mechanism to handle the expiration gracefully, not just postpone it."
         },
@@ -196,13 +196,13 @@
         },
         {
           "id": "fix-4",
-          "text": "Pre-compute the most wanted list and store it as a static file",
+          "text": "Pre-compute and store the most wanted list as a static file updated on a schedule instead of dynamically cached",
           "correct": false,
           "feedback": "This works for one specific endpoint but doesn't solve the general problem. Any popular cached key could cause a dog pile when it expires. A cache locking mechanism solves the problem for all keys."
         },
         {
           "id": "fix-3",
-          "text": "Add rate limiting to the database to prevent too many simultaneous queries",
+          "text": "Add rate limiting on the database connection pool to prevent too many simultaneous queries from overwhelming it",
           "correct": false,
           "feedback": "Rate limiting the database would prevent overload but would also reject legitimate different queries during the spike. The problem is duplicate queries for the same key — the solution should target that duplication, not limit all database access."
         }

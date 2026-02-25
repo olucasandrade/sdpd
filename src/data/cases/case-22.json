@@ -194,19 +194,19 @@
         },
         {
           "id": "rc-3",
-          "text": "The alphabetical sharding key is poorly chosen and created uneven data distribution",
+          "text": "The alphabetical sharding key is a poor choice and has created highly uneven data distribution across the shards",
           "correct": false,
           "feedback": "While the shard sizes vary slightly (570K-640K), the distribution is reasonably even. The problem isn't the shard key — it's the lack of replication for each shard."
         },
         {
           "id": "rc-1",
-          "text": "The query router has a bug that sends all queries to the failed shard",
+          "text": "The query router has a bug that mistakenly sends all incoming queries to the failed shard instead of the correct ones",
           "correct": false,
           "feedback": "The router is working correctly — it routes A-F, G-L, and S-Z queries to their respective shards successfully. Only M-R queries fail because that specific shard is down."
         },
         {
           "id": "rc-4",
-          "text": "The other shards should be able to serve M-R queries as a fallback",
+          "text": "The other shards should fall back and serve M-R queries by scanning their own data when the M-R shard is unavailable",
           "correct": false,
           "feedback": "The other shards don't have M-R data — that's the whole point of sharding. Each shard holds an exclusive range. They can't answer queries for data they don't have."
         }
@@ -217,13 +217,13 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Change the shard key from alphabetical to hash-based so failures affect random records instead of a contiguous range",
+          "text": "Switch the shard key from alphabetical to hash-based so each shard failure impacts random records instead of a whole range",
           "correct": false,
           "feedback": "Hash-based sharding spreads the impact but doesn't solve it — you'd still lose whichever records were hashed to the failed shard. The fix is replication per shard, regardless of shard key strategy."
         },
         {
           "id": "fix-1",
-          "text": "Stop sharding and put all data back on a single large server",
+          "text": "Stop using sharding entirely and consolidate all criminal records back onto a single large database server",
           "correct": false,
           "feedback": "This eliminates the sharding failure mode but reintroduces the single point of failure from Case 1 and removes the scalability benefits of sharding."
         },
@@ -235,7 +235,7 @@
         },
         {
           "id": "fix-3",
-          "text": "Store a complete copy of all data on every shard so any shard can answer any query",
+          "text": "Store a complete copy of all criminal data on every shard so any shard can answer any query if another fails",
           "correct": false,
           "feedback": "If every shard has all the data, you've eliminated the benefit of sharding (distributing data to scale). You'd essentially have replication, not sharding. The correct approach is shard for scale plus replicate each shard for resilience."
         }

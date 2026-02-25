@@ -164,13 +164,13 @@
       "options": [
         {
           "id": "rc-4",
-          "text": "Too many patrol cars were active simultaneously, exceeding system capacity",
+          "text": "Too many patrol cars were simultaneously active at once, exceeding the total system capacity limit",
           "correct": false,
           "feedback": "200 patrol cars generating 600 requests/min was well within normal capacity. The system handles that load daily. The problem was that each car's retry policy multiplied its request rate by 5x or more during the slowdown, turning normal load into a crushing storm."
         },
         {
           "id": "rc-1",
-          "text": "The database maintenance operation corrupted the Records Service data",
+          "text": "The routine database maintenance operation caused data corruption in the Records Service backend storage",
           "correct": false,
           "feedback": "The database maintenance was a routine index rebuild that only caused a minor latency increase. The data was never corrupted. The real problem was that clients responded to the slowdown with aggressive, immediate retries that amplified the load far beyond what the service could handle."
         },
@@ -182,7 +182,7 @@
         },
         {
           "id": "rc-3",
-          "text": "The API Gateway crashed due to insufficient memory allocation",
+          "text": "The API Gateway ran out of memory and crashed under the high volume of incoming retry requests from clients",
           "correct": false,
           "feedback": "The API Gateway was overwhelmed but didn't crash — it was a victim, not the cause. The root issue is the retry behavior of the clients. Even with a larger gateway, the retry storm would still have overwhelmed the Records Service."
         }
@@ -193,19 +193,19 @@
       "options": [
         {
           "id": "fix-3",
-          "text": "Increase the Records Service thread pool from 200 to 2000 to handle more concurrent requests",
+          "text": "Increase the Records Service thread pool size from 200 to 2000 threads to handle far more concurrent incoming requests",
           "correct": false,
           "feedback": "More threads would delay the crash but not prevent it. A retry storm grows exponentially — if you can handle 10x load, the storm will simply grow to 100x. You need to address the retry behavior itself, not try to absorb unlimited retry traffic."
         },
         {
           "id": "fix-4",
-          "text": "Add a load balancer with more Records Service instances to distribute the retry traffic",
+          "text": "Add a load balancer and scale out to multiple Records Service instances to distribute the incoming retry storm traffic",
           "correct": false,
           "feedback": "Scaling out helps with normal load growth, but a retry storm is a positive feedback loop — more capacity just means it takes slightly longer to overwhelm. Each timed-out retry still generates more retries. The fundamental fix must address the retry behavior at the client level."
         },
         {
           "id": "fix-1",
-          "text": "Disable all retries so failed requests simply fail without any retry attempt",
+          "text": "Disable all retry logic in the clients so failed requests immediately return errors to the user and never retry",
           "correct": false,
           "feedback": "Disabling retries entirely means transient errors (a momentary network blip) would cause permanent failures. Retries are valuable — the problem is how they're implemented. You need smart retries, not no retries."
         },

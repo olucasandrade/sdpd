@@ -135,7 +135,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O lock store distribuído (Redis) tem um bug que impede que os locks sejam liberados",
+          "text": "O lock store distribuído (Redis) tem um bug que impede completamente que os locks sejam liberados",
           "correct": false,
           "feedback": "O Redis está funcionando corretamente — concedeu os locks conforme solicitado e está fielmente aguardando os comandos de liberação. O lock store está apenas fazendo o que foi mandado. O problema é a ordem em que os serviços adquirem os locks: cada um pega um lock e tenta pegar o outro, criando uma espera circular."
         },
@@ -147,13 +147,13 @@
         },
         {
           "id": "rc-3",
-          "text": "Os serviços crasharam mas seus locks não foram liberados porque não há TTL",
+          "text": "Os serviços crasharam mas seus locks não foram liberados porque os locks não têm TTL configurado",
           "correct": false,
           "feedback": "Os serviços não crasharam — ainda estão rodando com 100% de utilização de threads. Estão vivos mas bloqueados, o que na verdade é pior que um crash (um crash pelo menos seria detectado por health checks). As threads estão dormindo, esperando por locks que nunca virão."
         },
         {
           "id": "rc-4",
-          "text": "O processo de troca de turno envia muitas requisições concorrentes, sobrecarregando o lock store",
+          "text": "O processo de troca de turno envia muitas requisições concorrentes, sobrecarregando o lock store Redis",
           "correct": false,
           "feedback": "O lock store não está sobrecarregado — tem apenas 2 locks ativos. O problema não é volume, é a ordenação de aquisição de locks. Até mesmo um único par de requisições pode causar deadlock se dois serviços adquirem locks em ordens opostas."
         }
@@ -164,7 +164,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Adicionar mais threads a ambos os serviços para que algumas permaneçam disponíveis mesmo quando outras estão bloqueadas",
+          "text": "Adicionar mais threads a ambos os serviços para que algumas permaneçam disponíveis quando outras bloqueiam",
           "correct": false,
           "feedback": "Mais threads significa apenas mais threads que podem participar de deadlocks. As threads em deadlock nunca serão liberadas — adicionar mais apenas adia o ponto em que todas as threads são consumidas. Você precisa prevenir ou quebrar o deadlock em si."
         },
@@ -176,13 +176,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Remover locking distribuído completamente e usar concorrência otimista com números de versão",
+          "text": "Remover o locking distribuído completamente e usar controle de concorrência otimista com números de versão",
           "correct": false,
           "feedback": "Concorrência otimista funciona bem para cenários de baixa contenção, mas atribuições de armas durante troca de turno têm alta contenção — 400 oficiais simultaneamente. Você veria conflitos e retries constantes. A melhor abordagem é manter o locking mas estabelecer ordenação e adicionar timeouts."
         },
         {
           "id": "fix-4",
-          "text": "Unificar o Registro de Armas e o Plantão dos Oficiais em um único serviço para que os locks sejam locais, não distribuídos",
+          "text": "Unificar o Registro de Armas e o Plantão dos Oficiais em um único serviço para os locks serem locais",
           "correct": false,
           "feedback": "Embora a consolidação elimine o aspecto distribuído, deadlocks locais ainda podem ocorrer dentro de um único serviço. Além disso, unificar serviços viola o princípio de responsabilidade única e cria um raio de explosão maior. A correção adequada — ordenação de locks e timeouts — funciona tanto para deadlocks locais quanto distribuídos."
         }

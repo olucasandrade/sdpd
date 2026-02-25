@@ -190,19 +190,19 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "The warrant issuing system accidentally published the message twice",
+          "text": "The warrant issuing system accidentally published the same warrant message two times to the queue",
           "correct": false,
           "feedback": "The warrant system published exactly one message. The duplication happened because the queue re-delivered the message after an ACK timeout — which is normal 'at-least-once' delivery behavior."
         },
         {
           "id": "rc-3",
-          "text": "The message queue has a bug causing it to deliver messages twice",
+          "text": "The message queue has an internal bug that causes it to re-deliver each consumed message a second time",
           "correct": false,
           "feedback": "The queue is working as designed. At-least-once delivery guarantees that messages are never lost, but it means they may be delivered more than once (e.g., after ACK timeouts). This is a known trade-off, and consumers must be designed to handle it."
         },
         {
           "id": "rc-4",
-          "text": "The ACK timeout of 30 seconds is too short, causing premature re-delivery",
+          "text": "The ACK timeout of 30 seconds is too short and needs to be extended to prevent premature queue re-delivery",
           "correct": false,
           "feedback": "A longer timeout would reduce the frequency of re-deliveries but cannot eliminate them. Network issues, consumer restarts, and other failures can all trigger re-delivery. The consumer must be idempotent regardless of timeout settings."
         },
@@ -219,13 +219,13 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Add a deduplication layer in the message queue to filter duplicate deliveries",
+          "text": "Add a deduplication layer inside the message queue broker to automatically filter out and discard duplicate deliveries",
           "correct": false,
           "feedback": "Queue-level deduplication can help but only catches re-deliveries of the exact same message. It doesn't protect against application-level duplicates or different messages for the same business entity. Consumer-side idempotency is the more comprehensive and reliable approach."
         },
         {
           "id": "fix-1",
-          "text": "Switch to exactly-once delivery in the message queue",
+          "text": "Switch the entire queue infrastructure to support exactly-once delivery semantics instead of at-least-once",
           "correct": false,
           "feedback": "True exactly-once delivery is extremely difficult to achieve in distributed systems and most queue implementations don't support it. The standard approach is at-least-once delivery combined with idempotent consumers. It's simpler and more reliable."
         },
@@ -237,7 +237,7 @@
         },
         {
           "id": "fix-3",
-          "text": "Increase the ACK timeout to 5 minutes to prevent premature re-delivery",
+          "text": "Increase the queue's ACK timeout from 30 seconds to 5 minutes to significantly reduce the frequency of premature re-deliveries",
           "correct": false,
           "feedback": "A longer timeout reduces re-deliveries but introduces a worse problem: if a consumer genuinely crashes, the message won't be re-delivered for 5 minutes. And duplicates can still happen from other causes (network partitions, consumer restarts). Idempotency is the robust solution."
         }

@@ -201,13 +201,13 @@
       "options": [
         {
           "id": "rc-4",
-          "text": "The message queue has a bug that delivers messages out of sequence",
+          "text": "The message queue has a bug that delivers messages to consumers in the wrong sequence order",
           "correct": false,
           "feedback": "The queue delivers messages in FIFO order to each consumer. The issue is that round-robin distribution across multiple consumers doesn't preserve global ordering when processing times vary."
         },
         {
           "id": "rc-1",
-          "text": "The ingestion API is enqueuing reports in the wrong order",
+          "text": "The crime report ingestion API is enqueuing reports in the wrong chronological order into the queue",
           "correct": false,
           "feedback": "The ingestion API logs clearly show reports being enqueued in correct chronological order. The scrambling happens downstream."
         },
@@ -219,7 +219,7 @@
         },
         {
           "id": "rc-3",
-          "text": "The DA database is sorting records incorrectly",
+          "text": "The DA case management database is sorting and storing inserted records incorrectly, causing wrong display order, preventing the report from showing accurate data.",
           "correct": false,
           "feedback": "The database is storing records in the order they arrive, which is standard. The problem is that they arrive out of order because of the parallel consumer architecture."
         }
@@ -236,19 +236,19 @@
         },
         {
           "id": "fix-1",
-          "text": "Reduce to a single consumer so all messages are processed sequentially",
+          "text": "Reduce the number of parallel consumers to a single consumer so all messages are processed one at a time sequentially",
           "correct": false,
           "feedback": "This would fix ordering but destroys throughput. A single consumer becomes a bottleneck. There's a better solution that preserves both parallelism and ordering."
         },
         {
           "id": "fix-3",
-          "text": "Add timestamps to each report and sort them in the database after insertion",
+          "text": "Add arrival timestamps to each crime report and sort them in the DA database after all reports have been inserted",
           "correct": false,
           "feedback": "Post-hoc sorting is fragile — you'd need to know when all reports for a time window have arrived before sorting. It adds complexity and latency. Partition-based ordering is simpler and more reliable."
         },
         {
           "id": "fix-4",
-          "text": "Make all consumers process at exactly the same speed by standardizing hardware",
+          "text": "Standardize server hardware across all consumers to ensure they process messages at exactly the same speed",
           "correct": false,
           "feedback": "Processing time varies based on message content, not just hardware. Network jitter, garbage collection pauses, and I/O all cause variable latency. You can't guarantee equal processing times — you need an architectural solution."
         }

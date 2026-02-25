@@ -159,7 +159,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "The Crime Intake Service is inserting records too fast, corrupting the database indexes",
+          "text": "The Crime Intake Service is inserting records too rapidly, causing corruption in the database index structures, preventing the report from showing accurate data.",
           "correct": false,
           "feedback": "The database is functioning perfectly — no corruption, no bugs. Each insert and update is properly committed. The problem is that the report transaction sees different committed data at different moments because READ COMMITTED isolation gives each query its own snapshot."
         },
@@ -171,13 +171,13 @@
         },
         {
           "id": "rc-3",
-          "text": "The report queries are poorly written and don't properly JOIN the tables",
+          "text": "The report's SQL queries are poorly written and don't properly JOIN all the required crime statistic tables",
           "correct": false,
           "feedback": "Each individual query is correct and returns accurate results at the moment it executes. The inconsistency arises because the data changes between queries. Better SQL won't help if the isolation level allows the underlying data to shift mid-transaction."
         },
         {
           "id": "rc-4",
-          "text": "The database is under too much load, causing queries to return stale or cached results",
+          "text": "The database is severely overloaded with traffic, causing all reporting queries to return old cached or stale results",
           "correct": false,
           "feedback": "The database is not returning stale data — quite the opposite! It's returning data that's too fresh. Each query returns the latest committed state, which includes changes made by other transactions since the report started. The problem is that 'latest' changes between queries."
         }
@@ -188,19 +188,19 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Add a lock on the crimes table before generating the report to prevent concurrent modifications",
+          "text": "Acquire an exclusive table-level lock on the crimes table before generating the report to prevent all concurrent modifications",
           "correct": false,
           "feedback": "Table-level locking would provide consistency but would block all crime intake during report generation — unacceptable for a police department where every second counts. SNAPSHOT isolation achieves the same consistency without blocking any writers through MVCC (Multi-Version Concurrency Control)."
         },
         {
           "id": "fix-1",
-          "text": "Use SERIALIZABLE isolation level so the report blocks all other transactions while it runs",
+          "text": "Upgrade to SERIALIZABLE isolation so the report transaction fully serializes and blocks all concurrent writes while it runs",
           "correct": false,
           "feedback": "SERIALIZABLE would provide consistency, but it's overkill and would block all crime intake and case resolution for the 3+ seconds the report runs. For a read-only analytical query, you don't need to block writers — you just need a consistent point-in-time snapshot."
         },
         {
           "id": "fix-2",
-          "text": "Run all 12 queries in a single SQL statement using subqueries so they execute atomically",
+          "text": "Refactor all 12 report queries into a single combined SQL statement using subqueries so they all execute atomically",
           "correct": false,
           "feedback": "Combining queries into one statement helps under READ COMMITTED (single statement = single snapshot), but it's fragile — complex reports may need multiple statements, and this approach breaks down for reports that can't be expressed as a single query. The proper fix is at the isolation level."
         },

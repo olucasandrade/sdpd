@@ -147,7 +147,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O sistema de emissão de mandados publicou a mensagem duas vezes acidentalmente",
+          "text": "O sistema de emissão de mandados publicou a mensagem duas vezes acidentalmente por um bug de lógica",
           "correct": false,
           "feedback": "O sistema de mandados publicou exatamente uma mensagem. A duplicação aconteceu porque a fila re-entregou a mensagem após um timeout de ACK — o que é comportamento normal de entrega 'at-least-once'."
         },
@@ -159,13 +159,13 @@
         },
         {
           "id": "rc-3",
-          "text": "A fila de mensagens tem um bug que causa entrega duplicada de mensagens",
+          "text": "A fila de mensagens tem um bug específico no código que causa entrega duplicada de mensagens",
           "correct": false,
           "feedback": "A fila está funcionando conforme projetado. A garantia at-least-once assegura que mensagens nunca são perdidas, mas significa que podem ser entregues mais de uma vez (por exemplo, após timeouts de ACK). Este é um tradeoff conhecido, e os consumidores devem ser projetados para lidar com isso."
         },
         {
           "id": "rc-4",
-          "text": "O timeout de ACK de 30 segundos é curto demais, causando re-entrega prematura",
+          "text": "O timeout de ACK de 30 segundos está muito curto, causando re-entrega prematura das mensagens",
           "correct": false,
           "feedback": "Um timeout maior reduziria a frequência de re-entregas, mas não pode eliminá-las. Problemas de rede, reinícios de consumidores e outras falhas podem disparar re-entregas. O consumidor deve ser idempotente independentemente das configurações de timeout."
         }
@@ -176,7 +176,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Mudar para entrega exactly-once na fila de mensagens",
+          "text": "Mudar para entrega exactly-once configurando a fila de mensagens para nunca re-entregar mensagens",
           "correct": false,
           "feedback": "Entrega truly exactly-once é extremamente difícil de alcançar em sistemas distribuídos e a maioria das implementações de filas não a suporta. A abordagem padrão é entrega at-least-once combinada com consumidores idempotentes. É mais simples e mais confiável."
         },
@@ -188,13 +188,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Aumentar o timeout de ACK para 5 minutos para evitar re-entrega prematura",
+          "text": "Aumentar o timeout de ACK para 5 minutos para reduzir a chance de re-entrega prematura e duplicatas",
           "correct": false,
           "feedback": "Um timeout maior reduz re-entregas, mas introduz um problema pior: se um consumidor genuinamente falhar, a mensagem não será re-entregue por 5 minutos. E duplicatas ainda podem acontecer por outras causas (partições de rede, reinícios de consumidores). Idempotência é a solução robusta."
         },
         {
           "id": "fix-4",
-          "text": "Adicionar uma camada de deduplicação na fila de mensagens para filtrar entregas duplicadas",
+          "text": "Adicionar uma camada de deduplication na fila de mensagens para filtrar automaticamente entregas duplicadas",
           "correct": false,
           "feedback": "Deduplicação no nível da fila pode ajudar, mas só captura re-entregas da mesma mensagem exata. Não protege contra duplicatas no nível da aplicação ou mensagens diferentes para a mesma entidade de negócio. Idempotência no lado do consumidor é a abordagem mais abrangente e confiável."
         }

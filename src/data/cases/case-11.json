@@ -199,25 +199,25 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "Shard 4's hardware is weaker than the other shards",
+          "text": "Shard 4 has weaker server hardware compared to the other three shards in the cluster",
           "correct": false,
           "feedback": "All shards have identical hardware. The problem is that Shard 4 receives disproportionate traffic because the partitioning strategy (first letter of surname) doesn't distribute data evenly. When a trending event involves suspects whose names cluster in one range (S-Z), that shard becomes a hot partition."
         },
         {
           "id": "rc-3",
-          "text": "There are too many celebrity crime reports — the system wasn't designed for this volume",
+          "text": "There are simply too many celebrity crime reports — the entire system was never designed to handle this kind of volume",
           "correct": false,
           "feedback": "The total volume (50,000 reports) is manageable — spread across all four shards, each would handle only 12,500 extra records, well within capacity. The problem is concentration, not volume. All 50,000 reports end up on ONE shard because of the partitioning strategy."
         },
         {
           "id": "rc-2",
-          "text": "The key-range partitioning strategy creates a hot partition because data access patterns are not uniformly distributed across alphabet ranges",
+          "text": "Key-range partitioning creates hot partitions because data access patterns are not uniformly distributed",
           "correct": true,
           "feedback": "Correct! Key-range partitioning (A-F, G-L, M-R, S-Z) assumes data and access patterns are evenly distributed across the alphabet. But real-world data is not uniform — surname distributions vary by culture, and trending events can concentrate traffic on specific key ranges. When the celebrity crime wave hit S-surnames, Shard 4 became a 'hot partition' receiving 89% of all traffic while the others sat idle. This is the fundamental risk of range-based partitioning."
         },
         {
           "id": "rc-4",
-          "text": "The shard router has a bug that sends too much traffic to Shard 4",
+          "text": "The shard router contains a software bug that is incorrectly sending a disproportionate amount of traffic to Shard 4",
           "correct": false,
           "feedback": "The router is working exactly as designed — it correctly routes S-Z surnames to Shard 4. The bug is in the partitioning strategy itself, not the router's implementation. A correctly implemented bad strategy is still a bad strategy."
         }
@@ -228,7 +228,7 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Use round-robin distribution — assign each new record to the next shard in sequence",
+          "text": "Use round-robin distribution to assign each new incoming record to the next available shard in a rotating sequence",
           "correct": false,
           "feedback": "Round-robin distributes writes evenly but makes lookups impossible without querying all shards (you don't know which shard holds a given record). Hash-based partitioning distributes evenly AND allows direct lookups — compute the hash to know exactly which shard to query."
         },
@@ -240,13 +240,13 @@
         },
         {
           "id": "fix-2",
-          "text": "Add more shards to the S-Z range to split the load",
+          "text": "Add additional dedicated shards specifically for the S-Z range to split the concentrated hot partition load",
           "correct": false,
           "feedback": "Splitting S-Z into more sub-ranges (S-T, U-V, W-Z) helps temporarily but doesn't solve the fundamental problem. A future celebrity crime wave could concentrate on any sub-range. Hash-based partitioning distributes data evenly regardless of the key values."
         },
         {
           "id": "fix-3",
-          "text": "Rebalance the ranges so each shard has equal records (e.g., move S to Shard 3)",
+          "text": "Manually rebalance the letter ranges by redistributing 'S' into Shard 3 to achieve a more even record count",
           "correct": false,
           "feedback": "Rebalancing based on current data helps now but requires constant manual adjustment as data patterns change. Tomorrow's trending topic might overload the newly rebalanced ranges. Hash-based partitioning provides automatic even distribution without manual intervention."
         }

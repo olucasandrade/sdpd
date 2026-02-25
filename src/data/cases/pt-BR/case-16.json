@@ -122,7 +122,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O TTL do cache é muito curto, causando expirações frequentes",
+          "text": "O TTL do cache está muito curto, causando expirações excessivamente frequentes e muitos cache misses",
           "correct": false,
           "feedback": "A duração do TTL não é o problema central. Mesmo com um TTL mais longo, o mesmo dog pile aconteceria quando ele eventualmente expirasse. O problema é o que acontece no momento da expiração — múltiplos chamadores independentemente tentando reconstruir a mesma entrada."
         },
@@ -134,13 +134,13 @@
         },
         {
           "id": "rc-3",
-          "text": "A consulta ao banco de dados é muito lenta e precisa de otimização",
+          "text": "A consulta ao banco de dados é muito lenta e precisa ser reescrita e otimizada urgentemente",
           "correct": false,
           "feedback": "A consulta normalmente leva 200ms, o que é razoável para uma agregação. Ela só ficou lenta (3 segundos) porque 100 cópias dela estavam rodando simultaneamente. Uma consulta a 200ms é aceitável — 100 cópias simultâneas é o problema."
         },
         {
           "id": "rc-4",
-          "text": "Há servidores de API demais, causando muitos cache misses simultâneos",
+          "text": "Há servidores de API em excesso, causando número muito alto de cache misses simultâneos",
           "correct": false,
           "feedback": "Menos servidores significariam menos consultas duplicadas, mas o dog pile ainda aconteceria com apenas 2 servidores. A solução não é reduzir servidores — é garantir que apenas uma requisição reconstrua o cache enquanto as outras aguardam."
         }
@@ -151,7 +151,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Aumentar o TTL do cache para que a chave expire com menos frequência",
+          "text": "Aumentar o TTL do cache para que a chave expire com muito menos freqüência ao longo do tempo",
           "correct": false,
           "feedback": "Um TTL mais longo apenas adia o problema. Quando a chave eventualmente expirar, a mesma debandada vai acontecer. Você precisa de um mecanismo para lidar com a expiração de forma elegante, não apenas adiá-la."
         },
@@ -163,13 +163,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Adicionar rate limiting ao banco de dados para prevenir muitas consultas simultâneas",
+          "text": "Adicionar rate limiting ao banco de dados para prevenir muitas consultas simultâneas e sobrecarga",
           "correct": false,
           "feedback": "Rate limiting no banco de dados preveniria sobrecarga, mas também rejeitaria consultas diferentes legítimas durante o pico. O problema são consultas duplicadas para a mesma chave — a solução deve focar nessa duplicação, não limitar todo o acesso ao banco."
         },
         {
           "id": "fix-4",
-          "text": "Pré-computar a lista de mais procurados e armazená-la como arquivo estático",
+          "text": "Pré-computar a lista de mais procurados e armazená-la como um arquivo estático pré-renderizado",
           "correct": false,
           "feedback": "Isso funciona para um endpoint específico, mas não resolve o problema geral. Qualquer chave popular em cache poderia causar um dog pile quando expirar. Um mecanismo de cache locking resolve o problema para todas as chaves."
         }

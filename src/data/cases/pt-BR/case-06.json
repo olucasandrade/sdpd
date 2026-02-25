@@ -128,25 +128,25 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O atraso de replicação de 45 segundos é excessivo e deveria ser reduzido o máximo possível, para que os dados fossem sincronizados mais rapidamente",
+          "text": "O atraso de replicação de 45 segundos é excessivo e deveria ser reduzido o máximo possível, para que dessa forma os dados fossem sincronizados mais rapidamente, evitando conflitos entre escritas concorrentes",
           "correct": false,
           "feedback": "Reduzir o atraso de replicação ajuda, mas com replicação multi-líder, qualquer atraso diferente de zero pode gerar conflitos. Mesmo com 1ms de atraso, duas escritas acontecendo dentro dessa janela vão conflitar. O problema fundamental é que a replicação multi-líder inerentemente permite escritas concorrentes conflitantes."
         },
         {
           "id": "rc-2",
-          "text": "A replicação multi-líder permite que ambos os bancos de dados aceitem escritas independentemente, gerando conflitos quando o mesmo registro é modificado simultaneamente",
+          "text": "A replicação multi-líder permite que ambos os bancos de dados aceitem escritas independentemente, então escritas concorrentes no mesmo registro criam conflitos que precisam ser resolvidos depois",
           "correct": true,
           "feedback": "Correto! Na replicação multi-líder, cada líder aceita escritas independentemente e as replica de forma assíncrona para os outros líderes. Quando dois líderes modificam o mesmo registro antes da replicação alcançá-los, ocorre um conflito de escrita. Este é o trade-off inerente de configurações multi-líder: você ganha disponibilidade e menor latência para escritas, mas precisa lidar com conflitos. A estratégia LWW descartou silenciosamente a designação do Det. Reyes — um resultado perigoso para dados críticos."
         },
         {
           "id": "rc-3",
-          "text": "O Det. Reyes e o Sgt. Okonkwo deveriam ter se coordenado por telefone antes de fazer designações simultâneas, para evitar conflitos de escrita",
+          "text": "O Det. Reyes e o Sgt. Okonkwo deveriam ter estabelecido um protocolo de comunicação coordenada por telefone antes de fazer quaisquer designações de caso simultâneas, para evitar conflitos de escrita",
           "correct": false,
           "feedback": "Coordenação humana não é uma solução confiável em escala. O sistema deveria prevenir ou tratar adequadamente escritas concorrentes. Se o sistema permitiu escritas conflitantes silenciosamente, é um problema de design do sistema, não erro humano."
         },
         {
           "id": "rc-4",
-          "text": "A estratégia de resolução de conflito last-write-wins tem um bug na lógica de comparação de timestamps",
+          "text": "A estratégia de resolução de conflitos last-write-wins implementada no banco de dados tem um bug de software crítico na sua lógica de comparação de timestamps durante o processo de replicação",
           "correct": false,
           "feedback": "O LWW funcionou como projetado — escolheu a escrita com o timestamp mais recente. O problema é que o LWW em si é uma estratégia com perdas: ele descarta silenciosamente uma escrita sem alertar ninguém. Para designações de caso, perder uma escrita significa perder a designação de um policial sem notificação."
         }

@@ -168,19 +168,19 @@
       "options": [
         {
           "id": "rc-3",
-          "text": "Det. Reyes and Sgt. Okonkwo should have coordinated communication with each other before making any case assignments",
+          "text": "Det. Reyes and Sgt. Okonkwo should have established a coordinated communication protocol via phone before making any concurrent case assignments to prevent database write conflicts",
           "correct": false,
           "feedback": "Human coordination is not a reliable solution at scale. The system should prevent or properly handle concurrent writes. If the system allowed conflicting writes silently, it's a system design problem, not a human error."
         },
         {
           "id": "rc-1",
-          "text": "The 45-second replication lag between the two leaders is far too high and needs to be reduced to under one second",
+          "text": "The 45-second replication lag between the two leaders is excessive and should be reduced as much as possible, so that data is synchronized faster, avoiding conflicts between concurrent write operations",
           "correct": false,
           "feedback": "Reducing replication lag helps, but with multi-leader replication, any non-zero lag can produce conflicts. Even at 1ms lag, two writes happening within that window will conflict. The fundamental issue is that multi-leader replication inherently allows concurrent conflicting writes."
         },
         {
           "id": "rc-4",
-          "text": "The last-write-wins conflict resolution strategy has a software bug in its clock timestamp comparison logic",
+          "text": "The last-write-wins conflict resolution strategy implemented in the database has a critical software bug in its internal clock timestamp comparison logic during the replication process",
           "correct": false,
           "feedback": "LWW worked as designed — it picked the write with the later timestamp. The problem is that LWW itself is a lossy strategy: it silently discards one write without alerting anyone. For case assignments, losing a write means losing an officer's assignment without notification."
         },

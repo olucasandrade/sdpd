@@ -161,19 +161,19 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "The maintenance team took Address Validation offline without following proper change management procedures",
+          "text": "The maintenance team took the Address Validation service offline unexpectedly without following the proper change management and communication procedures",
           "correct": false,
           "feedback": "The maintenance was planned and communicated. Services go down — that's expected in distributed systems. The problem isn't that Address Validation went offline, it's that no service in the chain could gracefully handle its absence. A well-designed system should tolerate individual service failures."
         },
         {
           "id": "rc-3",
-          "text": "The 30-second timeout configured on Address Validation calls is too long and holds threads blocked for too long",
+          "text": "The 30-second timeout configured on Address Validation calls is too long and keeps threads blocked waiting for a response for an excessive amount of time",
           "correct": false,
           "feedback": "A shorter timeout would help threads free up faster, but without a circuit breaker, you'd still exhaust the thread pool — just slightly more slowly. The fundamental issue is that the system keeps calling a service it knows is down, request after request. A circuit breaker stops the bleeding entirely."
         },
         {
           "id": "rc-4",
-          "text": "The Dispatch Service's thread pool is too small and cannot handle the high volume of concurrent incoming requests",
+          "text": "The Dispatch Service's thread pool is too small and improperly configured to handle the high volume of concurrent incoming requests during peak hours",
           "correct": false,
           "feedback": "A larger thread pool would only delay the inevitable. If every thread blocks for 30 seconds on a dead service, even 500 threads would eventually fill up. The fix isn't more threads — it's stopping the futile calls to the dead service via a circuit breaker."
         },
@@ -190,13 +190,13 @@
       "options": [
         {
           "id": "fix-3",
-          "text": "Remove the dependency on Address Validation entirely by embedding its address lookup data directly in the Dispatch Service",
+          "text": "Remove the dependency on Address Validation entirely by embedding its address lookup data directly within the Dispatch Service's internal databases",
           "correct": false,
           "feedback": "Reducing unnecessary dependencies is good practice, but in a microservice architecture you'll always have inter-service calls. The same cascading failure pattern would occur with any dependency. You need a general solution (circuit breaker) that works for all downstream calls."
         },
         {
           "id": "fix-2",
-          "text": "Make Address Validation highly available with zero-downtime blue-green deployments so it never goes offline",
+          "text": "Make Address Validation highly available with zero-downtime blue-green deployments so the service never goes offline unexpectedly during maintenance",
           "correct": false,
           "feedback": "Zero-downtime deployments reduce planned outages, but services can still fail unexpectedly (bugs, resource exhaustion, network issues). Your system must handle downstream failures gracefully regardless. A circuit breaker is essential defense for any microservice architecture."
         },
@@ -208,7 +208,7 @@
         },
         {
           "id": "fix-4",
-          "text": "Add a reliable message queue between all services so they communicate asynchronously without blocking the caller",
+          "text": "Add a reliable message queue between all services so they communicate asynchronously and decouple the systems without blocking the calling services",
           "correct": false,
           "feedback": "Async communication via queues helps decouple services, but 911 dispatch requires real-time responses — you can't queue a 911 call and process it later. For synchronous call chains, circuit breakers are the standard pattern to prevent cascading failures."
         }

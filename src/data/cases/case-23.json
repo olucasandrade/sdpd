@@ -156,7 +156,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "A hacker gained access and modified Reznikov's record at DC-South but did not update DC-North",
+          "text": "A malicious hacker successfully gained unauthorized access and modified Reznikov's suspect record at DC-South but intentionally did not update the database at DC-North",
           "correct": false,
           "feedback": "The logs show a legitimate update at DC-South that simply hasn't replicated to DC-North yet. This is a consistency issue, not a security breach."
         },
@@ -168,13 +168,13 @@
         },
         {
           "id": "rc-3",
-          "text": "DC-North's database has a corruption bug that wrote incorrect data into the Reznikov record",
+          "text": "DC-North's database system experienced a severe internal corruption bug that incorrectly overwrote valid data into the Reznikov suspect record during the replication process",
           "correct": false,
           "feedback": "DC-North's data isn't corrupted — it's simply an older version (v3 vs v4). The record was correct when it was written; it just hasn't been updated with the latest change from DC-South."
         },
         {
           "id": "rc-4",
-          "text": "The two precincts are querying different database tables that coincidentally contain a suspect with the same name",
+          "text": "The two precincts are mistakenly querying completely separate and unrelated database tables that coincidentally contain suspects with the exact same name by pure chance",
           "correct": false,
           "feedback": "Both precincts query the same logical database, just different physical replicas. The data is the same dataset — the issue is replication lag between the two copies."
         }
@@ -185,7 +185,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Switch to fully synchronous replication for all data categories so both data centers always have identical records",
+          "text": "Switch the entire system to fully synchronous replication for absolutely all data categories to ensure both data centers always maintain perfectly identical database records",
           "correct": false,
           "feedback": "Synchronous replication for all data adds latency to every write and reduces availability if either DC is slow or unreachable. This is overkill — not all data is equally critical."
         },
@@ -197,13 +197,13 @@
         },
         {
           "id": "fix-4",
-          "text": "Add a mandatory 15-minute waiting period before any officer can act on query results to allow replication to catch up",
+          "text": "Implement a mandatory system-wide 15-minute waiting period before any police officer can actively act on query results, allowing time for the replication process to fully catch up",
           "correct": false,
           "feedback": "Making officers wait defeats the purpose of having a database. The replication lag is the problem — adding artificial delays on top doesn't fix it, it just slows everyone down equally."
         },
         {
           "id": "fix-3",
-          "text": "Shut down DC-North entirely and route all read and write queries exclusively through DC-South",
+          "text": "Permanently shut down the DC-North facility entirely and reconfigure the network to route all read and write database queries exclusively through the primary DC-South facility",
           "correct": false,
           "feedback": "This eliminates the consistency problem but also eliminates the availability benefit of having two data centers. If DC-South goes down, everyone loses access."
         }

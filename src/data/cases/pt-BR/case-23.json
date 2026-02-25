@@ -123,7 +123,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "Um hacker modificou o registro do Reznikov em um data center, mas esqueceu de alterar no outro",
+          "text": "Um hacker malicioso obteve acesso não autorizado e modificou o registro do suspeito Reznikov no DC-South, mas intencionalmente não atualizou o banco de dados no DC-North",
           "correct": false,
           "feedback": "Os logs mostram uma atualização legítima no DC-South que simplesmente ainda não replicou para o DC-North. Isso é um problema de consistência, não uma violação de segurança."
         },
@@ -135,13 +135,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O banco de dados do DC-North corrompeu o registro do Reznikov durante a operação, e por isso não consegue mostrar a atualização mais recente. Devido a isso, a delegacia do norte não consegue realizar a prisão do suspeito.",
+          "text": "O banco de dados do DC-North corrompeu de forma equivocada o registro do Reznikov durante a operação de replicação, e por isso não consegue mostrar a atualização mais recente",
           "correct": false,
           "feedback": "Os dados do DC-North não estão corrompidos — é simplesmente uma versão mais antiga (v3 vs v4). O registro estava correto quando foi escrito; apenas não foi atualizado com a última alteração do DC-South."
         },
         {
           "id": "rc-4",
-          "text": "As duas delegacias estão consultando tabelas diferentes que por acaso têm o mesmo nome de suspeito",
+          "text": "As duas delegacias estão consultando tabelas de banco de dados completamente diferentes e não relacionadas que por puro acaso têm suspeitos com exatamente o mesmo nome",
           "correct": false,
           "feedback": "Ambas as delegacias consultam o mesmo banco de dados lógico, apenas réplicas físicas diferentes. São os mesmos dados — o problema é o atraso de replicação entre as duas cópias."
         }
@@ -152,7 +152,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Mudar para replicação síncrona para absolutamente todos os dados para que os data centers sempre concordem",
+          "text": "Mudar todo o sistema para usar replicação totalmente síncrona para todas as categorias de dados, garantindo que ambos os data centers mantenham sempre registros idênticos",
           "correct": false,
           "feedback": "Replicação síncrona para todos os dados adiciona latência a cada escrita e reduz disponibilidade se qualquer DC estiver lento ou inacessível. Isso é excessivo — nem todos os dados são igualmente críticos."
         },
@@ -164,13 +164,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Remover o DC-North completamente e fazer todas as delegacias lerem apenas do DC-South",
+          "text": "Desligar a instalação do DC-North completamente e reconfigurar a rede para rotear todas as consultas de leitura e escrita exclusivamente por meio do data center principal no DC-South",
           "correct": false,
           "feedback": "Isso elimina o problema de consistência, mas também elimina o benefício de disponibilidade de ter dois data centers. Se o DC-South cair, todos perdem acesso."
         },
         {
           "id": "fix-4",
-          "text": "Adicionar um atraso de 15 minutos antes que oficiais possam agir com base nos resultados do banco de dados",
+          "text": "Implementar um período de espera obrigatório de 15 minutos antes que qualquer oficial possa agir sobre resultados de consultas, permitindo que a replicação seja concluída",
           "correct": false,
           "feedback": "Fazer oficiais esperarem derrota o propósito de ter um banco de dados. O atraso de replicação é o problema — adicionar atrasos artificiais por cima não resolve, apenas desacelera todo mundo igualmente."
         }

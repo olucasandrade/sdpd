@@ -130,7 +130,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O Serviço de Atribuição de Celas tem um bug de software que reporta a capacidade como cheia de forma equivocada, mesmo com celas disponíveis",
+          "text": "O Serviço de Atribuição de Celas tem um bug de software interno que reporta a capacidade de detenção como cheia, de forma equivocada, mesmo quando existem celas disponíveis.",
           "correct": false,
           "feedback": "O problema de capacidade é uma falha legítima — as celas realmente estão cheias (com uma reserva fantasma). O problema real não é que a Etapa 3 falhou. Falhas são esperadas em sistemas distribuídos. O problema é que não existem ações compensatórias para desfazer as Etapas 1 e 2 quando a Etapa 3 falha."
         },
@@ -148,7 +148,7 @@
         },
         {
           "id": "rc-4",
-          "text": "O Orquestrador de Booking deveria ter verificado a disponibilidade de celas antecipadamente antes de iniciar qualquer etapa do processo",
+          "text": "O Orquestrador de Booking deveria ter verificado de forma abrangente a disponibilidade de celas em todas as instalações antes de iniciar o processo",
           "correct": false,
           "feedback": "Pré-verificar disponibilidade ajuda mas não resolve o problema fundamental. Uma cela pode ser ocupada entre a verificação e a atribuição (uma condição de corrida). Qualquer etapa em qualquer processo distribuído pode falhar a qualquer momento. Você deve planejar para falhas e ter ações compensatórias prontas — este é o padrão Saga."
         }
@@ -165,19 +165,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Usar um protocolo de two-phase commit (2PC) para que todos os três serviços façam commit ou abort juntos",
+          "text": "Usar um protocolo de two-phase commit (2PC) para garantir que todos os três serviços sincronamente façam commit ou abort juntos",
           "correct": false,
           "feedback": "Two-phase commit fornece atomicidade mas tem sérias desvantagens em microsserviços: requer que todos os participantes estejam disponíveis simultaneamente, mantém locks entre serviços durante a fase de preparação (bloqueante), e uma falha do coordenador pode deixar participantes presos em um estado preparado. Sagas são preferidas em arquiteturas de microsserviços porque são mais resilientes e não requerem locking entre serviços."
         },
         {
           "id": "fix-3",
-          "text": "Adicionar lógica de retry automático para a Etapa 3 até uma cela de detenção ficar disponível",
+          "text": "Adicionar lógica de retry exponencial automático para que se a Etapa 3 falhar, o orquestrador tente novamente até uma cela liberar",
           "correct": false,
           "feedback": "Fazer retry indefinidamente é problemático — e se nenhuma cela ficar disponível por horas? Enquanto isso, os registros de prisão e booking estão em um estado de limbo. Retries são úteis para falhas transientes, mas para falhas de lógica de negócio (sem capacidade), você precisa de transações compensatórias para desfazer o trabalho parcial de forma limpa."
         },
         {
           "id": "fix-4",
-          "text": "Reservar todos os recursos (slot de prisão, número de booking, cela) antecipadamente antes de qualquer etapa",
+          "text": "Reservar todos os recursos necessários antecipadamente — slot de prisão, número, e cela — antes de tentar executar qualquer etapa",
           "correct": false,
           "feedback": "Reserva ajuda mas não elimina o problema — uma reserva pode falhar, um recurso reservado pode expirar, ou o processo pode falhar entre reservas. Você ainda precisa de ações compensatórias para quando as coisas dão errado. O padrão Saga lida com todos os cenários de falha sistematicamente."
         }

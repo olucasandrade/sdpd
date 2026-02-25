@@ -77,7 +77,7 @@ export const useGameState = create<GameStore>((set, get) => ({
 
   isCaseUnlocked: (caseNumber) => {
     if (caseNumber === 1) return true;
-    const prevId = `case-0${caseNumber - 1}`;
+    const prevId = `case-${String(caseNumber - 1).padStart(2, '0')}`;
     return get().progress[prevId]?.completed ?? false;
   },
 

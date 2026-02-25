@@ -138,7 +138,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O antigo líder (Nó 0) caiu e enviou dados corrompidos que confundiram os outros nós",
+          "text": "O antigo líder (Nó 0) caiu e transmitiu dados corrompidos que confundiram os demais nós do cluster",
           "correct": false,
           "feedback": "O Nó 0 caiu de forma limpa por OOM kill — não enviou dados corrompidos. O problema é que os nós sobreviventes iniciaram uma eleição mas não exigiram maioria adequada (quórum) antes de se declararem líder."
         },
@@ -150,13 +150,13 @@
         },
         {
           "id": "rc-3",
-          "text": "Ambos os nós iniciaram suas eleições exatamente ao mesmo tempo, causando uma condição de corrida",
+          "text": "Ambos os nós iniciaram suas eleições exatamente ao mesmo tempo, criando uma condição de corrida no processo, fazendo com que os dois se declarassem líderes",
           "correct": false,
           "feedback": "Eleições simultâneas são esperadas em sistemas distribuídos — é por isso que protocolos como Raft usam timeouts de eleição aleatorizados para reduzir a chance de votos divididos. Mas o verdadeiro problema é que os nós aceitaram liderança com apenas 2/5 votos ao invés de exigir a maioria (3/5)."
         },
         {
           "id": "rc-4",
-          "text": "A rede entre o Nó 1 e o Nó 2 está particionada, então eles não conseguem ver a reivindicação de liderança um do outro",
+          "text": "A rede entre o Nó 1 e o Nó 2 está particionada, impedindo que vejam a reivindicação de liderança um do outro",
           "correct": false,
           "feedback": "Os logs mostram que ambos os nós estão cientes da reivindicação de liderança um do outro (eles registram alertas sobre isso). Os nós conseguem se comunicar — eles apenas não possuem uma regra impedindo múltiplos líderes. A solução é exigir quórum de maioria, que matematicamente impede dois líderes."
         }
@@ -173,19 +173,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Usar timestamps para escolher o nó que iniciou a eleição primeiro como líder",
+          "text": "Usar timestamps para escolher o nó que iniciou sua eleição primeiro como o novo líder do cluster",
           "correct": false,
           "feedback": "A sincronização de relógios em sistemas distribuídos não é confiável — nós podem discordar sobre que horas são (isso é abordado em um caso futuro!). A eleição de líder não deve depender de relógios sincronizados. Votação baseada em quórum não precisa de relógios."
         },
         {
           "id": "fix-3",
-          "text": "Designar um líder de backup fixo para que não haja necessidade de eleição",
+          "text": "Designar um líder de backup fixo e pré-determinado para que não haja necessidade de processo de eleição",
           "correct": false,
           "feedback": "Um backup fixo introduz um novo ponto único de falha — o que acontece quando tanto o primário quanto o backup designado estão fora do ar? Eleições baseadas em quórum permitem que qualquer nó se torne líder, proporcionando flexibilidade e tolerância a falhas."
         },
         {
           "id": "fix-4",
-          "text": "Adicionar um atraso após a queda do antigo líder antes de permitir o início de eleições",
+          "text": "Adicionar um atraso após a queda do antigo líder antes de permitir o início de qualquer nova eleição",
           "correct": false,
           "feedback": "Um atraso reduz a chance de eleições simultâneas mas não previne o problema fundamental — múltiplos líderes por falta de quórum. Você ainda precisaria da regra de quórum. Além disso, atrasos maiores significam indisponibilidades mais longas quando um failover real é necessário."
         }

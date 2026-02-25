@@ -171,25 +171,25 @@
       "options": [
         {
           "id": "rc-2",
-          "text": "Clock skew between servers — the NTP service failed, causing server clocks to drift apart, so timestamps from different servers are not comparable",
+          "text": "NTP failure caused clock skew, making timestamps between servers incomparable",
           "correct": true,
           "feedback": "Correct! In distributed systems, each machine has its own physical clock, and these clocks drift at different rates. NTP normally keeps them synchronized within milliseconds, but when NTP failed, the clocks drifted apart by 8 minutes total. This is why using wall-clock timestamps to order events across different machines is fundamentally unreliable — physical clocks are not perfectly synchronized and can never be."
         },
         {
           "id": "rc-3",
-          "text": "The database is inserting records in the wrong order due to a bug",
+          "text": "The database is recording records in an incorrect order due to a software bug in the write path logic",
           "correct": false,
           "feedback": "The database is correctly recording the timestamps it receives. The problem is upstream — the timestamps themselves are wrong because the servers' clocks are out of sync. The database has no way to know the timestamps are skewed."
         },
         {
           "id": "rc-1",
-          "text": "The evidence was actually fabricated — the timestamps prove it",
+          "text": "The evidence was actually fabricated by lab technicians — the impossible timestamps are proof the chain of custody was broken",
           "correct": false,
           "feedback": "The timestamps don't prove fabrication — they prove clock skew. The Collection server's clock is 3 minutes ahead of UTC while the Lab server's clock is 5 minutes behind UTC, creating an 8-minute total skew. Events that actually happened in the correct order appear reversed because each server stamped events with its own drifted local clock."
         },
         {
           "id": "rc-4",
-          "text": "Network latency is causing events to arrive at the database in the wrong order",
+          "text": "Network latency between the collection server and the lab server is causing events to arrive at the database in the wrong order",
           "correct": false,
           "feedback": "Network latency can cause events to arrive out of order, but that's not the issue here. The timestamps themselves are wrong — even if the events arrived in the correct order, the timestamps would still show analysis before collection because the Lab server's clock is behind."
         }
@@ -200,13 +200,13 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Add a buffer delay before recording timestamps to account for clock skew",
+          "text": "Add a static buffer delay before recording any timestamps to compensate for the known maximum expected clock skew across servers",
           "correct": false,
           "feedback": "An arbitrary buffer doesn't solve the problem — you'd need to know the exact skew in advance, which varies over time. And it adds unnecessary latency to every operation. Logical clocks solve ordering without adding delays or requiring knowledge of clock skew."
         },
         {
           "id": "fix-1",
-          "text": "Fix the NTP server and ensure all clocks are perfectly synchronized",
+          "text": "Fix the NTP server configuration and ensure all server clocks are kept tightly synchronized within millisecond precision",
           "correct": false,
           "feedback": "Fixing NTP is necessary but not sufficient. Even with NTP, clocks can drift between sync intervals, and NTP accuracy is typically 1-10ms at best. For critical ordering requirements, you cannot rely solely on physical clock synchronization. You need a logical ordering mechanism as well."
         },
@@ -218,7 +218,7 @@
         },
         {
           "id": "fix-3",
-          "text": "Have all events timestamped by a single central time server",
+          "text": "Designate a single centralized time server that assigns timestamps to all events submitted from anywhere in the system",
           "correct": false,
           "feedback": "A central timestamp server creates a single point of failure and a performance bottleneck — every event across the entire system must wait for a response from this one server. It also adds network latency to every operation. Logical clocks achieve reliable ordering without any central coordination."
         }

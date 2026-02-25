@@ -127,7 +127,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "Os serviços de ingestão estão escrevendo dados duplicados",
+          "text": "Os serviços de ingestão estão escrevendo dados duplicados, causando o dobro do uso de armazenamento esperado e saturando o disco, impedindo que novas evidências sejam armazenadas.",
           "correct": false,
           "feedback": "Os serviços de ingestão estão escrevendo nas taxas esperadas. A sobrecarga de 10x no armazenamento é causada pelo processo interno de compaction do mecanismo de armazenamento, não por escritas duplicadas da aplicação."
         },
@@ -139,13 +139,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O array de discos tem um problema de hardware reportando capacidade incorreta",
+          "text": "O array de discos tem um problema de hardware e está reportando capacidade de armazenamento incorreta para o sistema de monitoramento",
           "correct": false,
           "feedback": "As métricas do disco estão corretas. Os 48 TB são dados reais no disco — resultado do compaction reescrevendo dados múltiplas vezes entre os níveis da LSM."
         },
         {
           "id": "rc-4",
-          "text": "Os arquivos de evidência não estão sendo comprimidos antes do armazenamento",
+          "text": "Os arquivos de evidência não estão sendo comprimidos antes do armazenamento no cofre, causando uso excessivo de espaço em disco",
           "correct": false,
           "feedback": "Compressão ajuda a reduzir espaço, mas não resolve o problema central de write amplification. Mesmo dados comprimidos são reescritos 42x durante o compaction."
         }
@@ -156,7 +156,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Mudar para um mecanismo de armazenamento baseado em B-tree que modifica dados no local",
+          "text": "Mudar o mecanismo de armazenamento de LSM-tree para um baseado em B-tree, que modifica dados no local com menor write amplification",
           "correct": false,
           "feedback": "B-trees têm menor write amplification, mas throughput de escrita muito pior para inserções sequenciais. Para uma carga de trabalho com escrita intensiva de 700 escritas/seg, uma LSM-tree é a escolha certa — ela só precisa de ajuste."
         },
@@ -168,13 +168,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Desabilitar o compaction completamente para eliminar a write amplification",
+          "text": "Desabilitar completamente o compaction para eliminar toda a write amplification e aliviar o I/O de disco imediatamente",
           "correct": false,
           "feedback": "Sem compaction, o número de SSTables cresce sem limites, e a performance de leitura colapsa (você teria que verificar centenas de arquivos por consulta). Compaction é essencial — só precisa ser ajustado, não desabilitado."
         },
         {
           "id": "fix-4",
-          "text": "Adicionar 10x mais armazenamento em disco para acomodar a amplificação",
+          "text": "Adicionar 10x mais armazenamento em disco para acomodar toda a amplificação e evitar que o sistema fique sem espaço",
           "correct": false,
           "feedback": "Mais armazenamento é um paliativo. Write amplification também consome largura de banda de I/O de disco, causando as travadas de escrita. Você precisa reduzir o fator de amplificação em si, não apenas adicionar mais disco."
         }

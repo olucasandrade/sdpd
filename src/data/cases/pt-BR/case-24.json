@@ -127,7 +127,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O arquivo já estava corrompido quando o oficial fez o upload",
+          "text": "O arquivo já estava corrompido quando o oficial realizou o upload no gateway",
           "correct": false,
           "feedback": "O oficial verificou que o arquivo estava funcionando antes do upload, e o upload foi concluído sem erros. A corrupção aconteceu mais adiante no pipeline."
         },
@@ -139,13 +139,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O disco do cofre de armazenamento tem setores defeituosos que corromperam o arquivo na escrita",
+          "text": "O disco do cofre de armazenamento tem setores defeituosos que corromperam o arquivo durante a escrita",
           "correct": false,
           "feedback": "Os logs do cofre mostram uma escrita bem-sucedida. O arquivo já estava corrompido quando chegou — note o tamanho suspeitamente menor do arquivo (2,1 GB vs 2,4 GB original). O transcodificador perdeu dados antes mesmo do cofre recebê-lo."
         },
         {
           "id": "rc-4",
-          "text": "Perda de pacotes na rede durante a transferência entre gateway e transcodificador corrompeu o arquivo",
+          "text": "Perda de pacotes na rede durante a transferência entre o gateway e o transcodificador corrompeu o arquivo",
           "correct": false,
           "feedback": "TCP garante entrega em ordem e retransmite pacotes perdidos. Transferências de rede sobre TCP não corrompem dados silenciosamente. Os logs do transcodificador mostram a causa real: pressão de memória e buffer overflow durante o processamento."
         }
@@ -162,19 +162,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Pular a etapa de transcodificação e armazenar o arquivo original diretamente",
+          "text": "Pular completamente a etapa de transcodificação e armazenar o arquivo original diretamente no cofre",
           "correct": false,
           "feedback": "Isso evita o bug específico do transcodificador, mas não resolve o problema geral. Qualquer serviço pode corromper dados — você precisa de verificações de integridade em cada estágio, não apenas remover estágios."
         },
         {
           "id": "fix-3",
-          "text": "Adicionar mais memória ao serviço de transcodificação para que não haja estouro",
+          "text": "Adicionar mais memória ao serviço de transcodificação para que não haja estouro de buffer",
           "correct": false,
           "feedback": "Mais memória ajuda nesta falha específica, mas não protege contra futuros bugs, erros de disco ou outras fontes de corrupção. Checksums de integridade protegem contra todas as formas de corrupção independentemente da causa."
         },
         {
           "id": "fix-4",
-          "text": "Fazer dois oficiais independentemente enviarem o mesmo arquivo e comparar os resultados",
+          "text": "Fazer dois oficiais independentemente enviarem o mesmo arquivo de evidência e comparar os resultados",
           "correct": false,
           "feedback": "Isso é manual, propenso a erros e dobra o trabalho. Checksums automatizados alcançam o mesmo objetivo (detectar corrupção) de forma confiável e em cada estágio sem intervenção humana."
         }

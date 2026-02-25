@@ -145,7 +145,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O roteador de consultas tem um bug que envia todas as consultas para o shard que falhou",
+          "text": "O roteador de consultas tem um bug que envia todas as consultas diretamente para o shard que falhou",
           "correct": false,
           "feedback": "O roteador está funcionando corretamente — ele roteia consultas A-F, G-L e S-Z para seus respectivos shards com sucesso. Apenas consultas M-R falham porque esse shard específico está fora do ar."
         },
@@ -157,13 +157,13 @@
         },
         {
           "id": "rc-3",
-          "text": "A chave de sharding alfabética foi mal escolhida e criou distribuição desigual de dados",
+          "text": "A chave de sharding alfabética foi mal escolhida e criou uma distribuição desigual dos dados entre shards",
           "correct": false,
           "feedback": "Embora os tamanhos dos shards variem levemente (570K-640K), a distribuição é razoavelmente uniforme. O problema não é a chave de sharding — é a falta de replicação para cada shard."
         },
         {
           "id": "rc-4",
-          "text": "Os outros shards deveriam conseguir atender consultas M-R como fallback",
+          "text": "Os outros shards deveriam conseguir atender consultas M-R como mecanismo de fallback automático",
           "correct": false,
           "feedback": "Os outros shards não têm dados M-R — esse é justamente o propósito do sharding. Cada shard contém uma faixa exclusiva. Eles não podem responder consultas sobre dados que não possuem."
         }
@@ -174,7 +174,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Parar de usar sharding e colocar todos os dados de volta em um único servidor grande",
+          "text": "Parar de usar sharding e colocar todos os dados de volta em um único servidor de banco de dados grande",
           "correct": false,
           "feedback": "Isso elimina o modo de falha do sharding, mas reintroduz o ponto único de falha do Caso 1 e remove os benefícios de escalabilidade do sharding."
         },
@@ -186,13 +186,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Armazenar uma cópia completa de todos os dados em cada shard para que qualquer shard possa responder qualquer consulta",
+          "text": "Armazenar uma cópia completa de todos os dados em cada shard para que qualquer um possa responder qualquer consulta",
           "correct": false,
           "feedback": "Se cada shard tem todos os dados, você eliminou o benefício do sharding (distribuir dados para escalar). Você teria essencialmente replicação, não sharding. A abordagem correta é sharding para escala mais replicação de cada shard para resiliência."
         },
         {
           "id": "fix-4",
-          "text": "Mudar a chave de sharding de alfabética para baseada em hash para que falhas afetem registros aleatórios em vez de uma faixa contígua",
+          "text": "Mudar a chave de sharding de alfabética para baseada em hash para que falhas afetem registros aleatórios",
           "correct": false,
           "feedback": "Sharding baseado em hash espalha o impacto, mas não o resolve — você ainda perderia os registros que foram hasheados para o shard que falhou. A correção é replicação por shard, independentemente da estratégia de chave de sharding."
         }

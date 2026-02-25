@@ -139,7 +139,7 @@
       "options": [
         {
           "id": "rc-4",
-          "text": "Too many simultaneous queries from the precincts overloaded the database",
+          "text": "Too many simultaneous queries from all precincts at once overwhelmed the single shared database server",
           "correct": false,
           "feedback": "The logs show a hardware disk failure, not a performance overload. The queries are failing because the server is down, not because it's overwhelmed."
         },
@@ -151,13 +151,13 @@
         },
         {
           "id": "rc-1",
-          "text": "A network partition is preventing precincts from reaching the database",
+          "text": "A network partition is preventing all precincts from connecting to and communicating with the central database",
           "correct": false,
           "feedback": "Not quite. The database logs show a disk hardware failure, not a network issue. All precincts experience the same problem because they all depend on the same single server."
         },
         {
           "id": "rc-3",
-          "text": "The database ran out of storage space due to too many records",
+          "text": "The database exceeded its allocated storage capacity and stopped accepting incoming queries and write operations",
           "correct": false,
           "feedback": "The logs show a physical disk failure (hardware crash), not a storage capacity issue. But even if it were a storage problem, the real architectural issue is that there's only one server."
         }
@@ -168,13 +168,13 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Install a better hard drive with RAID redundancy on the current server",
+          "text": "Install better hardware with RAID disk redundancy on the existing server to protect against disk failures",
           "correct": false,
           "feedback": "RAID protects against disk failure on one machine, but doesn't help if the whole server goes down (power, motherboard, etc.). True redundancy requires separate machines — that's what replication provides."
         },
         {
           "id": "fix-3",
-          "text": "Give each precinct its own complete copy of the database that works offline",
+          "text": "Give each precinct its own independent full database copy that continues to work when the main server is offline",
           "correct": false,
           "feedback": "While this removes the single point of failure, maintaining independent full copies at each precinct creates a data consistency nightmare. How do you keep all copies in sync? Replication with a leader-follower setup is the standard approach."
         },
@@ -186,7 +186,7 @@
         },
         {
           "id": "fix-2",
-          "text": "Increase the backup frequency from every 72 hours to every hour",
+          "text": "Increase the backup schedule from once every 72 hours to running an automated backup every single hour",
           "correct": false,
           "feedback": "More frequent backups help with data recovery, but they don't solve the availability problem. Restoring from backup takes time — you need a live replica that can take over immediately."
         }

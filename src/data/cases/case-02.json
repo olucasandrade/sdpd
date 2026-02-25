@@ -175,13 +175,13 @@
       "options": [
         {
           "id": "rc-3",
-          "text": "A network partition prevented the South Precinct from receiving any updates",
+          "text": "A network partition blocked the South Precinct from receiving any database updates from the leader node",
           "correct": false,
           "feedback": "The South follower is online and receiving replication events — they're just delayed. The logs show events are queued, not blocked. This is replication lag, not a network partition."
         },
         {
           "id": "rc-4",
-          "text": "The leader database had a bug that didn't send the update to the South follower",
+          "text": "The leader database contained a software bug that caused it to not forward warrant updates to the South follower",
           "correct": false,
           "feedback": "The leader logs show the replication event was sent but is PENDING on the south follower. The follower received it but hasn't applied it yet due to its own lag."
         },
@@ -193,7 +193,7 @@
         },
         {
           "id": "rc-1",
-          "text": "The judge's dismissal was never saved to the database",
+          "text": "The judge's warrant dismissal was never saved because the write transaction to the leader database failed silently",
           "correct": false,
           "feedback": "The leader database logs confirm the warrant was updated to DISMISSED. The write succeeded — the issue is on the read side."
         }
@@ -204,7 +204,7 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Cache the warrant data locally on each officer's terminal",
+          "text": "Cache the warrant status locally on each officer terminal to reduce database load and speed up queries",
           "correct": false,
           "feedback": "Local caching would make the staleness problem even worse! If the database is already lagging, adding another layer of caching means data could be even more out of date."
         },
@@ -216,13 +216,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Add more follower databases to distribute the load",
+          "text": "Add additional follower databases across more precincts to help distribute the overall read query load",
           "correct": false,
           "feedback": "More followers don't solve replication lag — they could make it worse. The issue isn't load; it's that the South follower is behind and serving stale data for critical queries."
         },
         {
           "id": "fix-2",
-          "text": "Switch from asynchronous to synchronous replication on all followers",
+          "text": "Switch all followers from asynchronous to synchronous replication so writes are confirmed across all replicas",
           "correct": false,
           "feedback": "Synchronous replication would ensure all followers are up-to-date, but it means every write must wait for ALL followers to confirm — including the slow South follower. This would make the entire system as slow as the slowest follower. A better approach is selective: route critical reads to the leader."
         }

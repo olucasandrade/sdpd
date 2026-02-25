@@ -128,7 +128,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "A equipe de manutenção derrubou a Validação de Endereço sem gerenciamento de mudança adequado",
+          "text": "A equipe de manutenção derrubou a Validação de Endereço sem gerenciamento de mudança e comunicação",
           "correct": false,
           "feedback": "A manutenção foi planejada e comunicada. Serviços ficam fora do ar — isso é esperado em sistemas distribuídos. O problema não é que a Validação de Endereço ficou offline, é que nenhum serviço na cadeia conseguiu lidar graciosamente com sua ausência. Um sistema bem projetado deve tolerar falhas de serviços individuais."
         },
@@ -140,13 +140,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O timeout de 30 segundos é longo demais, fazendo as threads ficarem bloqueadas por muito tempo",
+          "text": "O timeout de 30 segundos é longo demais, fazendo as threads ficarem bloqueadas por um tempo excessivo",
           "correct": false,
           "feedback": "Um timeout mais curto ajudaria as threads a serem liberadas mais rápido, mas sem circuit breaker, você ainda esgotaria o pool de threads — apenas um pouco mais devagar. O problema fundamental é que o sistema continua chamando um serviço que sabe estar fora do ar, requisição após requisição. Um circuit breaker estanca o sangramento completamente."
         },
         {
           "id": "rc-4",
-          "text": "O pool de threads do Serviço de Despacho é pequeno demais para lidar com a carga de requisições",
+          "text": "O pool de threads do Serviço de Despacho é pequeno demais para lidar com o volume de requisições",
           "correct": false,
           "feedback": "Um pool de threads maior só adiaria o inevitável. Se todas as threads bloqueiam por 30 segundos em um serviço morto, até 500 threads eventualmente se encheriam. A correção não é mais threads — é parar as chamadas fúteis ao serviço morto via circuit breaker."
         }
@@ -163,19 +163,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Tornar a Validação de Endereço altamente disponível com deploys sem downtime para que nunca fique offline",
+          "text": "Tornar a Validação de Endereço altamente disponível com deploys sem downtime para nunca ficar offline",
           "correct": false,
           "feedback": "Deploys sem downtime reduzem quedas planejadas, mas serviços ainda podem falhar inesperadamente (bugs, esgotamento de recursos, problemas de rede). Seu sistema deve lidar com falhas de dependências de forma graciosa independentemente. Um circuit breaker é defesa essencial para qualquer arquitetura de microsserviços."
         },
         {
           "id": "fix-3",
-          "text": "Remover a dependência da Validação de Endereço embutindo os dados de endereço diretamente no Serviço de Despacho",
+          "text": "Remover a dependência da Validação de Endereço incorporando os dados de endereço no Serviço de Despacho",
           "correct": false,
           "feedback": "Reduzir dependências desnecessárias é boa prática, mas em uma arquitetura de microsserviços você sempre terá chamadas inter-serviço. O mesmo padrão de falha em cascata ocorreria com qualquer dependência. Você precisa de uma solução genérica (circuit breaker) que funcione para todas as chamadas downstream."
         },
         {
           "id": "fix-4",
-          "text": "Adicionar uma fila de mensagens entre todos os serviços para que se comuniquem assincronamente em vez de sincronamente",
+          "text": "Adicionar uma fila de mensagens entre todos os serviços para que se comuniquem de forma assíncrona",
           "correct": false,
           "feedback": "Comunicação assíncrona via filas ajuda a desacoplar serviços, mas despacho 911 requer respostas em tempo real — você não pode enfileirar uma chamada 911 e processá-la depois. Para cadeias de chamadas síncronas, circuit breakers são o padrão standard para prevenir falhas em cascata."
         }

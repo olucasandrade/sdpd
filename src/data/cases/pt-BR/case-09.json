@@ -157,7 +157,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "Os serviços de backend não conseguem lidar com o volume de tráfego do terremoto",
+          "text": "Os serviços de backend não conseguem lidar com o alto volume de tráfego gerado pela emergência do terremoto",
           "correct": false,
           "feedback": "Os serviços de backend estão na verdade saudáveis e subutilizados, com apenas 25% de CPU e 40% de capacidade. As requisições nunca chegam ao backend porque o único gateway de API é o gargalo, descartando 60% das requisições antes que elas passem."
         },
@@ -169,13 +169,13 @@
         },
         {
           "id": "rc-3",
-          "text": "As tempestades de retry das delegacias estão causando a falha",
+          "text": "As tempestades de retry das delegacias estão causando a maior parte da sobrecarga e levando o gateway ao colapso",
           "correct": false,
           "feedback": "As tempestades de retry estão piorando a situação (amplificando a carga), mas são um sintoma, não a causa raiz. O gateway já estava sobrecarregado antes dos retries começarem. Mesmo sem retries, 15.000 requisições/segundo excedem o limite de 10.000 conexões do gateway."
         },
         {
           "id": "rc-4",
-          "text": "O terremoto causou dano físico ao servidor do gateway",
+          "text": "O terremoto causou dano físico direto ao hardware do servidor do gateway de API",
           "correct": false,
           "feedback": "O servidor do gateway está fisicamente intacto — está operando a 98% de CPU, processando ativamente requisições e retornando erros 503. Não está danificado; está simplesmente sobrecarregado pelo volume de tráfego para o qual nunca foi dimensionado sozinho."
         }
@@ -192,19 +192,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Fazer upgrade do servidor único de gateway para uma máquina mais potente com limites de conexão maiores",
+          "text": "Fazer upgrade do servidor único de gateway para uma máquina muito mais potente com limites de conexão maiores",
           "correct": false,
           "feedback": "Escalar verticalmente (máquina maior) tem limites — você eventualmente atingirá o teto novamente com o próximo grande evento. Também não resolve o problema de ponto único de falha. Escalamento horizontal (múltiplas instâncias) é mais resiliente e pode escalar muito mais."
         },
         {
           "id": "fix-3",
-          "text": "Implementar rate limiting para rejeitar requisições em excesso e proteger o gateway",
+          "text": "Implementar rate limiting agressivo para rejeitar requisições em excesso e proteger o gateway de sobrecarga",
           "correct": false,
           "feedback": "Rate limiting protege o gateway de sobrecarga mas não aumenta a capacidade — ainda rejeita requisições, apenas de forma mais controlada. Durante um terremoto, você precisa de MAIS capacidade, não de formas melhores de rejeitar tráfego. Rate limiting deve complementar o load balancing, não substituí-lo."
         },
         {
           "id": "fix-4",
-          "text": "Fazer cada delegacia se conectar diretamente aos serviços de backend, removendo o gateway completamente",
+          "text": "Fazer cada delegacia se conectar diretamente aos serviços de backend, removendo completamente a camada de gateway",
           "correct": false,
           "feedback": "Remover o gateway elimina o gargalo mas perde todos os benefícios que gateways proporcionam: autenticação, rate limiting, roteamento, monitoramento e tradução de protocolo. A abordagem correta é escalar a camada de gateway horizontalmente, não removê-la."
         }

@@ -160,7 +160,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "The ingestion services are writing duplicate data",
+          "text": "The ingestion services are writing duplicate copies of the same radio evidence to disk",
           "correct": false,
           "feedback": "The ingestion services are writing at expected rates. The 10x storage overhead is caused by the storage engine's internal compaction process, not duplicate application writes."
         },
@@ -172,13 +172,13 @@
         },
         {
           "id": "rc-3",
-          "text": "The disk array has a hardware issue reporting incorrect capacity",
+          "text": "The disk array is malfunctioning and reporting incorrect capacity metrics to the monitoring system",
           "correct": false,
           "feedback": "The disk metrics are accurate. The 48 TB is real data on disk — it's the result of compaction rewriting data multiple times across the LSM levels."
         },
         {
           "id": "rc-4",
-          "text": "The evidence files are not being compressed before storage",
+          "text": "The evidence files are not being compressed before being persisted to disk, causing excessive raw storage usage",
           "correct": false,
           "feedback": "Compression helps reduce space but doesn't address the core write amplification problem. Even compressed data gets rewritten 42x during compaction."
         }
@@ -195,19 +195,19 @@
         },
         {
           "id": "fix-1",
-          "text": "Switch to a B-tree based storage engine that modifies data in-place",
+          "text": "Switch to a B-tree based storage engine that modifies existing data in-place rather than appending to new files",
           "correct": false,
           "feedback": "B-trees have lower write amplification but much worse write throughput for sequential inserts. For a write-heavy workload of 700 writes/sec, an LSM-tree is the right choice — it just needs tuning."
         },
         {
           "id": "fix-3",
-          "text": "Disable compaction entirely to eliminate write amplification",
+          "text": "Disable the LSM compaction process entirely to eliminate all write amplification overhead from the storage engine",
           "correct": false,
           "feedback": "Without compaction, the number of SSTables grows unboundedly, and read performance collapses (you'd have to check hundreds of files per query). Compaction is essential — it just needs to be tuned, not disabled."
         },
         {
           "id": "fix-4",
-          "text": "Add 10x more disk storage to accommodate the amplification",
+          "text": "Provision 10x more disk storage capacity to accommodate the write amplification without performance degradation",
           "correct": false,
           "feedback": "More storage is a band-aid. Write amplification also consumes disk I/O bandwidth, causing the write stalls. You need to reduce the amplification factor itself, not just add more disk."
         }

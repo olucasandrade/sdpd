@@ -122,7 +122,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O sistema de recebimento de chamadas falhou ao enviar as mensagens para a fila corretamente",
+          "text": "O sistema de recebimento de chamadas falhou ao enviar as mensagens para a fila de despacho corretamente",
           "correct": false,
           "feedback": "O sistema de recebimento enviou com sucesso todas as 23 mensagens e recebeu confirmações da fila. As mensagens foram aceitas e armazenadas — só que foram armazenadas apenas em memória volátil."
         },
@@ -134,13 +134,13 @@
         },
         {
           "id": "rc-3",
-          "text": "As unidades de patrulha consumiram as mensagens, mas falharam ao processá-las",
+          "text": "As unidades de patrulha consumiram as mensagens da fila, mas falharam ao processadas individualmente",
           "correct": false,
           "feedback": "As unidades de patrulha nunca receberam as mensagens. As mensagens estavam na fila aguardando para serem consumidas quando o servidor caiu. As mensagens foram perdidas antes da entrega, não depois."
         },
         {
           "id": "rc-4",
-          "text": "O processo de recuperação do servidor da fila tem um bug que limpa a fila ao reiniciar",
+          "text": "O processo de recuperação do servidor da fila tem um bug que limpa automaticamente toda a fila ao reiniciar",
           "correct": false,
           "feedback": "Não há bug — a fila genuinamente não tem nada para recuperar. Com armazenamento apenas em memória, não há dados em disco para restaurar. A fila vazia após o reinício é o comportamento esperado (mesmo que infeliz)."
         }
@@ -157,19 +157,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Adicionar um segundo servidor de fila em memória como backup",
+          "text": "Adicionar um segundo servidor de fila em memória como backup para garantir alta disponibilidade",
           "correct": false,
           "feedback": "Um segundo servidor em memória ajuda com disponibilidade, mas ambos os servidores ainda perdem dados ao cair. Se o primário cair antes de replicar para o backup, as mensagens ainda são perdidas. Durabilidade real requer persistência em disco, não apenas mais memória."
         },
         {
           "id": "fix-3",
-          "text": "Fazer o sistema de recebimento reenviar mensagens se a fila não responder dentro de 5 segundos",
+          "text": "Fazer o sistema de recebimento reenviar mensagens automaticamente se a fila não responder em 5 segundos",
           "correct": false,
           "feedback": "Retentativas ajudam quando a fila está temporariamente indisponível, mas a fila confirmou todas as 23 mensagens antes de cair. O sistema de recebimento não tem razão para reenviar — ele pensa que a entrega foi bem-sucedida. As mensagens precisam ser duráveis dentro da própria fila."
         },
         {
           "id": "fix-4",
-          "text": "Aumentar a alocação de memória do servidor da fila para evitar falhas por falta de memória",
+          "text": "Aumentar a alocação de memória do servidor da fila para evitar falhas causadas por falta de memória",
           "correct": false,
           "feedback": "Mais memória reduz a probabilidade de falhas por falta de memória, mas não as elimina. Qualquer falha — falta de memória, falha de hardware, queda de energia — ainda destruiria todas as mensagens em memória. A correção deve garantir que as mensagens sobrevivam a qualquer tipo de falha."
         }

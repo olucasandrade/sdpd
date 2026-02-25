@@ -131,7 +131,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "A operação de manutenção do banco de dados corrompeu os dados do Serviço de Registros",
+          "text": "A operação de manutenção do banco de dados corrompeu os dados do Serviço de Registros, tornando-o completamente inacessível",
           "correct": false,
           "feedback": "A manutenção do banco era uma reconstrução de índice rotineira que causou apenas um pequeno aumento de latência. Os dados nunca foram corrompidos. O problema real foi que os clientes reagiram à lentidão com retries agressivos e imediatos que amplificaram a carga muito além do que o serviço conseguia aguentar."
         },
@@ -143,13 +143,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O API Gateway crashou devido à alocação insuficiente de memória",
+          "text": "O API Gateway crashou e ficou completamente fora do ar, pois a alocação de memória era insuficiente para o volume de requisições",
           "correct": false,
           "feedback": "O API Gateway ficou sobrecarregado mas não crashou — foi uma vítima, não a causa. A questão raiz é o comportamento de retry dos clientes. Mesmo com um gateway maior, a tempestade de retries ainda teria sobrecarregado o Serviço de Registros."
         },
         {
           "id": "rc-4",
-          "text": "Viaturas demais estavam ativas simultaneamente, excedendo a capacidade do sistema",
+          "text": "Viaturas demais estavam ativas e enviando requisições simultaneamente, ultrapassando em muito a capacidade máxima do sistema",
           "correct": false,
           "feedback": "200 viaturas gerando 600 requisições/min estava bem dentro da capacidade normal. O sistema lida com essa carga diariamente. O problema foi que a política de retry de cada viatura multiplicou sua taxa de requisições por 5x ou mais durante a lentidão, transformando carga normal em uma tempestade avassaladora."
         }
@@ -160,7 +160,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Desabilitar todos os retries para que requisições falhadas simplesmente falhem sem nenhuma tentativa de retry",
+          "text": "Desabilitar todos os retries para que requisições falhadas simplesmente falhem sem nenhuma nova tentativa",
           "correct": false,
           "feedback": "Desabilitar retries inteiramente significa que erros transientes (uma breve falha de rede) causariam falhas permanentes. Retries são valiosos — o problema é como são implementados. Você precisa de retries inteligentes, não de zero retries."
         },
@@ -172,13 +172,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Aumentar o pool de threads do Serviço de Registros de 200 para 2000 para lidar com mais requisições simultâneas",
+          "text": "Aumentar o pool de threads do Serviço de Registros de 200 para 2000 para suportar mais requisições simultâneas",
           "correct": false,
           "feedback": "Mais threads adiariam o colapso mas não o preveniriam. Uma tempestade de retries cresce exponencialmente — se você aguenta 10x de carga, a tempestade simplesmente crescerá para 100x. Você precisa resolver o comportamento de retry em si, não tentar absorver tráfego ilimitado de retries."
         },
         {
           "id": "fix-4",
-          "text": "Adicionar um load balancer com mais instâncias do Serviço de Registros para distribuir o tráfego de retries",
+          "text": "Adicionar um load balancer com mais instâncias do Serviço de Registros para distribuir o tráfego",
           "correct": false,
           "feedback": "Escalar horizontalmente ajuda com crescimento normal de carga, mas uma tempestade de retries é um ciclo de feedback positivo — mais capacidade apenas significa que demora um pouco mais para sobrecarregar. Cada retry que dá timeout ainda gera mais retries. A correção fundamental deve endereçar o comportamento de retry no nível do cliente."
         }

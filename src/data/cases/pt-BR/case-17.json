@@ -118,7 +118,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O servidor de origem falhou em atualizar a lista de Mais Procurados corretamente",
+          "text": "O servidor de origem falhou em atualizar a lista de Mais Procurados de forma correta e oportuna",
           "correct": false,
           "feedback": "O servidor de origem atualizou corretamente às 6 da manhã. Acessar a origem diretamente mostra a lista correta. O problema é que os nós de borda do CDN têm sua própria cópia em cache e não sabem que a origem mudou."
         },
@@ -130,13 +130,13 @@
         },
         {
           "id": "rc-3",
-          "text": "Os nós de borda do CDN estão com um bug e não estão respeitando os headers de cache",
+          "text": "Os nós de borda do CDN têm um bug e não estão respeitando corretamente os headers de cache da origem",
           "correct": false,
           "feedback": "O CDN está funcionando exatamente como configurado — está respeitando o TTL de 24 horas perfeitamente. O problema é que 24 horas é muito tempo para conteúdo que muda frequentemente quando não há mecanismo de purge."
         },
         {
           "id": "rc-4",
-          "text": "Os navegadores dos cidadãos estão fazendo cache da página antiga localmente",
+          "text": "Os navegadores dos cidadãos estão fazendo cache local da página antiga e não buscando conteúdo novo",
           "correct": false,
           "feedback": "Mesmo que os cidadãos façam hard-refresh nos navegadores, os nós de borda do CDN vão servir a versão desatualizada. O problema está na camada do CDN, não na camada do navegador."
         }
@@ -147,7 +147,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Configurar o TTL do cache do CDN para zero para que sempre busque da origem",
+          "text": "Configurar o TTL do cache do CDN para zero para que sempre busque o conteúdo diretamente da origem",
           "correct": false,
           "feedback": "Um TTL zero anula todo o propósito de um CDN. Cada requisição atingiria o servidor de origem, eliminando os benefícios de desempenho e escalabilidade. O objetivo é fazer cache agressivamente mas invalidar de forma inteligente."
         },
@@ -159,13 +159,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Reduzir o TTL do CDN de 24 horas para 5 minutos",
+          "text": "Reduzir o TTL do CDN de 24 horas para 5 minutos para atualizar o cache com muito mais frequência",
           "correct": false,
           "feedback": "Um TTL de 5 minutos reduz a desatualização, mas aumenta significativamente a carga na origem (cada nó de borda busca novamente a cada 5 minutos). Para a página de Mais Procurados, 5 minutos de dados desatualizados ainda pode ser problemático. Uma abordagem de purge na atualização oferece tanto atualidade quanto eficiência."
         },
         {
           "id": "fix-4",
-          "text": "Ignorar o CDN completamente para a página de Mais Procurados e servir diretamente da origem",
+          "text": "Ignorar o CDN completamente para a página de Mais Procurados e servir todo o tráfego diretamente da origem",
           "correct": false,
           "feedback": "Remover o cache do CDN para páginas populares significa que o servidor de origem lida com todo o tráfego diretamente, perdendo os benefícios de distribuição geográfica e desempenho do CDN. É melhor usar o CDN com uma estratégia de invalidação adequada."
         }

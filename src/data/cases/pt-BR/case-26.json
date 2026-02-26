@@ -152,7 +152,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O banco de dados forense está sobrecarregado e deixando todas as consultas lentas",
+          "text": "O banco de dados forense está sobrecarregado com consultas em excesso, tornando todas as respostas lentas e deixando o sistema inteiro sem resposta",
           "correct": false,
           "feedback": "O banco de dados forense está operando normalmente com latência de 5ms nas consultas. O gargalo é a CPU do serviço forense sendo consumida pelo job em lote."
         },
@@ -164,13 +164,13 @@
         },
         {
           "id": "rc-3",
-          "text": "Uma partição de rede está impedindo os serviços de se comunicarem",
+          "text": "Uma partição de rede está impedindo que os serviços se comuniquem entre si, causando timeouts e falhas em toda a cadeia de chamadas",
           "correct": false,
           "feedback": "Os serviços conseguem se conectar e enviar requisições — só estão esperando muito tempo pelas respostas. Este é um problema de latência, não de conectividade."
         },
         {
           "id": "rc-4",
-          "text": "O timeout de 30 segundos do app móvel é curto demais",
+          "text": "O timeout de 30 segundos do app móvel está curto demais — operações de alta complexidade como consultas forenses precisam de mais tempo para concluir",
           "correct": false,
           "feedback": "30 segundos já é extremamente longo para uma requisição voltada ao usuário. O problema não é o valor do timeout — é que os serviços ficam bloqueados indefinidamente em chamadas downstream em vez de falharem rápido quando uma dependência está lenta."
         }
@@ -181,7 +181,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Aumentar todos os valores de timeout para que os serviços tenham mais tempo de esperar por respostas",
+          "text": "Aumentar todos os valores de timeout para que os serviços tenham mais tempo de aguardar por respostas",
           "correct": false,
           "feedback": "Timeouts maiores pioram o problema — as threads ficam bloqueadas por ainda mais tempo, e os usuários esperam ainda mais. O sistema precisa falhar rápido, não esperar mais."
         },
@@ -193,13 +193,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Impedir que jobs em lote rodem no serviço forense",
+          "text": "Impedir que jobs em lote rodem no serviço forense durante o horário de pico de uso",
           "correct": false,
           "feedback": "Jobs em lote são um caso de uso válido. O problema não é que o serviço forense fique lento às vezes — é que os serviços upstream não têm como lidar graciosamente com uma dependência lenta. Qualquer serviço pode ficar lento por qualquer motivo."
         },
         {
           "id": "fix-4",
-          "text": "Tornar todas as chamadas entre serviços assíncronas para que nada nunca bloqueie",
+          "text": "Tornar todas as chamadas entre serviços assíncronas para que nenhuma chamada bloqueie as threads",
           "correct": false,
           "feedback": "Chamadas assíncronas ajudam na utilização de threads, mas não resolvem a cascata de timeouts sozinhas. Você ainda precisa de circuit breakers para parar de enviar requisições a um serviço lento e de timeouts para limitar quanto tempo você espera por uma resposta."
         }

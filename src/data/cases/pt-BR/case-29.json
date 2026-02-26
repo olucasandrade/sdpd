@@ -126,13 +126,13 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "A equipe de infraestrutura não atualizou o endereço IP nos arquivos de configuração de todos os serviços dependentes após a substituição do servidor",
+          "text": "A equipe de infraestrutura não atualizou os arquivos de configuração de todos os serviços após a substituição",
           "correct": false,
           "feedback": "Embora a correção imediata seja atualizar as configs, culpar a equipe de operações ignora o problema sistêmico. Com mais de 23 serviços dependentes, cada um com IP hardcoded, atualizações manuais de configuração são propensas a erro e não escalam. A causa raiz é a arquitetura: não existe mecanismo de service discovery, então qualquer mudança de IP requer rastrear e atualizar manualmente cada cliente."
         },
         {
           "id": "rc-2",
-          "text": "O novo servidor deveria ter recebido o mesmo endereço IP do antigo",
+          "text": "O novo servidor deveria ter recebido o mesmo endereço IP do antigo para manter compatibilidade",
           "correct": false,
           "feedback": "Reutilizar IPs é frágil e nem sempre possível (subnet diferente, ambiente cloud, etc.). O problema real é que os serviços dependem de um endereço IP específico. Service discovery adequado desacopla a identidade do serviço da localização na rede."
         },
@@ -144,7 +144,7 @@
         },
         {
           "id": "rc-4",
-          "text": "O Rastreador de Evidências deveria ter sido configurado para escutar em 10.0.5.31 mesmo estando em um novo servidor",
+          "text": "O Rastreador de Evidências deveria estar configurado para escutar no IP 10.0.5.31 mesmo em um novo servidor",
           "correct": false,
           "feedback": "Fazer bind a um IP que pertence a outra máquina é uma configuração de rede problemática esperando para acontecer. A solução não é forçar nova infraestrutura a imitar IPs antigos — é ter uma camada de discovery que abstraia endereços IP completamente."
         }
@@ -155,7 +155,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Criar um arquivo de configuração compartilhado com todos os IPs dos serviços para que haja apenas um lugar para atualizar",
+          "text": "Criar um arquivo de configuração compartilhado com todos os IPs para que haja apenas um lugar a atualizar",
           "correct": false,
           "feedback": "Um arquivo de configuração centralizado é levemente melhor que configs espalhadas, mas ainda requer atualizações manuais quando IPs mudam. Também cria um ponto único de falha. Service discovery de verdade é dinâmico — serviços se registram automaticamente quando iniciam."
         },
@@ -167,13 +167,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Usar um load balancer com IP estático na frente do Rastreador de Evidências para que clientes sempre se conectem ao mesmo endereço",
+          "text": "Usar um load balancer com IP estático na frente do Rastreador de Evidências para clientes se conectarem",
           "correct": false,
           "feedback": "Um load balancer ajuda com um único serviço, mas não resolve o problema sistêmico. Você precisaria de um load balancer para cada serviço, e esses load balancers também precisariam ser descobertos. Um sistema de service discovery adequado é a solução genérica que lida com toda comunicação inter-serviços."
         },
         {
           "id": "fix-4",
-          "text": "Escrever um script automatizado que atualiza todos os arquivos de configuração sempre que o IP de um servidor mudar",
+          "text": "Escrever um script automatizado que atualiza os arquivos de configuração quando o IP de um servidor mudar",
           "correct": false,
           "feedback": "Automatizar atualizações de config é melhor que mudanças manuais, mas ainda requer reiniciar serviços para carregar novas configs, saber quais serviços dependem de quais, e lidar com o gap entre a mudança de IP e a propagação da config. Service discovery torna tudo isso dinâmico e em tempo real."
         }

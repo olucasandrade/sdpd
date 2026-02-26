@@ -126,7 +126,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O Serviço de Registro de Crimes está inserindo registros rápido demais, corrompendo os índices do banco de dados",
+          "text": "O Serviço de Registro de Crimes está inserindo registros rápido demais, corrompendo os índices do banco de dados e causando inconsistências, o que impede que o relatório mostre dados precisos.",
           "correct": false,
           "feedback": "O banco de dados está funcionando perfeitamente — sem corrupção, sem bugs. Cada insert e update foi devidamente commitado. O problema é que a transação do relatório vê dados commitados diferentes em momentos diferentes porque o isolamento READ COMMITTED dá a cada consulta seu próprio snapshot."
         },
@@ -138,13 +138,13 @@
         },
         {
           "id": "rc-3",
-          "text": "As consultas do relatório estão mal escritas e não fazem JOIN adequado nas tabelas",
+          "text": "As consultas do relatório estão mal escritas, não fazem JOIN adequado nas tabelas e retornam dados inconsistentes por isso, impedindo que o relatório mostre dados precisos.",
           "correct": false,
           "feedback": "Cada consulta individual está correta e retorna resultados precisos no momento em que é executada. A inconsistência surge porque os dados mudam entre consultas. SQL melhor não ajudará se o nível de isolamento permite que os dados subjacentes mudem no meio da transação."
         },
         {
           "id": "rc-4",
-          "text": "O banco de dados está sob carga demais, fazendo as consultas retornarem resultados desatualizados ou em cache",
+          "text": "O banco de dados está sob carga excessiva, fazendo as consultas retornarem resultados desatualizados ou de cache em vez de dados reais",
           "correct": false,
           "feedback": "O banco de dados não está retornando dados desatualizados — muito pelo contrário! Está retornando dados frescos demais. Cada consulta retorna o estado mais recente commitado, que inclui mudanças feitas por outras transações desde que o relatório começou. O problema é que 'mais recente' muda entre consultas."
         }
@@ -155,13 +155,13 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Usar nível de isolamento SERIALIZABLE para que o relatório bloqueie todas as outras transações enquanto roda",
+          "text": "Usar nível de isolamento SERIALIZABLE para serializar completamente o acesso, bloqueando todas as outras transações enquanto o relatório executa",
           "correct": false,
           "feedback": "SERIALIZABLE forneceria consistência, mas é excessivo e bloquearia todo o registro de crimes e resolução de casos pelos 3+ segundos que o relatório roda. Para uma consulta analítica somente leitura, você não precisa bloquear escritores — só precisa de um snapshot consistente de um ponto no tempo."
         },
         {
           "id": "fix-2",
-          "text": "Executar todas as 12 consultas em uma única instrução SQL usando subqueries para que executem atomicamente",
+          "text": "Executar todas as 12 consultas em uma única instrução SQL com subqueries aninhadas para que todo o relatório execute atomicamente em um só snapshot",
           "correct": false,
           "feedback": "Combinar consultas em uma instrução ajuda sob READ COMMITTED (uma instrução = um snapshot), mas é frágil — relatórios complexos podem precisar de múltiplas instruções, e essa abordagem falha para relatórios que não podem ser expressos como uma única query. A correção adequada é no nível de isolamento."
         },
@@ -173,7 +173,7 @@
         },
         {
           "id": "fix-4",
-          "text": "Adicionar um lock na tabela de crimes antes de gerar o relatório para prevenir modificações concorrentes",
+          "text": "Adicionar um lock exclusivo na tabela de crimes antes de gerar o relatório para impedir que qualquer modificação concorrente ocorra durante a leitura",
           "correct": false,
           "feedback": "Lock em nível de tabela forneceria consistência mas bloquearia todo o registro de crimes durante a geração do relatório — inaceitável para um departamento de polícia onde cada segundo conta. O isolamento SNAPSHOT alcança a mesma consistência sem bloquear nenhum escritor através de MVCC (Multi-Version Concurrency Control)."
         }

@@ -120,7 +120,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O hardware do servidor está com defeito e não está funcionando conforme as especificações",
+          "text": "O hardware do servidor está com um defeito físico e não está operando conforme as especificações",
           "correct": false,
           "feedback": "O hardware está funcionando corretamente — ele simplesmente está na capacidade máxima. O servidor está usando todos os 128 cores e quase todo o 1TB de RAM conforme projetado."
         },
@@ -132,13 +132,13 @@
         },
         {
           "id": "rc-3",
-          "text": "As consultas ao banco de dados são mal otimizadas e precisam de ajuste de índices",
+          "text": "As consultas ao banco de dados estão mal otimizadas e precisam de ajuste nos índices para melhorar performance",
           "correct": false,
           "feedback": "Embora a otimização de consultas possa ajudar, o problema fundamental é que todo o trabalho está concentrado em uma única máquina que já está no limite do hardware. Mesmo consultas perfeitamente otimizadas ainda saturariam um servidor nessa escala."
         },
         {
           "id": "rc-4",
-          "text": "O processador de lotes está executando durante o horário de pico e deveria ser reagendado",
+          "text": "O processador de lotes está executando durante o horário de pico diurno e deveria ser reagendado para a madrugada",
           "correct": false,
           "feedback": "Reagendar o job em lote pode proporcionar alívio temporário, mas o problema central é que uma máquina não consegue lidar com a carga total. O job em lote cresceu de 3h para 14h — ele agora se sobrepõe ao tráfego diurno independentemente de quando começa."
         }
@@ -155,19 +155,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Esperar pela próxima geração de hardware de servidor com mais cores e RAM",
+          "text": "Aguardar pela próxima geração de hardware de servidor com ainda mais cores de CPU e memória RAM",
           "correct": false,
           "feedback": "Isso é apenas empurrar o problema para frente. Mesmo que uma máquina maior fique disponível, a demanda eventualmente vai superá-la também. A escalabilidade horizontal oferece um caminho sustentável que não depende de gerações de hardware."
         },
         {
           "id": "fix-3",
-          "text": "Reduzir a quantidade de dados criminais retidos para diminuir a carga de processamento",
+          "text": "Reduzir a quantidade de dados criminais retidos no sistema para diminuir a carga total de processamento",
           "correct": false,
           "feedback": "Deletar dados para caber dentro dos limites do hardware é uma solução ruim. A divisão de análise precisa de dados históricos para análise de tendências. A arquitetura deve escalar para atender às necessidades dos dados, não o contrário."
         },
         {
           "id": "fix-4",
-          "text": "Migrar para uma linguagem de programação mais rápida para extrair mais desempenho do mesmo hardware",
+          "text": "Migrar toda a base de código para uma linguagem de programação mais rápida para extrair mais desempenho do hardware",
           "correct": false,
           "feedback": "Mesmo um programa perfeitamente otimizado só pode usar 100% dos recursos de uma máquina — que é exatamente onde já estamos. O gargalo é a arquitetura de máquina única, não a eficiência do software."
         }

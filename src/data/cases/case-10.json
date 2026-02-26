@@ -169,13 +169,13 @@
       "options": [
         {
           "id": "rc-3",
-          "text": "The cache server crashed and lost all its data",
+          "text": "The cache server threw an unhandled exception, crashed, and lost all cached data that was stored in memory",
           "correct": false,
           "feedback": "The cache server is working correctly — it didn't crash. The cache entry legitimately expired after its 24-hour TTL. The cache is functioning as configured; the problem is that the TTL expiration pattern causes a thundering herd."
         },
         {
           "id": "rc-1",
-          "text": "The database hardware is too slow to handle normal shift-start queries",
+          "text": "The database server hardware is too slow and underpowered to handle the volume of shift-start queries at 06:00",
           "correct": false,
           "feedback": "The database handles 50 queries/sec with 50ms response time under normal conditions — it's perfectly capable. The problem is that 2,400 queries arrive in 1 second (48x the normal rate) because the cache expired for everyone simultaneously. Under normal caching, the database only gets 1 query every 24 hours for this data."
         },
@@ -187,7 +187,7 @@
         },
         {
           "id": "rc-4",
-          "text": "Too many officers starting their shifts at the same time",
+          "text": "Too many officers starting their shifts simultaneously at exactly 06:00 is an abnormal surge that overwhelms the system",
           "correct": false,
           "feedback": "Officers starting shifts at 06:00 is normal and expected. Under proper caching, the first request rebuilds the cache and the other 2,399 requests are served from cache in microseconds. The problem is that the cache expires right when demand is highest, causing all requests to bypass the cache."
         }
@@ -198,13 +198,13 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Increase the database connection pool to handle 2,400 simultaneous queries",
+          "text": "Scale up the database connection pool size to be large enough to handle all 2,400 simultaneous queries during peak periods",
           "correct": false,
           "feedback": "More connections doesn't help if the database CPU can't handle the load. And you'd be optimizing for a pathological case that should never happen with proper caching. The goal is to prevent the stampede, not to survive it."
         },
         {
           "id": "fix-3",
-          "text": "Never expire the cache — keep the Most Wanted list cached forever",
+          "text": "Set the cache TTL to infinite so the Most Wanted list is permanently cached and never expires, even as suspects change",
           "correct": false,
           "feedback": "An infinitely cached list would become stale — new suspects would never appear, and cleared suspects would remain listed. You need cache expiration to ensure data freshness. The solution is to manage HOW the cache refreshes, not to avoid refreshing entirely."
         },
@@ -216,7 +216,7 @@
         },
         {
           "id": "fix-4",
-          "text": "Pre-warm the cache at 05:59 by running the query before the old cache expires",
+          "text": "Schedule a cache pre-warm job that runs at 05:59 every day to rebuild the Most Wanted list before the 06:00 cache expiry",
           "correct": false,
           "feedback": "Pre-warming helps for this specific use case but doesn't solve the general problem. What about other cached data with unpredictable access patterns? Cache lock and TTL jitter are general-purpose solutions that work for any cached data, not just scheduled refreshes."
         }

@@ -182,25 +182,25 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "A crash fault — Node 3 has stopped working and is not responding",
+          "text": "A crash fault — Node 3 has stopped processing requests entirely and is no longer sending any responses to peers",
           "correct": false,
           "feedback": "A crash fault means the node stops entirely. Node 3 is still running and responding — it's just lying. This is far more dangerous than a crash because the other nodes can't simply detect it as 'down.' Node 3 actively sends contradictory information to different peers."
         },
         {
           "id": "rc-3",
-          "text": "A network partition — some messages from Node 3 are being lost in transit",
+          "text": "A network partition — some messages sent from Node 3 to other nodes are being lost or delayed in transit",
           "correct": false,
           "feedback": "This isn't a network issue. Node 3 is successfully delivering messages to all peers — it's deliberately sending different content to different nodes. A network partition would cause message loss, but here the messages are delivered successfully with conflicting content."
         },
         {
           "id": "rc-4",
-          "text": "A software bug in Node 3's analysis algorithm producing random results",
+          "text": "A software bug in Node 3's fingerprint analysis algorithm that is producing random inconsistent results for different inputs",
           "correct": false,
           "feedback": "Node 3's actual local analysis produced MATCH (correct). The logs show it deliberately overrode this result and sent MATCH to some nodes and NO MATCH to others. A bug would produce consistently wrong results, not selectively different results to different peers."
         },
         {
           "id": "rc-2",
-          "text": "A Byzantine fault — Node 3 is compromised and deliberately sending conflicting messages to different nodes to prevent consensus",
+          "text": "A Byzantine fault — Node 3 is compromised and sending conflicting messages to prevent consensus",
           "correct": true,
           "feedback": "Correct! This is a Byzantine fault — named after the Byzantine Generals Problem. A Byzantine node can behave arbitrarily: it can lie, send different messages to different peers, or selectively delay responses. This is the most challenging type of failure in distributed systems because the faulty node appears to be functioning normally to each individual peer, but tells different peers different things."
         }
@@ -211,13 +211,13 @@
       "options": [
         {
           "id": "fix-3",
-          "text": "Use majority voting — accept whatever result more than half the nodes agree on",
+          "text": "Use simple majority voting — accept whatever analysis result more than half of all participating nodes agree upon",
           "correct": false,
           "feedback": "Simple majority voting doesn't handle Byzantine faults because a Byzantine node can send different votes to different nodes, causing each node to see a different majority. BFT protocols add an extra round of communication where nodes share what they heard from all peers, making it impossible for a Byzantine node to trick different honest nodes into seeing different majorities."
         },
         {
           "id": "fix-2",
-          "text": "Require unanimous agreement from all nodes before accepting a result",
+          "text": "Require unanimous agreement from every node in the cluster before the consensus result can be accepted as valid",
           "correct": false,
           "feedback": "Unanimous agreement is exactly what the current system requires, and it's why one Byzantine node can block consensus entirely. With unanimity, a single faulty node can veto any result. BFT protocols use supermajority (2/3+) instead, allowing the system to make progress despite faulty nodes."
         },
@@ -229,7 +229,7 @@
         },
         {
           "id": "fix-4",
-          "text": "Add encryption to all node-to-node communication to prevent tampering",
+          "text": "Add end-to-end encryption to all inter-node communication channels to prevent unauthorized tampering of messages in transit",
           "correct": false,
           "feedback": "Encryption protects messages in transit but doesn't help when the sending node itself is compromised. Node 3 is deliberately crafting and signing different messages for different recipients. The fix requires a protocol-level solution (BFT), not just transport security."
         }

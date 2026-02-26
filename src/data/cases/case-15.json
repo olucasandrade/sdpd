@@ -164,7 +164,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "The database is undersized and needs more connection pool capacity",
+          "text": "The database is undersized and needs a larger connection pool capacity to handle query spikes",
           "correct": false,
           "feedback": "The database handles normal load fine at ~400 queries/sec. The problem is the sudden spike to 47,000 queries/sec caused by all cache entries expiring simultaneously. A bigger connection pool would just delay the inevitable."
         },
@@ -176,13 +176,13 @@
         },
         {
           "id": "rc-3",
-          "text": "Redis is crashing at midnight due to a memory issue",
+          "text": "Redis is crashing at midnight every Saturday due to an unresolved memory leak or OOM condition",
           "correct": false,
           "feedback": "Redis isn't crashing — it's working exactly as designed. The keys are expiring on schedule because they all have the same TTL. The issue is the expiry pattern, not Redis stability."
         },
         {
           "id": "rc-4",
-          "text": "The Saturday midnight cache warming job is conflicting with normal operations",
+          "text": "The weekly Saturday midnight cache warming job is directly conflicting with normal peak traffic operations",
           "correct": false,
           "feedback": "The cache warming job is actually the cause of the uniform TTL problem — it loads all keys at the same time with the same TTL. But the root cause is the identical TTL pattern, not the warming job itself."
         }
@@ -199,19 +199,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Double the database connection pool size to handle the spike",
+          "text": "Double the database connection pool size to handle the simultaneous spike in cache-miss rebuild queries",
           "correct": false,
           "feedback": "Even doubling the pool (to 1,000) can't handle 47,000+ simultaneous queries. You'd need a 100x increase, which wastes resources 99.9% of the time. It's better to prevent the spike in the first place with staggered TTLs."
         },
         {
           "id": "fix-3",
-          "text": "Never let cache entries expire — keep them forever and manually update them",
+          "text": "Set all cache entry TTLs to infinite so they never expire automatically and must be manually invalidated on each update",
           "correct": false,
           "feedback": "Never-expiring cache entries lead to stale data and unbounded memory growth. Expiration is a healthy cache mechanism — the problem is synchronized expiration, not expiration itself."
         },
         {
           "id": "fix-4",
-          "text": "Run the cache warming job more frequently (daily instead of weekly)",
+          "text": "Run the weekly cache warming job more frequently — once daily instead of weekly — to reduce the stale data window",
           "correct": false,
           "feedback": "Running the warming job daily with the same uniform TTL just shifts the avalanche to happen every night instead of weekly. The core problem — identical TTLs causing synchronized expiry — remains unchanged."
         }

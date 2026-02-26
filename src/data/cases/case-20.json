@@ -160,7 +160,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "The call center is producing messages too fast for the system to handle",
+          "text": "The call center system is producing dispatch messages at a rate that is too fast for the queue to handle",
           "correct": false,
           "feedback": "The producer rate of 12 msgs/sec is normal. The problem is that zero consumers are draining the queue — the consumer service crashed and never restarted."
         },
@@ -172,13 +172,13 @@
         },
         {
           "id": "rc-3",
-          "text": "The queue broker ran out of memory and stopped accepting messages",
+          "text": "The queue broker itself ran out of memory and has stopped accepting any new incoming dispatch messages",
           "correct": false,
           "feedback": "The broker is at 91% memory but hasn't stopped yet — it's still accepting messages. The real problem is that no consumer is draining the queue. The memory issue is a symptom of the backpressure problem, not the cause."
         },
         {
           "id": "rc-4",
-          "text": "A network partition separated the broker from the patrol units",
+          "text": "A network partition has physically separated the message broker from the patrol unit assignment targets",
           "correct": false,
           "feedback": "The patrol units don't connect directly to the broker — the consumer service does. The consumer's logs show it crashed from an OutOfMemoryError, not a network issue."
         }
@@ -189,13 +189,13 @@
       "options": [
         {
           "id": "fix-3",
-          "text": "Have the call center write dispatch orders directly to the patrol units, bypassing the queue",
+          "text": "Have the call center write dispatch orders directly to patrol units, removing the queue as an intermediary",
           "correct": false,
           "feedback": "Removing the queue eliminates the buffering that helps handle traffic spikes. The queue is a good architectural choice — it just needs proper backpressure controls and consumer resilience."
         },
         {
           "id": "fix-2",
-          "text": "Increase the broker's memory to 64 GB so it can hold more messages",
+          "text": "Increase the broker's memory capacity to 64 GB so it can buffer more unprocessed messages without running out",
           "correct": false,
           "feedback": "More memory just delays the problem — if consumers are down, the queue will eventually fill any amount of memory. You need backpressure to stop unbounded growth and ensure consumers stay alive."
         },
@@ -207,7 +207,7 @@
         },
         {
           "id": "fix-4",
-          "text": "Set messages to expire after 5 minutes so old ones are automatically deleted",
+          "text": "Configure dispatch messages to automatically expire and be deleted from the queue if not consumed within 5 minutes",
           "correct": false,
           "feedback": "Dropping dispatch orders means emergency calls get lost entirely. You need backpressure to manage flow, not message expiration that silently discards critical assignments."
         }

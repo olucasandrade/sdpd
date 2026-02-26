@@ -133,13 +133,13 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O upload da equipe de perícia foi interrompido antes de todas as fotos serem enviadas",
+          "text": "O upload da equipe de perícia foi interrompido antes que todas as fotos pudessem ser carregadas e enviadas com sucesso",
           "correct": false,
           "feedback": "Os logs de upload mostram claramente que todas as 47 fotos foram enviadas e confirmadas pelo líder. Os uploads foram concluídos com sucesso às 22:03."
         },
         {
           "id": "rc-2",
-          "text": "O banco de dados seguidor rejeitou as fotos por falta de espaço de armazenamento",
+          "text": "O banco de dados seguidor rejeitou todas as fotos por falta de espaço suficiente de armazenamento em disco",
           "correct": false,
           "feedback": "O seguidor armazenou com sucesso as 31 fotos que recebeu. O problema é que 16 fotos nunca foram enviadas para ele — ainda estavam enfileiradas para replicação no líder quando ele caiu."
         },
@@ -151,7 +151,7 @@
         },
         {
           "id": "rc-4",
-          "text": "Uma partição de rede entre líder e seguidor bloqueou a replicação",
+          "text": "Uma partição de rede entre líder e seguidor bloqueou completamente a replicação das foto, por isso não foi possível enviar as fotos restantes para o seguidor",
           "correct": false,
           "feedback": "Os logs de replicação mostram que as fotos 1-31 foram replicadas com sucesso. As restantes estavam enfileiradas — o líder simplesmente não as enviou antes de cair. Esta é a natureza da replicação assíncrona, não um problema de rede."
         }
@@ -168,19 +168,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Adicionar um segundo seguidor para aumentar as chances de replicação",
+          "text": "Adicionar um segundo seguidor para aumentar as chances de os dados serem replicados antes de um crash",
           "correct": false,
           "feedback": "Se ambos os seguidores usam replicação assíncrona, um segundo seguidor não garante que os dados sejam replicados antes de um crash. Você pode ter dois seguidores sem os mesmos dados. A solução é replicação síncrona, não mais seguidores assíncronos."
         },
         {
           "id": "fix-3",
-          "text": "Aumentar a velocidade de replicação para que aconteça mais rápido",
+          "text": "Aumentar a velocidade de replicação para que os dados sejam transferidos ao seguidor mais rapidamente",
           "correct": false,
           "feedback": "Replicação assíncrona mais rápida reduz a janela de potencial perda de dados mas não a elimina. Mesmo com 1 segundo de atraso, se o líder cair no momento errado, você perde dados. Para dados críticos, você precisa de uma garantia — é isso que a replicação síncrona oferece."
         },
         {
           "id": "fix-4",
-          "text": "Não permitir failover automático — esperar o líder voltar ao ar",
+          "text": "Não permitir failover automático — aguardar o servidor líder original voltar ao ar antes de prosseguir, caso contrário os dados não seriam replicados",
           "correct": false,
           "feedback": "Isso recuperaria os dados (se o disco sobreviveu), mas ao custo da disponibilidade. O sistema ficaria offline até o líder ser reparado, o que pode levar horas ou dias. A melhor abordagem é replicação síncrona, que garante que o seguidor sempre tenha os dados E possa assumir imediatamente."
         }

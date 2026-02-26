@@ -124,7 +124,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O banco de dados está subdimensionado e precisa de mais capacidade no pool de conexões",
+          "text": "O banco de dados está subdimensionado e precisa de mais capacidade no pool de conexões para picos",
           "correct": false,
           "feedback": "O banco de dados lida com a carga normal bem a ~400 consultas/seg. O problema é o pico repentino para 47.000 consultas/seg causado por todas as entradas de cache expirando simultaneamente. Um pool de conexões maior apenas atrasaria o inevitável."
         },
@@ -136,13 +136,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O Redis está caindo à meia-noite devido a um problema de memória",
+          "text": "O Redis está caindo à meia-noite de cada sábado devido a um problema de memória ou configuração",
           "correct": false,
           "feedback": "O Redis não está caindo — está funcionando exatamente como projetado. As chaves estão expirando no prazo porque todas têm o mesmo TTL. O problema é o padrão de expiração, não a estabilidade do Redis."
         },
         {
           "id": "rc-4",
-          "text": "O job de aquecimento de cache de sábado à meia-noite está conflitando com operações normais",
+          "text": "O job de aquecimento de cache de sábado à meia-noite está conflitando diretamente com operações normais",
           "correct": false,
           "feedback": "O job de aquecimento de cache é na verdade a causa do problema de TTL uniforme — ele carrega todas as chaves ao mesmo tempo com o mesmo TTL. Mas a causa raiz é o padrão de TTL idêntico, não o job de aquecimento em si."
         }
@@ -159,19 +159,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Dobrar o tamanho do pool de conexões do banco de dados para suportar o pico",
+          "text": "Dobrar o tamanho do pool de conexões do banco de dados para suportar melhor o pico semanal",
           "correct": false,
           "feedback": "Mesmo dobrando o pool (para 1.000) não é possível lidar com 47.000+ consultas simultâneas. Seria necessário um aumento de 100x, o que desperdiça recursos 99,9% do tempo. É melhor prevenir o pico em primeiro lugar com TTLs escalonados."
         },
         {
           "id": "fix-3",
-          "text": "Nunca deixar as entradas de cache expirarem — mantê-las para sempre e atualizar manualmente",
+          "text": "Nunca deixar as entradas de cache expirarem — mantê-las indefinidamente e atualizar apenas manualmente",
           "correct": false,
           "feedback": "Entradas de cache que nunca expiram levam a dados desatualizados e crescimento ilimitado de memória. Expiração é um mecanismo saudável de cache — o problema é expiração sincronizada, não expiração em si."
         },
         {
           "id": "fix-4",
-          "text": "Executar o job de aquecimento de cache com mais frequência (diariamente em vez de semanalmente)",
+          "text": "Executar o job de aquecimento de cache com mais frequência (diariamente em vez de semanalmente) para evitar acumulação",
           "correct": false,
           "feedback": "Executar o job de aquecimento diariamente com o mesmo TTL uniforme apenas muda a avalanche para acontecer toda noite em vez de semanalmente. O problema central — TTLs idênticos causando expiração sincronizada — permanece inalterado."
         }

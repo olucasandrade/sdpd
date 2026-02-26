@@ -158,13 +158,13 @@
       "options": [
         {
           "id": "rc-4",
-          "text": "Citizens' browsers are caching the old page locally",
+          "text": "Citizens' browsers are caching the old page locally in their browser cache and need to perform a hard refresh",
           "correct": false,
           "feedback": "Even if citizens hard-refresh their browsers, the CDN edge nodes will serve the stale version. The problem is at the CDN layer, not the browser layer."
         },
         {
           "id": "rc-1",
-          "text": "The origin server failed to update the Most Wanted list properly",
+          "text": "The origin server failed to update the Most Wanted list file correctly during the 6 AM content update job",
           "correct": false,
           "feedback": "The origin server updated correctly at 6 AM. Hitting the origin directly shows the correct list. The problem is that CDN edge nodes have their own cached copy and don't know the origin changed."
         },
@@ -176,7 +176,7 @@
         },
         {
           "id": "rc-3",
-          "text": "The CDN edge nodes are experiencing a bug and not respecting cache headers",
+          "text": "The CDN edge nodes are experiencing an internal bug that causes them to ignore cache-control headers from the origin, preventing the report from showing accurate data.",
           "correct": false,
           "feedback": "The CDN is working exactly as configured — it's respecting the 24-hour TTL perfectly. The problem is that 24 hours is too long for frequently-changing content when there's no purge mechanism."
         }
@@ -187,7 +187,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Set the CDN cache TTL to zero so it always fetches from origin",
+          "text": "Set the CDN cache TTL to zero so every request always bypasses the CDN and fetches fresh content from the origin",
           "correct": false,
           "feedback": "A zero TTL defeats the entire purpose of a CDN. Every request would hit the origin server, eliminating the performance and scalability benefits. The goal is to cache aggressively but invalidate smartly."
         },
@@ -199,13 +199,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Reduce the CDN TTL from 24 hours to 5 minutes",
+          "text": "Reduce the CDN TTL from 24 hours to 5 minutes so edge nodes fetch updated content from the origin more frequently",
           "correct": false,
           "feedback": "A 5-minute TTL reduces staleness but increases origin load significantly (every edge node re-fetches every 5 minutes). For the Most Wanted page, 5 minutes of stale data could still be problematic. A purge-on-update approach gives both freshness and efficiency."
         },
         {
           "id": "fix-4",
-          "text": "Bypass the CDN entirely for the Most Wanted page and serve it directly from origin",
+          "text": "Bypass the CDN entirely for the Most Wanted page and serve it directly from the origin server to all citizens",
           "correct": false,
           "feedback": "Removing CDN caching for popular pages means the origin server handles all traffic directly, losing the geographic distribution and performance benefits of the CDN. It's better to use the CDN with a proper invalidation strategy."
         }

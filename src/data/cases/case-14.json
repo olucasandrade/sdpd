@@ -157,19 +157,19 @@
         },
         {
           "id": "rc-3",
-          "text": "The officer's terminal has a local cache that hasn't been refreshed",
+          "text": "The officer's terminal has a local offline cache that hasn't been refreshed or cleared since the last session",
           "correct": false,
           "feedback": "The terminal fetches data from the API in real-time. The stale data is being served by the Redis cache layer, not a local terminal cache. The terminal is displaying exactly what the API returns."
         },
         {
           "id": "rc-1",
-          "text": "The database deletion failed silently and the record still exists",
+          "text": "The database deletion command failed silently without throwing an error, and the record still physically exists in the database",
           "correct": false,
           "feedback": "The database logs confirm the record was successfully deleted — querying the database directly returns 'NO RECORD FOUND.' The stale data is coming from elsewhere in the system."
         },
         {
           "id": "rc-4",
-          "text": "A database replication lag is causing the deletion to not propagate yet",
+          "text": "A database replication lag is causing the record deletion to not fully propagate yet to all replica nodes",
           "correct": false,
           "feedback": "The deletion happened 3 weeks ago — replication lag would be resolved within seconds or minutes, not weeks. The database itself correctly shows the record as deleted. The problem is the cache layer."
         }
@@ -180,13 +180,13 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Add a manual 'flush cache' button for database administrators to use after deletions",
+          "text": "Add a manual 'flush all cache' button that database administrators can click after performing important record deletions",
           "correct": false,
           "feedback": "Manual cache flushing is error-prone and doesn't scale. Humans will forget. Cache invalidation should be automated and triggered by database write operations, not by manual processes."
         },
         {
           "id": "fix-1",
-          "text": "Reduce the cache TTL from 30 days to 5 minutes so stale data clears quickly",
+          "text": "Reduce the cache TTL from 30 days down to 5 minutes so stale records become invalid much more quickly after changes",
           "correct": false,
           "feedback": "A shorter TTL reduces the staleness window but doesn't eliminate it. For 5 minutes after any deletion, officers would still see ghost records. For legally expunged records, even 5 minutes of stale data is unacceptable. Active invalidation is needed."
         },
@@ -198,7 +198,7 @@
         },
         {
           "id": "fix-3",
-          "text": "Disable caching entirely for criminal records to always get fresh data",
+          "text": "Disable the Redis caching layer entirely for criminal records so every lookup always fetches fresh data from the database",
           "correct": false,
           "feedback": "Disabling the cache would solve the staleness issue but would dramatically increase database load. With a 94% cache hit rate, removing the cache means 16x more database queries. The right approach is smarter caching, not no caching."
         }

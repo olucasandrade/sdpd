@@ -181,19 +181,19 @@
         },
         {
           "id": "rc-3",
-          "text": "The services crashed but their locks weren't released because there's no TTL",
+          "text": "The services crashed and their locks were never released due to a missing TTL on the lock keys",
           "correct": false,
           "feedback": "The services didn't crash — they're still running with 100% thread utilization. They're alive but blocked, which is actually worse than a crash (a crash would at least be detected by health checks). The threads are sleeping, waiting for locks they'll never get."
         },
         {
           "id": "rc-1",
-          "text": "The distributed lock store (Redis) has a bug that prevents locks from being released",
+          "text": "The distributed lock store Redis has an internal bug that prevents acquired lock keys from being released properly",
           "correct": false,
           "feedback": "Redis is working correctly — it granted the locks as requested and is faithfully waiting for release commands. The lock store is just doing what it was told. The problem is the order in which the services acquire locks: they each grab one lock and then try to grab the other, creating a circular wait."
         },
         {
           "id": "rc-4",
-          "text": "The shift change process sends too many concurrent requests, overwhelming the lock store",
+          "text": "The simultaneous shift change process sends too many concurrent lock requests, overwhelming and saturating the lock store",
           "correct": false,
           "feedback": "The lock store is not overwhelmed — it has only 2 active locks. The issue isn't volume, it's the ordering of lock acquisition. Even a single pair of requests can cause a deadlock if two services acquire locks in opposite orders."
         }
@@ -204,13 +204,13 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Merge Weapon Registry and Officer Duty into a single service so locks are local, not distributed",
+          "text": "Merge Weapon Registry and Officer Duty into a single combined service so locking becomes local instead of distributed",
           "correct": false,
           "feedback": "While consolidation eliminates the distributed aspect, local deadlocks can still occur within a single service. Plus, merging services violates the single-responsibility principle and creates a larger blast radius. The correct fix — lock ordering and timeouts — works for both local and distributed deadlocks."
         },
         {
           "id": "fix-1",
-          "text": "Add more threads to both services so some threads remain available even when others are blocked",
+          "text": "Add significantly more threads to both services so some threads remain available even when others are blocked waiting on locks",
           "correct": false,
           "feedback": "More threads just means more threads that can participate in deadlocks. The deadlocked threads will never release — adding more just delays the point where all threads are consumed. You need to prevent or break the deadlock itself."
         },
@@ -222,7 +222,7 @@
         },
         {
           "id": "fix-3",
-          "text": "Remove distributed locking entirely and use optimistic concurrency with version numbers",
+          "text": "Replace all distributed locking with optimistic concurrency control using row version numbers to detect conflicts",
           "correct": false,
           "feedback": "Optimistic concurrency works well for low-contention scenarios, but weapon assignments during shift change have high contention — 400 officers simultaneously. You'd see constant conflicts and retries. The better approach is to keep locking but enforce ordering and add timeouts."
         }

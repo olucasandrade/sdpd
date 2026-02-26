@@ -156,25 +156,25 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O hardware do Shard 4 é mais fraco que o dos outros shards",
+          "text": "O hardware do Shard 4 é mais fraco e menos capaz do que o hardware dos outros três shards do cluster",
           "correct": false,
           "feedback": "Todos os shards têm hardware idêntico. O problema é que o Shard 4 recebe tráfego desproporcional porque a estratégia de particionamento (primeira letra do sobrenome) não distribui os dados uniformemente. Quando um evento em alta envolve suspeitos cujos nomes se concentram em uma faixa (S-Z), esse shard se torna uma partição quente."
         },
         {
           "id": "rc-2",
-          "text": "A estratégia de particionamento por faixa de chaves cria uma partição quente porque os padrões de acesso aos dados não são uniformemente distribuídos entre as faixas do alfabeto",
+          "text": "O particionamento por faixas cria partições quentes pois os acessos não são distribuídos uniformemente",
           "correct": true,
           "feedback": "Correto! O particionamento por faixa de chaves (A-F, G-L, M-R, S-Z) assume que os dados e padrões de acesso são distribuídos uniformemente pelo alfabeto. Mas dados do mundo real não são uniformes — distribuições de sobrenomes variam por cultura, e eventos em alta podem concentrar tráfego em faixas de chaves específicas. Quando a onda de crimes de celebridades atingiu sobrenomes com S, o Shard 4 se tornou uma 'partição quente' recebendo 89% de todo o tráfego enquanto os outros ficavam ociosos. Este é o risco fundamental do particionamento baseado em faixa."
         },
         {
           "id": "rc-3",
-          "text": "Há registros de crimes de celebridades demais — o sistema não foi projetado para este volume",
+          "text": "Há registros de crimes de celebridades em grande quantidade demais — o sistema não foi projetado para tal volume",
           "correct": false,
           "feedback": "O volume total (50.000 registros) é gerenciável — distribuído entre os quatro shards, cada um lidaria com apenas 12.500 registros extras, bem dentro da capacidade. O problema é a concentração, não o volume. Todos os 50.000 registros caem em UM shard por causa da estratégia de particionamento."
         },
         {
           "id": "rc-4",
-          "text": "O roteador de shards tem um bug que envia tráfego demais para o Shard 4",
+          "text": "O roteador de shards tem um bug no algoritmo que envia volume de tráfego excessivo para o Shard 4",
           "correct": false,
           "feedback": "O roteador está funcionando exatamente como projetado — ele corretamente direciona sobrenomes S-Z para o Shard 4. O problema está na estratégia de particionamento em si, não na implementação do roteador. Uma estratégia ruim implementada corretamente continua sendo uma estratégia ruim."
         }
@@ -191,19 +191,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Adicionar mais shards à faixa S-Z para dividir a carga",
+          "text": "Adicionar mais shards dedicação à faixa S-Z para dividir a carga de forma manual entre mais partições",
           "correct": false,
           "feedback": "Dividir S-Z em mais sub-faixas (S-T, U-V, W-Z) ajuda temporariamente, mas não resolve o problema fundamental. Uma futura onda de crimes de celebridades poderia concentrar-se em qualquer sub-faixa. O particionamento baseado em hash distribui dados uniformemente independente dos valores das chaves."
         },
         {
           "id": "fix-3",
-          "text": "Rebalancear as faixas para que cada shard tenha registros iguais (ex.: mover S para o Shard 3)",
+          "text": "Rebalancear as faixas manualmente para que cada shard tenha registros iguais (ex.: mover letra S para o Shard 3)",
           "correct": false,
           "feedback": "Rebalancear com base nos dados atuais ajuda agora, mas exige ajuste manual constante conforme os padrões de dados mudam. O assunto em alta de amanhã pode sobrecarregar as faixas recém-rebalanceadas. O particionamento baseado em hash fornece distribuição uniforme automática sem intervenção manual."
         },
         {
           "id": "fix-4",
-          "text": "Usar distribuição round-robin — atribuir cada novo registro ao próximo shard na sequência",
+          "text": "Usar distribuição round-robin — atribuir cada novo registro ao próximo shard disponível na sequência",
           "correct": false,
           "feedback": "Round-robin distribui escritas uniformemente, mas torna consultas impossíveis sem consultar todos os shards (você não sabe qual shard tem um determinado registro). O particionamento baseado em hash distribui uniformemente E permite consultas diretas — basta calcular o hash para saber exatamente qual shard consultar."
         }

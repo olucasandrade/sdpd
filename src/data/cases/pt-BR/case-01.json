@@ -118,7 +118,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "Uma partição de rede está impedindo as delegacias de acessar o banco de dados",
+          "text": "Uma partição de rede está impedindo todas as delegacias de se conectar e se comunicar com o banco de dados central",
           "correct": false,
           "feedback": "Não é isso. Os logs do banco de dados mostram uma falha de disco (hardware), não um problema de rede. Todas as delegacias sofrem o mesmo problema porque todas dependem do mesmo servidor único."
         },
@@ -130,13 +130,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O banco de dados ficou sem espaço de armazenamento devido ao excesso de registros",
+          "text": "O banco de dados excedeu sua capacidade de armazenamento e parou de aceitar consultas e operações de escrita",
           "correct": false,
           "feedback": "Os logs mostram uma falha física de disco (crash de hardware), não um problema de capacidade de armazenamento. Mas mesmo que fosse um problema de espaço, a verdadeira questão arquitetural é que existe apenas um servidor."
         },
         {
           "id": "rc-4",
-          "text": "Consultas simultâneas demais das delegacias sobrecarregaram o banco de dados",
+          "text": "Consultas simultâneas demais de todas as delegacias sobrecarregaram o único servidor de banco de dados compartilhado",
           "correct": false,
           "feedback": "Os logs mostram uma falha de hardware no disco, não sobrecarga de desempenho. As consultas estão falhando porque o servidor está fora do ar, não porque está sobrecarregado."
         }
@@ -153,19 +153,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Aumentar a frequência de backup de 72 horas para 1 hora",
+          "text": "Aumentar a frequência de backup de 72 horas para executar um backup automatizado a cada hora",
           "correct": false,
           "feedback": "Backups mais frequentes ajudam na recuperação de dados, mas não resolvem o problema de disponibilidade. Restaurar um backup leva tempo — você precisa de uma réplica ativa que possa assumir imediatamente."
         },
         {
           "id": "fix-3",
-          "text": "Dar a cada delegacia sua própria cópia completa do banco de dados que funcione offline",
+          "text": "Dar a cada delegacia sua própria cópia completa e independente do banco de dados que funcione offline",
           "correct": false,
           "feedback": "Embora isso elimine o ponto único de falha, manter cópias independentes completas em cada delegacia cria um pesadelo de consistência de dados. Como manter todas as cópias sincronizadas? Replicação com configuração líder-seguidor é a abordagem padrão."
         },
         {
           "id": "fix-4",
-          "text": "Instalar um disco melhor com redundância RAID no servidor atual",
+          "text": "Instalar um hardware de disco melhor com redundância RAID no servidor existente para proteger contra falhas de disco",
           "correct": false,
           "feedback": "RAID protege contra falha de disco em uma máquina, mas não ajuda se o servidor inteiro cair (energia, placa-mãe, etc.). Redundância real requer máquinas separadas — é isso que a replicação oferece."
         }

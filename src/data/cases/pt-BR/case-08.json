@@ -142,25 +142,25 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "Uma falha de crash — o Nó 3 parou de funcionar e não está respondendo",
+          "text": "Uma falha de crash — o Nó 3 parou de responder e deixou de participar do processo de consenso",
           "correct": false,
           "feedback": "Uma falha de crash significa que o nó para completamente. O Nó 3 ainda está funcionando e respondendo — ele só está mentindo. Isso é muito mais perigoso que um crash porque os outros nós não conseguem simplesmente detectá-lo como 'fora do ar.' O Nó 3 ativamente envia informações contraditórias para pares diferentes."
         },
         {
           "id": "rc-2",
-          "text": "Uma falha bizantina — o Nó 3 está comprometido e deliberadamente enviando mensagens conflitantes para nós diferentes para impedir o consenso",
+          "text": "Falha bizantina — o Nó 3 está comprometido e enviando mensagens conflitantes para desestabilizar o consenso",
           "correct": true,
           "feedback": "Correto! Esta é uma falha bizantina — nomeada em homenagem ao Problema dos Generais Bizantinos. Um nó bizantino pode se comportar de forma arbitrária: pode mentir, enviar mensagens diferentes para pares diferentes, ou atrasar respostas seletivamente. Este é o tipo mais desafiador de falha em sistemas distribuídos porque o nó defeituoso parece funcionar normalmente para cada par individual, mas conta coisas diferentes para pares diferentes."
         },
         {
           "id": "rc-3",
-          "text": "Uma partição de rede — algumas mensagens do Nó 3 estão sendo perdidas no caminho",
+          "text": "Uma partição de rede — algumas mensagens enviadas pelo Nó 3 estão sendo perdidas no trânsito",
           "correct": false,
           "feedback": "Este não é um problema de rede. O Nó 3 está entregando mensagens com sucesso para todos os pares — está deliberadamente enviando conteúdo diferente para nós diferentes. Uma partição de rede causaria perda de mensagens, mas aqui as mensagens são entregues com sucesso com conteúdo conflitante."
         },
         {
           "id": "rc-4",
-          "text": "Um bug de software no algoritmo de análise do Nó 3 produzindo resultados aleatórios",
+          "text": "Um bug de software no algoritmo de análise do Nó 3 produzindo resultados incorretos e aleatórios",
           "correct": false,
           "feedback": "A análise local real do Nó 3 produziu CORRESPONDÊNCIA (correto). Os logs mostram que ele deliberadamente sobrescreveu este resultado e enviou CORRESPONDÊNCIA para alguns nós e SEM CORRESPONDÊNCIA para outros. Um bug produziria resultados consistentemente errados, não resultados seletivamente diferentes para pares diferentes."
         }
@@ -177,19 +177,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Exigir concordância unânime de todos os nós antes de aceitar um resultado",
+          "text": "Exigir concordância unânime de absolutamente todos os nós antes de aceitar qualquer resultado de perícia",
           "correct": false,
           "feedback": "Concordância unânime é exatamente o que o sistema atual exige, e é por isso que um único nó bizantino pode bloquear completamente o consenso. Com unanimidade, um único nó defeituoso pode vetar qualquer resultado. Protocolos BFT usam supermaioria (2/3+) em vez disso, permitindo que o sistema avance apesar de nós defeituosos."
         },
         {
           "id": "fix-3",
-          "text": "Usar votação por maioria — aceitar qualquer resultado com o qual mais da metade dos nós concordem",
+          "text": "Usar votação por maioria simples e aceitar qualquer resultado com o qual mais da metade dos nós concorde",
           "correct": false,
           "feedback": "Votação por maioria simples não lida com falhas bizantinas porque um nó bizantino pode enviar votos diferentes para nós diferentes, fazendo cada nó ver uma maioria diferente. Protocolos BFT adicionam uma rodada extra de comunicação onde nós compartilham o que ouviram de todos os pares, tornando impossível para um nó bizantino enganar nós honestos diferentes a verem maiorias diferentes."
         },
         {
           "id": "fix-4",
-          "text": "Adicionar criptografia a toda comunicação entre nós para prevenir adulteração",
+          "text": "Adicionar criptografia de ponta a ponta a toda a comunicação entre nós para prevenir adulteração das mensagens",
           "correct": false,
           "feedback": "A criptografia protege mensagens em trânsito mas não ajuda quando o próprio nó remetente está comprometido. O Nó 3 está deliberadamente criando e assinando mensagens diferentes para destinatários diferentes. A solução requer uma abordagem no nível do protocolo (BFT), não apenas segurança de transporte."
         }

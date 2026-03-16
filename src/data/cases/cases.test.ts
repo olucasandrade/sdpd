@@ -85,7 +85,7 @@ const caseFiles = allCaseFiles.filter(file => {
 });
 
 describe('Case Files Schema Validation', () => {
-  caseFiles.forEach(filename => {
+  caseFiles.forEach((filename: string) => {
     describe(filename, () => {
       let caseData: CaseFile;
 

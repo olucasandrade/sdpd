@@ -37,7 +37,7 @@ Each case is tied to specific distributed systems concepts (replication, consist
 
 ### Prerequisites
 
-- **Node.js** 16+ (recommended 18+)
+- **Node.js** 18+ (recommended 20+)
 - **npm** 8+ or **yarn** 3+
 
 ### Installation

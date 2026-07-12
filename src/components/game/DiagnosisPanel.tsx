@@ -84,7 +84,7 @@ export function DiagnosisPanel({ caseData, onCaseComplete }: DiagnosisPanelProps
           </p>
           <h3 className="text-base font-medium text-white/90">{currentDiagnosis.question}</h3>
         </div>
-        <span className="text-[10px] font-mono text-white/30 ml-auto">
+        <span className="text-xs font-mono text-white/45 ml-auto">
           {t('diagnosis.attempt')} {attempts + 1}
         </span>
       </div>

@@ -23,6 +23,7 @@
   "diagnosis.continue": "Continue",
   "diagnosis.solveCase": "Solve Case",
   "diagnosis.tryAgain": "Try Again",
+  "diagnosis.attempt": "Attempt",
 
   "inspector.status": "Status",
   "inspector.systemLogs": "System Logs",

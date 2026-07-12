@@ -26,13 +26,19 @@ export function DiagnosisPanel({ caseData, onCaseComplete }: DiagnosisPanelProps
   const [phase, setPhase] = useState<Phase>(initialPhase);
   const [selected, setSelected] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ correct: boolean; text: string } | null>(null);
+  const [eliminated, setEliminated] = useState<Set<string>>(new Set());
 
   const currentDiagnosis = phase === 'rootCause' ? caseData.diagnosis.rootCause : caseData.diagnosis.fix;
+  const attempts = phase === 'rootCause' ? caseProgress?.rootCauseAttempts ?? 0 : caseProgress?.fixAttempts ?? 0;
 
   function handleSubmit() {
     if (!selected) return;
     const result = checkAnswer(currentDiagnosis.options, selected);
     setFeedback({ correct: result.correct, text: result.feedback });
+
+    if (!result.correct) {
+      setEliminated((prev) => new Set(prev).add(selected));
+    }
 
     if (phase === 'rootCause') {
       submitRootCause(caseData.id, result.correct);
@@ -46,6 +52,7 @@ export function DiagnosisPanel({ caseData, onCaseComplete }: DiagnosisPanelProps
       setPhase('fix');
       setSelected(null);
       setFeedback(null);
+      setEliminated(new Set());
     } else if (phase === 'fix' && feedback?.correct) {
       setPhase('complete');
       onCaseComplete();
@@ -77,25 +84,31 @@ export function DiagnosisPanel({ caseData, onCaseComplete }: DiagnosisPanelProps
           </p>
           <h3 className="text-base font-medium text-white/90">{currentDiagnosis.question}</h3>
         </div>
+        <span className="text-[10px] font-mono text-white/30 ml-auto">
+          {t('diagnosis.attempt')} {attempts + 1}
+        </span>
       </div>
 
       <div className="space-y-2">
         {currentDiagnosis.options.map((opt: DiagnosisOption) => {
           const isSelected = selected === opt.id;
-          const showCorrect = feedback && opt.correct;
+          const isEliminated = eliminated.has(opt.id);
+          const showCorrect = feedback?.correct && isSelected;
           const showWrong = feedback && isSelected && !opt.correct;
 
           return (
             <motion.button
               key={opt.id}
-              whileHover={!feedback ? { x: 4 } : undefined}
-              onClick={() => !feedback && setSelected(opt.id)}
-              disabled={!!feedback}
+              whileHover={!feedback && !isEliminated ? { x: 4 } : undefined}
+              onClick={() => !feedback && !isEliminated && setSelected(opt.id)}
+              disabled={!!feedback || isEliminated}
               className={`w-full text-left p-3 rounded-lg border transition-all duration-200 text-sm cursor-pointer ${
                 showCorrect
                   ? 'border-status-healthy/50 bg-status-healthy/8 text-white node-glow-healthy'
                   : showWrong
                   ? 'border-status-failed/50 bg-status-failed/8 text-white node-glow-failed'
+                  : isEliminated
+                  ? 'border-noir-600/40 text-white/30 opacity-40 line-through'
                   : isSelected
                   ? 'border-amber-500/40 bg-amber-500/8 text-white neon-border'
                   : 'border-noir-600/40 text-white/50 hover:border-noir-500/50 hover:text-white/70 hover:bg-noir-700/30'

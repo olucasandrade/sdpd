@@ -39,9 +39,9 @@ export function DatabaseNode({ data }: { data: DatabaseNodeData }) {
             <ellipse cx="10" cy="5" rx="9" ry="4" className="stroke-current" strokeWidth="1.5" fill="none" />
             <path d="M1 5v14c0 2.2 4 4 9 4s9-1.8 9-4V5" className="stroke-current" strokeWidth="1.5" fill="none" />
           </svg>
-          <span className="text-[11px] font-mono font-bold text-white/90">{data.label}</span>
+          <span className="text-xs font-mono font-bold text-white/90">{data.label}</span>
         </div>
-        <div className={`text-[9px] font-mono uppercase tracking-wider flex items-center gap-1.5 ${statusText[data.status]}`}>
+        <div className={`text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 ${statusText[data.status]}`}>
           <div className={`w-1.5 h-1.5 rounded-full ${data.status === 'healthy' ? 'bg-status-healthy' : data.status === 'degraded' ? 'bg-status-degraded' : 'bg-status-failed'} ${data.status === 'healthy' ? 'animate-pulse' : ''}`} />
           {data.status === 'failed' ? 'OFFLINE' : data.status === 'degraded' ? 'DEGRADED' : 'ONLINE'}
         </div>

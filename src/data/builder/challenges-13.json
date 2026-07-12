@@ -1,0 +1,74 @@
+{
+  "id": "builder-13",
+  "number": 13,
+  "title": "Case Search Read Replica",
+  "subtitle": "Primary DB saturation slows investigative queries",
+  "objective": "Introduce read-scaling layers while retaining a consistent write path.",
+  "constraints": [
+    "Reduce primary read load",
+    "Keep explicit write authority",
+    "Avoid async-only architecture"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "cache",
+    "database",
+    "queue"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Read Scaling Layer",
+      "description": "Use cache and API layering for read-heavy calls.",
+      "requiredAll": [
+        "api",
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "cache"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Stable Query Entry",
+      "description": "Client requests should be balanced before APIs.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Authoritative Writes",
+      "description": "Retain durable write storage with database.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ],
+      "discouragedComponents": [
+        "queue"
+      ]
+    }
+  ]
+}

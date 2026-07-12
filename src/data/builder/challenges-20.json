@@ -1,0 +1,72 @@
+{
+  "id": "builder-20",
+  "number": 20,
+  "title": "Incident Timeline Rebuild",
+  "subtitle": "Reconstructing incident timelines overloads OLTP systems",
+  "objective": "Route timeline generation through async workers and archival storage paths.",
+  "constraints": [
+    "Do not block APIs for timeline rebuilds",
+    "Use async processing path",
+    "Store generated artifacts durably"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "blobStorage",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Async Timeline Generation",
+      "description": "Timeline jobs should flow API -> queue -> worker.",
+      "requiredAll": [
+        "api",
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Artifact Storage",
+      "description": "Generated timelines should be written to blob storage.",
+      "requiredAll": [
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "blobStorage"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Metadata Index",
+      "description": "Index timeline metadata in database for search.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

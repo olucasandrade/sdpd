@@ -1,0 +1,70 @@
+{
+  "id": "builder-11",
+  "number": 11,
+  "title": "Pico no Portal do Cidadão",
+  "subtitle": "Tráfego público dispara em incidentes na cidade",
+  "objective": "Monte caminho de entrega de alto throughput com controle de pressão no backend.",
+  "constraints": [
+    "Otimize entrega na borda",
+    "Proteja APIs de backend",
+    "Cacheie leituras repetitivas"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "loadBalancer",
+    "api",
+    "cache",
+    "database"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Alívio na Borda",
+      "description": "Use CDN para absorver picos de conteúdo público.",
+      "requiredAll": [
+        "client",
+        "cdn"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "cdn"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Proteção de Backend",
+      "description": "Roteie chamadas de origem por load balancer e API.",
+      "requiredAll": [
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "cdn",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Alívio de Consultas Repetidas",
+      "description": "Use cache em endpoints de leitura intensa.",
+      "requiredAll": [
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "cache"
+        }
+      ]
+    }
+  ]
+}

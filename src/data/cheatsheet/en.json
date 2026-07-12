@@ -1,0 +1,641 @@
+{
+  "schemaVersion": 1,
+  "cards": [
+    {
+      "id": "spof",
+      "category": "replication",
+      "title": "Eliminating a single point of failure",
+      "when": "Any single component's failure takes down the whole system",
+      "options": [
+        { "use": "Leader-follower replication", "why": "A live copy on separate hardware can be promoted on failure. The standard first move for databases." },
+        { "use": "Active-active pair behind a load balancer", "why": "Both nodes serve traffic, so failover is instant — but only works for stateless or conflict-free workloads." }
+      ],
+      "tradeoff": "Failover speed vs consistency complexity: active-active removes the promotion delay but invites write conflicts.",
+      "interviewerProbe": "How do you detect that the leader is actually dead and not just slow?",
+      "relatedCaseIds": ["case-01"],
+      "conceptId": null
+    },
+    {
+      "id": "sync-vs-async-replication",
+      "category": "replication",
+      "title": "Synchronous vs asynchronous replication",
+      "when": "You must decide whether acknowledged writes may ever be lost",
+      "options": [
+        { "use": "Synchronous replication", "why": "The write is on a replica before the client gets an ack — leader loss loses nothing." },
+        { "use": "Asynchronous replication", "why": "Lowest write latency and the leader never blocks on a slow replica — but recent writes can vanish in failover." },
+        { "use": "Semi-synchronous (one sync replica)", "why": "Caps the durability risk at one lost replica while keeping latency bounded." }
+      ],
+      "tradeoff": "Durability vs write latency — pick per data class, not per system.",
+      "interviewerProbe": "What happens to writes that were in flight when failover started?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "failover-strategy",
+      "category": "replication",
+      "title": "Automatic vs manual failover",
+      "when": "The primary fails and something must promote a replica",
+      "options": [
+        { "use": "Automatic failover via consensus", "why": "Recovery in seconds without paging a human; election prevents two nodes claiming leadership." },
+        { "use": "Manual failover", "why": "A human confirms the primary is truly dead — slower, but immune to false positives that cause split brain." }
+      ],
+      "tradeoff": "Recovery time vs split-brain risk: bad automatic failover is worse than slow manual failover.",
+      "interviewerProbe": "After a network partition heals, how do you prevent the old leader from accepting writes?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "read-scaling",
+      "category": "replication",
+      "title": "Scaling reads: replicas vs cache",
+      "when": "Read traffic is overwhelming the primary database",
+      "options": [
+        { "use": "Read replicas", "why": "Serves the full query surface (any SQL) with modest staleness; scales linearly by adding replicas." },
+        { "use": "A cache layer", "why": "Orders-of-magnitude cheaper per read for hot, repeated lookups — but only for keyable access patterns." }
+      ],
+      "tradeoff": "Query flexibility vs cost per read; both introduce staleness you must budget explicitly.",
+      "interviewerProbe": "Which of your read paths can tolerate stale data, and how stale exactly?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "multi-region",
+      "category": "replication",
+      "title": "Multi-region: active-active vs active-passive",
+      "when": "Users on multiple continents need low latency and region-failure survival",
+      "options": [
+        { "use": "Active-passive (single write region)", "why": "No write conflicts ever; remote users pay write latency but reads stay local via replicas." },
+        { "use": "Active-active (multi-leader)", "why": "Local write latency everywhere and no failover event — at the price of conflict resolution machinery." }
+      ],
+      "tradeoff": "Write latency for remote users vs the permanent complexity of resolving concurrent cross-region writes.",
+      "interviewerProbe": "Two regions update the same row in the same second — walk me through what happens.",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "strong-vs-eventual",
+      "category": "consistency",
+      "title": "Strong vs eventual consistency",
+      "when": "Choosing the consistency guarantee for an operation",
+      "options": [
+        { "use": "Strong consistency", "why": "Reads always see the latest write — required for balances, inventory, permissions, anything with an invariant." },
+        { "use": "Eventual consistency", "why": "Higher availability and lower latency — fine for feeds, counters, profiles, where brief disagreement is invisible." }
+      ],
+      "tradeoff": "Correctness guarantees vs availability and latency — decide per operation, never per system.",
+      "interviewerProbe": "Which specific endpoints in your design actually need strong consistency, and why?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "consensus",
+      "category": "consistency",
+      "title": "When you need distributed consensus",
+      "when": "A cluster must agree on one value: who is leader, a config, a lock",
+      "options": [
+        { "use": "A consensus service (etcd/ZooKeeper, Raft-based)", "why": "Battle-tested quorum machinery; you inherit correct leader election and fencing instead of reinventing it." },
+        { "use": "Delegate to your database", "why": "A single strongly-consistent store with conditional writes (compare-and-set) covers simple locking without new infrastructure." }
+      ],
+      "tradeoff": "Operational surface vs correctness under partitions — hand-rolled coordination is where outages are born.",
+      "interviewerProbe": "With 5 nodes, what is your quorum size, and why is an odd count better?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "conflict-resolution",
+      "category": "consistency",
+      "title": "Resolving concurrent writes",
+      "when": "Two writers can update the same data without seeing each other (multi-leader, offline clients)",
+      "options": [
+        { "use": "Last-write-wins (LWW)", "why": "Trivial to implement — but silently discards one write, and clock skew decides the winner." },
+        { "use": "CRDTs", "why": "Data types that merge automatically and deterministically — perfect for counters, sets, collaborative editing." },
+        { "use": "Application-level merge", "why": "Surface both versions and let domain logic (or the user) decide — the only option when losing either write is unacceptable." }
+      ],
+      "tradeoff": "Silent data loss vs merge complexity.",
+      "interviewerProbe": "Your servers' clocks drift by 200ms — what does LWW do to your data?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "read-your-writes",
+      "category": "consistency",
+      "title": "Read-your-own-writes",
+      "when": "A user updates something and must immediately see their change, but reads hit stale replicas",
+      "options": [
+        { "use": "Route the author's reads to the leader", "why": "Simple session rule: after a write, that user reads from the primary for a short window." },
+        { "use": "Client-side echo", "why": "Optimistically render the submitted change locally — no backend change, but divergence shows if the write actually failed." }
+      ],
+      "tradeoff": "Backend routing complexity vs trusting the client to fake it honestly.",
+      "interviewerProbe": "Does your session guarantee hold when the user has two tabs, or a phone and a laptop?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cap-under-partition",
+      "category": "consistency",
+      "title": "Choosing behavior during a partition",
+      "when": "A network partition happens (it will) and each side must decide what to do",
+      "options": [
+        { "use": "CP: refuse writes on the minority side", "why": "No divergence to repair afterwards — correct for money, inventory, uniqueness guarantees." },
+        { "use": "AP: keep accepting writes, reconcile later", "why": "Users never see an outage — correct for carts, likes, telemetry, where merging later is tolerable." }
+      ],
+      "tradeoff": "Visible unavailability now vs reconciliation work (and possible conflicts) later.",
+      "interviewerProbe": "For each write path in your design, which side of this line is it on?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "distributed-transactions",
+      "category": "consistency",
+      "title": "Transactions across services",
+      "when": "One business action must update multiple services or databases atomically",
+      "options": [
+        { "use": "Saga with compensations", "why": "Each step commits locally; failures trigger compensating actions. No global locks, works at scale." },
+        { "use": "Two-phase commit (2PC)", "why": "True atomicity — but the coordinator is a blocking single point of failure, so keep it to rare, short, intra-datacenter cases." }
+      ],
+      "tradeoff": "Designing compensation logic for every step vs blocking the world on a coordinator.",
+      "interviewerProbe": "What happens when a compensation itself fails?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "lb-algorithm",
+      "category": "loadBalancing",
+      "title": "Picking a load-balancing algorithm",
+      "when": "Distributing requests across a pool of servers",
+      "options": [
+        { "use": "Round robin", "why": "Dead simple and fine when requests and servers are homogeneous." },
+        { "use": "Least connections", "why": "Adapts when request costs vary wildly — slow requests stop attracting more traffic." },
+        { "use": "Consistent hashing", "why": "Same key lands on the same server — required when servers hold per-key state or local cache." }
+      ],
+      "tradeoff": "Uniform spread vs affinity: hashing gives locality but makes hot keys hit one server.",
+      "interviewerProbe": "One instance type in the pool is twice as slow — which algorithm degrades worst?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "l4-vs-l7",
+      "category": "loadBalancing",
+      "title": "L4 vs L7 load balancing",
+      "when": "Choosing at which layer the balancer operates",
+      "options": [
+        { "use": "L7 (application-aware)", "why": "Routes on path, headers, cookies; terminates TLS; enables canaries and per-route policies." },
+        { "use": "L4 (transport)", "why": "Higher throughput, lower latency, protocol-agnostic — right for raw TCP or extreme scale tiers." }
+      ],
+      "tradeoff": "Routing intelligence vs raw performance; many real systems stack L4 in front of L7.",
+      "interviewerProbe": "Where does TLS terminate in your design, and what can inspect the traffic after that point?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "session-state",
+      "category": "loadBalancing",
+      "title": "Sticky sessions vs stateless servers",
+      "when": "Servers hold per-user session state and any server might receive the next request",
+      "options": [
+        { "use": "Externalize state, stay stateless", "why": "Sessions live in Redis or a signed token; any server handles any request, deploys and scale-in are painless." },
+        { "use": "Sticky sessions", "why": "Zero refactoring — the LB pins users to servers. Acceptable as a bridge, not a destination." }
+      ],
+      "tradeoff": "One more infrastructure dependency vs uneven load and sessions dying with their server.",
+      "interviewerProbe": "What do your users experience during a rolling deploy under sticky sessions?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "health-checks",
+      "category": "loadBalancing",
+      "title": "Active vs passive health checks",
+      "when": "The balancer must stop routing to unhealthy instances",
+      "options": [
+        { "use": "Active checks", "why": "Dedicated probes on an interval — predictable detection time, and a /health endpoint you control." },
+        { "use": "Passive (outlier detection)", "why": "Watches real request failures — catches problems synthetic probes miss, with zero probe traffic." }
+      ],
+      "tradeoff": "Detection latency vs false positives; production-grade setups usually run both.",
+      "interviewerProbe": "An instance flaps healthy/unhealthy every few seconds — how do you stop it thrashing the pool?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "rate-limiting",
+      "category": "loadBalancing",
+      "title": "Rate limiting strategy",
+      "when": "Protecting the system from abusive or bursty clients",
+      "options": [
+        { "use": "Token bucket", "why": "Allows short bursts while enforcing an average rate — matches how legitimate clients actually behave." },
+        { "use": "Sliding window counter", "why": "Smooth, precise limits with tiny memory cost — better when bursts themselves are the problem." }
+      ],
+      "tradeoff": "Burst friendliness vs strictness; also decide WHERE it runs — at the edge (cheap, coarse) or in the service (rich context).",
+      "interviewerProbe": "Your limiter runs on 20 gateway nodes — how do you enforce one global limit per user?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "scaling-direction",
+      "category": "loadBalancing",
+      "title": "Horizontal vs vertical scaling",
+      "when": "Current capacity is exhausted",
+      "options": [
+        { "use": "Horizontal (more machines)", "why": "No practical ceiling and failure isolation for free — but demands stateless services or partitioned state." },
+        { "use": "Vertical (bigger machine)", "why": "Zero code changes and no distribution complexity — buy time with it, but the ceiling and the SPOF remain." }
+      ],
+      "tradeoff": "Architectural work now vs a hard limit later.",
+      "interviewerProbe": "What is the first stateful thing that breaks when you go from 1 server to 10?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cache-read-strategy",
+      "category": "caching",
+      "title": "Cache-aside vs read-through",
+      "when": "Reads dominate and some staleness is tolerable",
+      "options": [
+        { "use": "Cache-aside", "why": "The app checks cache, falls back to DB, fills cache. Simple, cache failure degrades gracefully to the DB." },
+        { "use": "Read-through", "why": "The cache itself loads misses — centralizes loading logic and dedupes concurrent misses, but adds a library/proxy dependency." }
+      ],
+      "tradeoff": "Application-owned simplicity vs centralized miss handling.",
+      "interviewerProbe": "What hits your database in the first minute after you flush the cache during peak traffic?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cache-write-strategy",
+      "category": "caching",
+      "title": "Write-through vs write-back",
+      "when": "Writes must interact with a cache that also serves reads",
+      "options": [
+        { "use": "Write-through", "why": "Write cache and DB together — cache is never stale for written keys, and durability is the DB's." },
+        { "use": "Write-back", "why": "Ack after writing cache only, flush to DB later — absorbs write bursts, but a cache crash loses acknowledged writes." },
+        { "use": "Write-around", "why": "Write DB only, let reads repopulate — avoids polluting the cache with write-once data." }
+      ],
+      "tradeoff": "Durability vs write latency; write-back is the only one that can lose data.",
+      "interviewerProbe": "Which of your data classes could survive losing 30 seconds of acknowledged writes?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cache-invalidation",
+      "category": "caching",
+      "title": "TTL vs event-driven invalidation",
+      "when": "Cached data changes at the source and staleness must be bounded",
+      "options": [
+        { "use": "TTL expiry", "why": "Zero plumbing and self-healing — staleness is bounded by the TTL you choose." },
+        { "use": "Event-driven invalidation", "why": "Near-zero staleness — the writer (or CDC stream) evicts affected keys — at the cost of real invalidation plumbing." }
+      ],
+      "tradeoff": "Bounded-but-guaranteed staleness vs freshness with machinery that can itself fail.",
+      "interviewerProbe": "For each cached entity, what is the maximum staleness the product actually tolerates?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cache-stampede",
+      "category": "caching",
+      "title": "Preventing cache stampedes",
+      "when": "A hot key expires and thousands of concurrent requests hit the origin at once",
+      "options": [
+        { "use": "Request coalescing (single-flight lock)", "why": "One request rebuilds the value; the rest wait for it — origin sees one miss instead of thousands." },
+        { "use": "Stale-while-revalidate / early refresh", "why": "Serve the stale value while refreshing in the background — users never wait on the rebuild at all." }
+      ],
+      "tradeoff": "A brief latency spike for waiters vs serving knowingly stale data during refresh.",
+      "interviewerProbe": "You deploy and the cache starts empty — how is that different from one hot key expiring, and what breaks?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cache-placement",
+      "category": "caching",
+      "title": "Where to cache: CDN vs app cache vs database",
+      "when": "Deciding at which layer a caching problem should be solved",
+      "options": [
+        { "use": "CDN / browser cache", "why": "Closest to the user, absorbs traffic before it touches you — for static and anonymously-shared content." },
+        { "use": "Application cache (Redis/Memcached)", "why": "Full control, per-user data, complex keys — the workhorse for computed and personalized results." },
+        { "use": "Database-internal caching / materialized views", "why": "Speeds every consumer of the same query without new infrastructure." }
+      ],
+      "tradeoff": "Distance from the user vs control over invalidation and personalization.",
+      "interviewerProbe": "Which layers can safely cache a logged-in user's home feed, and why?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cache-eviction",
+      "category": "caching",
+      "title": "Choosing an eviction policy",
+      "when": "The cache is memory-bound and must discard entries",
+      "options": [
+        { "use": "LRU", "why": "Recency is the best default predictor of re-access; cheap and everywhere." },
+        { "use": "LFU", "why": "Protects stable hot items from being evicted by one-off bursts — better for skewed, steady workloads." }
+      ],
+      "tradeoff": "Adaptation speed vs burst resistance: LRU follows shifts fast but a batch scan can flush your entire hot set.",
+      "interviewerProbe": "A nightly analytics job reads every record once — what does that do to your LRU cache, and how do you defend it?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "queue-vs-pubsub",
+      "category": "messaging",
+      "title": "Work queue vs pub/sub",
+      "when": "Decoupling producers from consumers",
+      "options": [
+        { "use": "Work queue", "why": "Each message processed by exactly one worker — for jobs that must happen once (emails, payments, renders)." },
+        { "use": "Pub/sub fan-out", "why": "Every subscriber gets every event — for broadcasting facts that multiple systems independently react to." }
+      ],
+      "tradeoff": "Task distribution vs event broadcast — mixing them up is a classic design smell.",
+      "interviewerProbe": "A subscriber is down for an hour — what happens to its events in each model?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "delivery-guarantees",
+      "category": "messaging",
+      "title": "Delivery guarantees and idempotency",
+      "when": "Deciding how the system behaves when message delivery is uncertain",
+      "options": [
+        { "use": "At-least-once + idempotent consumers", "why": "The industry answer: accept duplicates, make processing safe to repeat via idempotency keys or dedupe." },
+        { "use": "At-most-once", "why": "Fire and forget — acceptable only when losing a message is cheaper than any dedupe machinery (metrics, telemetry)." }
+      ],
+      "tradeoff": "\"Exactly-once delivery\" is a myth over networks — what exists is at-least-once delivery plus exactly-once processing you build yourself.",
+      "interviewerProbe": "Where does your deduplication state live, and how long do you keep it?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "message-ordering",
+      "category": "messaging",
+      "title": "Preserving event order",
+      "when": "Events for the same entity must apply in order (account movements, state transitions)",
+      "options": [
+        { "use": "Partitioned log keyed by entity id", "why": "Order within a partition is guaranteed while partitions process in parallel — order where it matters, throughput everywhere else." },
+        { "use": "Single consumer / single partition", "why": "Trivial global order — and a hard throughput ceiling. Fine for low-volume streams." }
+      ],
+      "tradeoff": "Parallelism vs ordering scope; global order and horizontal scale are fundamentally at odds.",
+      "interviewerProbe": "One customer generates 100× the events of everyone else — what happens to their partition?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "backpressure",
+      "category": "messaging",
+      "title": "Handling producers outpacing consumers",
+      "when": "The queue is growing faster than workers drain it",
+      "options": [
+        { "use": "Bounded queue + reject/shed at intake", "why": "Fail fast at the edge — callers get an honest error now instead of a timeout after infinite lag." },
+        { "use": "Buffer + autoscale consumers", "why": "Absorb bursts and add workers on queue depth — right when the backlog is temporary and work must not be dropped." }
+      ],
+      "tradeoff": "Dropping work visibly vs unbounded lag and memory quietly.",
+      "interviewerProbe": "What is your maximum acceptable queue lag in seconds, and what enforces it?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "sync-vs-async-processing",
+      "category": "messaging",
+      "title": "Synchronous call vs async job",
+      "when": "The caller doesn't strictly need the result in the same request",
+      "options": [
+        { "use": "Async via queue", "why": "Absorbs spikes, isolates downstream failures, retries invisibly — the response just says \"accepted\"." },
+        { "use": "Synchronous call", "why": "Simplest correct thing when the caller genuinely needs the answer now; errors surface immediately." }
+      ],
+      "tradeoff": "Resilience and elasticity vs immediate confirmation and a simpler mental model.",
+      "interviewerProbe": "The job is accepted and fails 5 minutes later — how does the client ever find out?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "retries-dlq",
+      "category": "messaging",
+      "title": "Retries and dead-letter queues",
+      "when": "Message processing fails and might succeed later — or might never",
+      "options": [
+        { "use": "Bounded retries with backoff, then DLQ", "why": "Transient failures self-heal; permanent failures land somewhere visible instead of poisoning the queue." },
+        { "use": "Infinite retry", "why": "Only for messages that must eventually succeed and whose blockage you actively monitor — otherwise one poison message halts the world." }
+      ],
+      "tradeoff": "Giving up visibly vs blocking silently.",
+      "interviewerProbe": "Who looks at the DLQ, how are they alerted, and what's the replay procedure?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "sql-vs-nosql",
+      "category": "storage",
+      "title": "Relational vs NoSQL as the primary store",
+      "when": "Choosing the system of record for a new service",
+      "options": [
+        { "use": "Relational (PostgreSQL/MySQL)", "why": "Transactions, joins, constraints, ad-hoc queries — the safest default until a specific limit is hit." },
+        { "use": "Document / key-value store", "why": "Horizontal write scale and flexible schema — when access is by key, volume is huge, and joins are rare." }
+      ],
+      "tradeoff": "Query power and integrity vs effortless scale-out; the mistake is choosing NoSQL for scale you don't have.",
+      "interviewerProbe": "List the top 3 queries your product needs — which ones become impossible after you shard?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "partition-key",
+      "category": "storage",
+      "title": "Hash vs range partitioning",
+      "when": "Data outgrows one node and must be split by a key",
+      "options": [
+        { "use": "Hash partitioning", "why": "Uniform spread by construction — hot spots require a hot key, not just adjacent keys." },
+        { "use": "Range partitioning", "why": "Efficient range scans (time windows, prefixes) — but sequential keys pile onto the newest shard." }
+      ],
+      "tradeoff": "Uniform load vs scan locality; your dominant query pattern decides.",
+      "interviewerProbe": "Your key is a timestamp — which partition receives 100% of tonight's writes?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "indexing",
+      "category": "storage",
+      "title": "Secondary index vs denormalization",
+      "when": "A read pattern is too slow against the current layout",
+      "options": [
+        { "use": "Add a secondary index", "why": "Cheapest fix inside one database — at the cost of extra write amplification per index." },
+        { "use": "Denormalize / materialized view", "why": "Precompute the read shape — unbeatable read latency, but now two copies must be kept consistent." }
+      ],
+      "tradeoff": "Write cost on the same table vs consistency responsibility across copies.",
+      "interviewerProbe": "This table takes heavy writes — what does each added index do to your p99 write latency?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "lsm-vs-btree",
+      "category": "storage",
+      "title": "LSM trees vs B-trees",
+      "when": "Choosing a storage engine and your workload skews strongly one way",
+      "options": [
+        { "use": "LSM tree (RocksDB, Cassandra)", "why": "Turns random writes into sequential ones — superb write throughput; reads may check several levels." },
+        { "use": "B-tree (InnoDB, Postgres)", "why": "Predictable point-read latency and mature transactional behavior — the default for read-heavy OLTP." }
+      ],
+      "tradeoff": "Write amplification vs read amplification — plus LSM compaction competing with your traffic for I/O.",
+      "interviewerProbe": "What happens to your p99 read latency while a major compaction is running?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "blob-storage",
+      "category": "storage",
+      "title": "Files: object storage vs database blobs",
+      "when": "Storing images, videos, or documents alongside structured data",
+      "options": [
+        { "use": "Object storage + URL/key in the DB", "why": "Purpose-built durability and throughput, CDN-friendly, keeps the database small and fast." },
+        { "use": "Blobs in the database", "why": "One transaction covers data and file — defensible only for small, rarely-read files where atomicity matters most." }
+      ],
+      "tradeoff": "Two systems to keep consistent vs one system doing a job it's bad at.",
+      "interviewerProbe": "A row is deleted but its S3 object survives — how do you prevent, detect, or clean up orphans?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "hot-partition",
+      "category": "storage",
+      "title": "Surviving a hot partition",
+      "when": "One shard receives disproportionate traffic (a celebrity, a viral item)",
+      "options": [
+        { "use": "Salt or compound the key", "why": "Spread one logical key over N physical partitions (key#1..key#N) and merge on read." },
+        { "use": "Isolate + cache the hot entity", "why": "Detect outliers and serve them from a dedicated cache or their own capacity — leaves the general scheme untouched." }
+      ],
+      "tradeoff": "Permanent read-side merge complexity vs special-case machinery that must detect heat quickly.",
+      "interviewerProbe": "How do you detect a partition going hot before it becomes an incident?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "realtime-transport",
+      "category": "network",
+      "title": "WebSockets vs SSE vs polling",
+      "when": "The server must push updates to connected clients",
+      "options": [
+        { "use": "WebSockets", "why": "Full duplex — the answer when clients also send frequently (chat, games, collaborative editing)." },
+        { "use": "Server-sent events (SSE)", "why": "One-way push over plain HTTP with built-in auto-reconnect — simpler ops for feeds, tickers, notifications." },
+        { "use": "Short/long polling", "why": "Works through every proxy and firewall with zero stateful infrastructure — fine when seconds of delay are acceptable." }
+      ],
+      "tradeoff": "Bidirectional power vs operational simplicity — and at scale, a million idle sockets is its own architecture problem.",
+      "interviewerProbe": "A client reconnects after 30 seconds offline — how does it receive the events it missed?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "timeouts-retries",
+      "category": "network",
+      "title": "Timeouts, retries, and backoff",
+      "when": "Calling a dependency that sometimes fails or hangs",
+      "options": [
+        { "use": "Timeout + retries with exponential backoff and jitter", "why": "Transient failures vanish; jitter prevents synchronized retry waves from hammering a recovering service." },
+        { "use": "Fail fast, no retry", "why": "Mandatory for non-idempotent operations (payments!) unless there's an idempotency key — a retried charge is an incident." }
+      ],
+      "tradeoff": "Availability through persistence vs amplifying load on something already struggling.",
+      "interviewerProbe": "Every service retries 3×, five layers deep — how many requests hit the bottom service per user click?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "grpc-vs-rest",
+      "category": "network",
+      "title": "gRPC vs REST between services",
+      "when": "Choosing the protocol for service-to-service communication",
+      "options": [
+        { "use": "gRPC", "why": "Typed contracts, streaming, HTTP/2 multiplexing, less bandwidth — strong for high-volume internal calls." },
+        { "use": "REST/JSON", "why": "Universal tooling, human-debuggable, cache- and browser-friendly — the default for public APIs and small teams." }
+      ],
+      "tradeoff": "Performance and contract rigor vs ubiquity and debuggability.",
+      "interviewerProbe": "A browser needs to call this API — what does that force on your gRPC choice?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cdn-when",
+      "category": "network",
+      "title": "When a CDN earns its place",
+      "when": "Serving static or cacheable content to a geographically spread audience",
+      "options": [
+        { "use": "CDN in front of origin", "why": "Edge latency, massive origin offload, and free DDoS absorption — a near-automatic win for assets and public pages." },
+        { "use": "Serve from regional origins only", "why": "Defensible when the audience is single-region or every response is personalized and uncacheable." }
+      ],
+      "tradeoff": "Another cache tier to invalidate vs paying latency and egress on every request.",
+      "interviewerProbe": "You deploy new JS bundles — how do users stop receiving the old version from the edge?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "connection-management",
+      "category": "network",
+      "title": "Connection pooling and keep-alive",
+      "when": "High request volume to the same dependency creates connection churn",
+      "options": [
+        { "use": "Pooled persistent connections", "why": "Amortizes TCP/TLS handshakes across requests — order-of-magnitude latency and CPU savings at volume." },
+        { "use": "Connection per request", "why": "Zero shared state and no pool tuning — tolerable only at low volume or in serverless runtimes that forbid pooling anyway." }
+      ],
+      "tradeoff": "Pool sizing and lifecycle bugs vs handshake tax on every call.",
+      "interviewerProbe": "The pool is exhausted and requests queue — what failure do users see, and what limits the queue?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "distributed-tracing",
+      "category": "advanced",
+      "title": "When you need distributed tracing",
+      "when": "A request crosses many services and no single log explains its latency",
+      "options": [
+        { "use": "Distributed tracing (OpenTelemetry)", "why": "One trace shows the whole request tree with per-hop timing — the only tool that localizes cross-service latency." },
+        { "use": "Structured logs + correlation IDs", "why": "80% of the value with familiar tooling: propagate one ID and grep — the pragmatic first step." }
+      ],
+      "tradeoff": "Instrumentation and storage investment vs manual cross-referencing during incidents.",
+      "interviewerProbe": "At 100k requests/second you can't trace everything — what's your sampling strategy for the requests that matter?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cascading-failure",
+      "category": "advanced",
+      "title": "Stopping cascading failures",
+      "when": "One slow dependency is dragging every upstream service down with it",
+      "options": [
+        { "use": "Circuit breaker + fallback", "why": "After enough failures, stop calling and degrade gracefully — the dependency gets air to recover." },
+        { "use": "Bulkheads (isolated pools)", "why": "Partition threads/connections per dependency so one slow callee can't exhaust shared resources." }
+      ],
+      "tradeoff": "Serving degraded results deliberately vs letting saturation choose what fails for you. Use both; timeouts alone just queue the pain.",
+      "interviewerProbe": "The breaker is open — what exactly do users see, and how does it decide to close again?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "orchestration-vs-choreography",
+      "category": "advanced",
+      "title": "Workflow: orchestration vs choreography",
+      "when": "A multi-step business process spans several services",
+      "options": [
+        { "use": "Orchestrator (central workflow engine)", "why": "One place owns the state machine — visibility, retries, and compensation logic are centralized and debuggable." },
+        { "use": "Choreography (services react to events)", "why": "Loose coupling, no central dependency — but the workflow exists only implicitly, spread across consumers." }
+      ],
+      "tradeoff": "A coordination dependency vs a process nobody can see end-to-end.",
+      "interviewerProbe": "An order is stuck at step 3 of 6 — in each model, how do you find out and resume it?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "rollout-strategy",
+      "category": "advanced",
+      "title": "Canary vs blue-green deployment",
+      "when": "Shipping a risky change to production",
+      "options": [
+        { "use": "Canary with metric gates", "why": "1% → 10% → 100% with automatic rollback on error or latency regression — blast radius stays tiny." },
+        { "use": "Blue-green", "why": "Two full environments, instant atomic switch and instant rollback — simpler, but all-or-nothing exposure." }
+      ],
+      "tradeoff": "Gradual detection with two versions live (schema compatibility!) vs double infrastructure and binary risk.",
+      "interviewerProbe": "Both versions run simultaneously during the rollout — what does that force on your database migrations?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "chaos-testing",
+      "category": "advanced",
+      "title": "Verifying resilience with chaos",
+      "when": "Your design claims to survive failures but nothing has ever proven it",
+      "options": [
+        { "use": "Fault injection in staging / game days", "why": "Kill nodes, add latency, drop packets in a rehearsal — find the surprises before customers do." },
+        { "use": "Production chaos with blast-radius limits", "why": "The only environment that tells the truth — but only after staging passes, with scoped targets and an instant abort." }
+      ],
+      "tradeoff": "Realism vs risk; chaos without a hypothesis and an abort switch is just an outage you scheduled.",
+      "interviewerProbe": "What's your abort criterion, and who has authority to hit it?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    }
+  ]
+}

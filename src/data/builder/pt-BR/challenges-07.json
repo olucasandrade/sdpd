@@ -1,0 +1,70 @@
+{
+  "id": "builder-07",
+  "number": 7,
+  "title": "Espelhamento de Evidências entre Regiões",
+  "subtitle": "Falhas em uma região bloqueiam o acesso à mídia",
+  "objective": "Projete storage e entrega para manter mídia acessível durante incidentes regionais.",
+  "constraints": [
+    "Mantenha leitura resiliente",
+    "Use entrega cacheável globalmente",
+    "Preserve metadados autoritativos"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "loadBalancer",
+    "api",
+    "blobStorage",
+    "database",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Distribuição Global",
+      "description": "Coloque CDN no caminho de entrega para leituras resilientes.",
+      "requiredAll": [
+        "client",
+        "cdn"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "cdn"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Storage Correto para Mídia",
+      "description": "Blob storage deve armazenar objetos de evidência.",
+      "requiredAll": [
+        "api",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "blobStorage"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Autoridade de Metadados",
+      "description": "Use banco para metadados, não blobs diretamente.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ],
+      "discouragedComponents": [
+        "cache"
+      ]
+    }
+  ]
+}

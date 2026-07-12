@@ -1,0 +1,45 @@
+{
+  "id": "builder-02",
+  "number": 2,
+  "title": "Evidence Media Service",
+  "subtitle": "Large files and stale metadata are breaking evidence retrieval",
+  "objective": "Pick the right storage type for large objects and wire metadata update flow correctly.",
+  "constraints": [
+    "Use storage suitable for large binary files",
+    "Propagate metadata updates through async processing",
+    "Minimize stale read paths"
+  ],
+  "availableComponents": ["client", "cdn", "loadBalancer", "api", "cache", "database", "blobStorage", "queue", "worker"],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Correct Storage Choice",
+      "description": "Blob storage is preferred for media objects.",
+      "requiredAll": ["api", "blobStorage"],
+      "preferredConnections": [
+        { "from": "api", "to": "blobStorage" }
+      ],
+      "discouragedComponents": ["database"]
+    },
+    {
+      "id": "c2",
+      "title": "Async Metadata Pipeline",
+      "description": "Queue + worker decouple metadata updates from request path.",
+      "requiredAll": ["queue", "worker"],
+      "preferredConnections": [
+        { "from": "api", "to": "queue" },
+        { "from": "queue", "to": "worker" },
+        { "from": "worker", "to": "database" }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Fast Delivery",
+      "description": "CDN or cache should help serve frequently accessed evidence.",
+      "requiredAnyOf": ["cdn", "cache"],
+      "preferredConnections": [
+        { "from": "client", "to": "cdn" }
+      ]
+    }
+  ]
+}

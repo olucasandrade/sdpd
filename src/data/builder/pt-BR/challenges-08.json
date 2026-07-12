@@ -1,0 +1,71 @@
+{
+  "id": "builder-08",
+  "number": 8,
+  "title": "Latência na Busca de Mandados",
+  "subtitle": "Consultas de mandado estouram SLA no pico",
+  "objective": "Otimize a arquitetura de consulta para leituras rápidas com escritas consistentes.",
+  "constraints": [
+    "Caminho rápido de leitura",
+    "Persistência explícita de escrita",
+    "Evite componentes desnecessários"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "cache",
+    "database",
+    "cdn"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Otimização de Leitura",
+      "description": "Adicione cache para buscas frequentes de mandado.",
+      "requiredAll": [
+        "api",
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "cache"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Entrada Controlada",
+      "description": "Distribua tráfego de busca via load balancer.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Store Transacional",
+      "description": "Persista escritas em banco durável.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

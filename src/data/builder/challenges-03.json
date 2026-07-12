@@ -1,0 +1,45 @@
+{
+  "id": "builder-03",
+  "number": 3,
+  "title": "Dispatch Backlog",
+  "subtitle": "Emergency notifications are delayed under load",
+  "objective": "Design a queue-based processing architecture that stays responsive during spikes.",
+  "constraints": [
+    "Separate synchronous API from heavy async work",
+    "Use queue-driven fan-out processing",
+    "Keep a clear path from intake to persistence"
+  ],
+  "availableComponents": ["client", "loadBalancer", "api", "database", "queue", "worker", "cache"],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Intake Reliability",
+      "description": "Front requests with load balancer and API tier.",
+      "requiredAll": ["client", "loadBalancer", "api"],
+      "preferredConnections": [
+        { "from": "client", "to": "loadBalancer" },
+        { "from": "loadBalancer", "to": "api" }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Backpressure Control",
+      "description": "Queue and workers should absorb bursts before persistence.",
+      "requiredAll": ["queue", "worker", "database"],
+      "preferredConnections": [
+        { "from": "api", "to": "queue" },
+        { "from": "queue", "to": "worker" },
+        { "from": "worker", "to": "database" }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Response Optimization",
+      "description": "Use cache to reduce repeated dispatch lookup latency.",
+      "requiredAnyOf": ["cache"],
+      "preferredConnections": [
+        { "from": "api", "to": "cache" }
+      ]
+    }
+  ]
+}

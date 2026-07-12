@@ -1,0 +1,74 @@
+{
+  "id": "builder-23",
+  "number": 23,
+  "title": "Roteador de Alertas Multi-Canal",
+  "subtitle": "Despacho de alertas para múltiplos canais é instável",
+  "objective": "Monte arquitetura confiável multi-canal com buffer e logs duráveis de despacho.",
+  "constraints": [
+    "Garanta fan-out assíncrono por canal",
+    "Evite fan-out síncrono direto",
+    "Persista resultados finais por canal"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "blobStorage",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Fan-Out com Buffer por Canal",
+      "description": "Despacho deve ocorrer por fila e workers.",
+      "requiredAll": [
+        "api",
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Entrada Confiável",
+      "description": "Use load balancer na frente da API de alertas.",
+      "requiredAll": [
+        "client",
+        "loadBalancer"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Trilha de Auditoria de Despacho",
+      "description": "Persista resultados por canal no storage.",
+      "requiredAnyOf": [
+        "database",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

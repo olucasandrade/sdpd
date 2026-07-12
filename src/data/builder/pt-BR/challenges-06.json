@@ -1,0 +1,71 @@
+{
+  "id": "builder-06",
+  "number": 6,
+  "title": "Controle de Enchente na Fila",
+  "subtitle": "A ingestão de incidentes colapsa em tráfego com picos",
+  "objective": "Separe ingestão de processamento e evite que sobrecarga da fila derrube as APIs.",
+  "constraints": [
+    "Mantenha APIs responsivas",
+    "Use processamento orientado a fila",
+    "Armazene saída processada"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Isolamento de Entrada",
+      "description": "A API deve delegar trabalho para a fila rapidamente.",
+      "requiredAll": [
+        "api",
+        "queue"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Pipeline de Worker",
+      "description": "Workers devem drenar a fila e persistir resultados.",
+      "requiredAll": [
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "queue",
+          "to": "worker"
+        },
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Entrada Segura",
+      "description": "Proteja API com roteamento client -> load balancer.",
+      "requiredAll": [
+        "client",
+        "loadBalancer"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        }
+      ]
+    }
+  ]
+}

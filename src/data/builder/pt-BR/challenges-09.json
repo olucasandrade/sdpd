@@ -1,0 +1,74 @@
+{
+  "id": "builder-09",
+  "number": 9,
+  "title": "Tempestade de Fan-Out de Relatórios",
+  "subtitle": "Um relatório aciona várias atualizações downstream",
+  "objective": "Crie fluxo assíncrono de fan-out mantendo APIs rápidas para usuários.",
+  "constraints": [
+    "Desacople fan-out da rota de requisição",
+    "Use workers consumidores",
+    "Persista estado compartilhado"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "blobStorage",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Fan-Out Assíncrono",
+      "description": "Fila é obrigatória antes da expansão com workers.",
+      "requiredAll": [
+        "api",
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Camada de Entrada Estável",
+      "description": "Use load balancer na frente da API.",
+      "requiredAll": [
+        "client",
+        "loadBalancer"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Estado Durável",
+      "description": "O estado processado deve ser persistido.",
+      "requiredAnyOf": [
+        "database",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

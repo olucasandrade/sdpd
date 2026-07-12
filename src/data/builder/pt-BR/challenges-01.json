@@ -1,0 +1,44 @@
+{
+  "id": "builder-01",
+  "number": 1,
+  "title": "API no Horário de Pico",
+  "subtitle": "Picos de tráfego estão causando timeout nos boletins",
+  "objective": "Escolha e conecte componentes que absorvam picos com fluxo estável.",
+  "constraints": [
+    "Priorize escalabilidade horizontal",
+    "Evite gargalos únicos no roteamento",
+    "Conecte componentes no fluxo de tráfego correto"
+  ],
+  "availableComponents": ["client", "cdn", "loadBalancer", "api", "cache", "database"],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Distribuição de Tráfego",
+      "description": "Use load balancer na frente dos serviços de API.",
+      "requiredAll": ["client", "loadBalancer", "api"],
+      "preferredConnections": [
+        { "from": "client", "to": "loadBalancer" },
+        { "from": "loadBalancer", "to": "api" }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Aceleração de Leitura",
+      "description": "Adicione cache ou CDN para aliviar a API em leituras repetidas.",
+      "requiredAnyOf": ["cache", "cdn"],
+      "preferredConnections": [
+        { "from": "api", "to": "cache" }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Fonte de Verdade Persistente",
+      "description": "Persista as requisições da API em armazenamento durável.",
+      "requiredAnyOf": ["database", "blobStorage"],
+      "preferredConnections": [
+        { "from": "api", "to": "database" },
+        { "from": "api", "to": "blobStorage" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "id": "builder-11",
+  "number": 11,
+  "title": "Citizen Portal Surge",
+  "subtitle": "Public portal traffic spikes during citywide incidents",
+  "objective": "Assemble a high-throughput frontend delivery path with safe backend pressure control.",
+  "constraints": [
+    "Optimize edge delivery",
+    "Protect backend APIs",
+    "Cache repetitive reads"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "loadBalancer",
+    "api",
+    "cache",
+    "database"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Edge Offload",
+      "description": "Use CDN to absorb public content spikes.",
+      "requiredAll": [
+        "client",
+        "cdn"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "cdn"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Backend Protection",
+      "description": "Route origin calls through load balancer and API.",
+      "requiredAll": [
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "cdn",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Repeat Query Relief",
+      "description": "Use cache on read-heavy API endpoints.",
+      "requiredAll": [
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "cache"
+        }
+      ]
+    }
+  ]
+}

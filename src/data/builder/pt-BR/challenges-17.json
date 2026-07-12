@@ -1,0 +1,70 @@
+{
+  "id": "builder-17",
+  "number": 17,
+  "title": "Rollout com Divisão de Tráfego",
+  "subtitle": "Novo rollout de API causa comportamento instável",
+  "objective": "Monte topologia segura de rollout com entrada controlada e fallback resiliente.",
+  "constraints": [
+    "Controle o caminho de entrada",
+    "Preserve estabilidade da rota antiga",
+    "Persista estado com segurança"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "cache",
+    "database",
+    "queue"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Entrada Controlada",
+      "description": "Load balancer deve ficar na frente da superfície de rollout.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Cache de Estabilidade",
+      "description": "Cache ajuda a absorver leituras repetidas durante rollout.",
+      "requiredAll": [
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "cache"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Backend Durável",
+      "description": "Persista escritas do rollout em banco durável.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

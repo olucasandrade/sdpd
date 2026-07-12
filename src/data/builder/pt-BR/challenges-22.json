@@ -1,0 +1,76 @@
+{
+  "id": "builder-22",
+  "number": 22,
+  "title": "Enriquecimento Assíncrono de Relatórios",
+  "subtitle": "Enriquecer na requisição deixa envio lento",
+  "objective": "Leve enriquecimento para workers mantendo ingestão de relatórios responsiva.",
+  "constraints": [
+    "A rota síncrona deve ser enxuta",
+    "Use fila para jobs de enriquecimento",
+    "Armazene saída enriquecida"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Ingestão Enxuta",
+      "description": "A entrada deve terminar rapidamente na API.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Enriquecimento em Fila",
+      "description": "Use fila e worker para enriquecimento.",
+      "requiredAll": [
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Persistência do Resultado",
+      "description": "Persista relatórios enriquecidos no banco.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "id": "builder-21",
+  "number": 21,
+  "title": "Pico de Custo na API de Evidências",
+  "subtitle": "Leituras idênticas aumentam custo de computação",
+  "objective": "Reestruture caminho de leitura para elevar hit rate de cache/CDN e reduzir carga da API.",
+  "constraints": [
+    "Prefira caminhos cacheáveis",
+    "Mantenha fonte durável de verdade",
+    "Evite componentes assíncronos desnecessários"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "cache",
+    "loadBalancer",
+    "api",
+    "database",
+    "queue"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Cache no Caminho de Leitura",
+      "description": "Use CDN ou cache para reduzir idas à API.",
+      "requiredAnyOf": [
+        "cdn",
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "cdn"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "API como Guardiã",
+      "description": "Acesso a dados persistentes deve ficar atrás da API.",
+      "requiredAll": [
+        "api",
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Estabilidade de Entrada",
+      "description": "Use load balancer para proteger API de picos.",
+      "requiredAll": [
+        "loadBalancer"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        }
+      ],
+      "discouragedComponents": [
+        "queue"
+      ]
+    }
+  ]
+}

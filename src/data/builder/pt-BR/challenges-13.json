@@ -1,0 +1,74 @@
+{
+  "id": "builder-13",
+  "number": 13,
+  "title": "Réplica de Leitura na Busca de Casos",
+  "subtitle": "Saturação no banco primário reduz consultas",
+  "objective": "Introduza camadas de escala de leitura mantendo caminho consistente de escrita.",
+  "constraints": [
+    "Reduza carga de leitura no primário",
+    "Mantenha autoridade explícita de escrita",
+    "Evite arquitetura só assíncrona"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "cache",
+    "database",
+    "queue"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Camada de Escala de Leitura",
+      "description": "Use cache e API para chamadas intensivas de leitura.",
+      "requiredAll": [
+        "api",
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "cache"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Entrada Estável de Consulta",
+      "description": "Requisições devem ser balanceadas antes da API.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Escritas Autoritativas",
+      "description": "Mantenha escrita durável com banco de dados.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ],
+      "discouragedComponents": [
+        "queue"
+      ]
+    }
+  ]
+}

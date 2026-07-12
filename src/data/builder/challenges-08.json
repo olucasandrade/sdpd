@@ -1,0 +1,71 @@
+{
+  "id": "builder-08",
+  "number": 8,
+  "title": "Warrant Search Latency",
+  "subtitle": "Warrant lookups exceed SLA at peak traffic",
+  "objective": "Optimize query architecture for fast reads while preserving consistent writes.",
+  "constraints": [
+    "Fast read path",
+    "Explicit write persistence",
+    "Avoid unnecessary components"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "cache",
+    "database",
+    "cdn"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Read Optimization",
+      "description": "Add cache for frequent warrant lookups.",
+      "requiredAll": [
+        "api",
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "cache"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Controlled Entry",
+      "description": "Distribute search traffic via load balancer.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Transactional Store",
+      "description": "Persist writes in a durable database.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

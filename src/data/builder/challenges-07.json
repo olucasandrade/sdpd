@@ -1,0 +1,70 @@
+{
+  "id": "builder-07",
+  "number": 7,
+  "title": "Cross-Region Evidence Mirror",
+  "subtitle": "Single-region media outages block investigations",
+  "objective": "Design a storage and delivery setup that keeps media accessible during regional incidents.",
+  "constraints": [
+    "Keep read path resilient",
+    "Use globally cacheable delivery",
+    "Retain authoritative metadata"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "loadBalancer",
+    "api",
+    "blobStorage",
+    "database",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Global Distribution",
+      "description": "Place CDN in the delivery path for resilient reads.",
+      "requiredAll": [
+        "client",
+        "cdn"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "cdn"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Media Storage Fit",
+      "description": "Blob storage should hold regional evidence objects.",
+      "requiredAll": [
+        "api",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "blobStorage"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Metadata Authority",
+      "description": "Use database for metadata, not blobs directly.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ],
+      "discouragedComponents": [
+        "cache"
+      ]
+    }
+  ]
+}

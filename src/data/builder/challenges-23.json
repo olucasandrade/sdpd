@@ -1,0 +1,74 @@
+{
+  "id": "builder-23",
+  "number": 23,
+  "title": "Multi-Channel Alert Router",
+  "subtitle": "Alert dispatch to multiple channels is unreliable",
+  "objective": "Build a reliable multi-channel architecture with buffering and durable dispatch logs.",
+  "constraints": [
+    "Guarantee async channel fan-out",
+    "Avoid direct synchronous fan-out",
+    "Persist final channel outcomes"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "blobStorage",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Buffered Channel Fan-Out",
+      "description": "Dispatch should happen through queue and worker layers.",
+      "requiredAll": [
+        "api",
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Reliable Entry",
+      "description": "Use load balancer in front of alert API.",
+      "requiredAll": [
+        "client",
+        "loadBalancer"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Dispatch Audit Trail",
+      "description": "Persist per-channel outcomes in storage.",
+      "requiredAnyOf": [
+        "database",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

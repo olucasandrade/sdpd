@@ -1,0 +1,45 @@
+{
+  "id": "builder-03",
+  "number": 3,
+  "title": "Fila de Despacho Travada",
+  "subtitle": "Notificações de emergência atrasam sob carga",
+  "objective": "Desenhe uma arquitetura com fila que mantenha resposta sob picos.",
+  "constraints": [
+    "Separe API síncrona de trabalho assíncrono pesado",
+    "Use processamento orientado a fila",
+    "Mantenha caminho claro da entrada até persistência"
+  ],
+  "availableComponents": ["client", "loadBalancer", "api", "database", "queue", "worker", "cache"],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Confiabilidade na Entrada",
+      "description": "Faça front de requisições com load balancer e camada de API.",
+      "requiredAll": ["client", "loadBalancer", "api"],
+      "preferredConnections": [
+        { "from": "client", "to": "loadBalancer" },
+        { "from": "loadBalancer", "to": "api" }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Controle de Backpressure",
+      "description": "Fila e workers devem absorver picos antes da persistência.",
+      "requiredAll": ["queue", "worker", "database"],
+      "preferredConnections": [
+        { "from": "api", "to": "queue" },
+        { "from": "queue", "to": "worker" },
+        { "from": "worker", "to": "database" }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Otimização de Resposta",
+      "description": "Use cache para reduzir latência em consultas repetidas.",
+      "requiredAnyOf": ["cache"],
+      "preferredConnections": [
+        { "from": "api", "to": "cache" }
+      ]
+    }
+  ]
+}

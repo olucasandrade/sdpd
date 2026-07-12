@@ -1,0 +1,71 @@
+{
+  "id": "builder-16",
+  "number": 16,
+  "title": "Cold Archive Retrieval",
+  "subtitle": "Historical evidence retrieval takes minutes",
+  "objective": "Design a hybrid retrieval path for cold blob data and hot metadata indexes.",
+  "constraints": [
+    "Use correct storage per data type",
+    "Cache repetitive lookups",
+    "Preserve metadata index"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "cache",
+    "database",
+    "blobStorage",
+    "cdn"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Hybrid Storage",
+      "description": "Combine blob storage for files and database for metadata.",
+      "requiredAll": [
+        "blobStorage",
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "blobStorage"
+        },
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Lookup Acceleration",
+      "description": "Use cache for repeated metadata searches.",
+      "requiredAll": [
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "cache"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Client Access Layer",
+      "description": "Requests should flow through API boundary.",
+      "requiredAll": [
+        "client",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        }
+      ]
+    }
+  ]
+}

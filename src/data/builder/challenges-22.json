@@ -1,0 +1,76 @@
+{
+  "id": "builder-22",
+  "number": 22,
+  "title": "Asynchronous Report Enrichment",
+  "subtitle": "On-request enrichment makes filing reports too slow",
+  "objective": "Move enrichment to workers while keeping report intake responsive.",
+  "constraints": [
+    "Synchronous path must remain slim",
+    "Use queue for enrichment jobs",
+    "Store enriched output"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Lean Intake",
+      "description": "Ingress should terminate at API quickly.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Queued Enrichment",
+      "description": "Use queue and worker for report enrichment.",
+      "requiredAll": [
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Result Persistence",
+      "description": "Persist enriched reports in database.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

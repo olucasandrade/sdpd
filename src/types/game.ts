@@ -16,6 +16,8 @@ export interface GameState {
   completedCases: number;
   guideOpen: boolean;
   locale: Locale;
+  pendingRankUp: Rank | null;
+  tutorialSeen: boolean;
 }
 
 export interface Rank {

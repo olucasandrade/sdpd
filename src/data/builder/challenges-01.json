@@ -1,0 +1,44 @@
+{
+  "id": "builder-01",
+  "number": 1,
+  "title": "Rush Hour API",
+  "subtitle": "Traffic surges are causing police report timeouts",
+  "objective": "Choose and connect components that absorb spikes while keeping the request path stable.",
+  "constraints": [
+    "Prioritize horizontal scalability",
+    "Avoid single bottlenecks in request routing",
+    "Connect components in the intended traffic flow"
+  ],
+  "availableComponents": ["client", "cdn", "loadBalancer", "api", "cache", "database"],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Traffic Distribution",
+      "description": "Use a load balancer in front of API services.",
+      "requiredAll": ["client", "loadBalancer", "api"],
+      "preferredConnections": [
+        { "from": "client", "to": "loadBalancer" },
+        { "from": "loadBalancer", "to": "api" }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Read Acceleration",
+      "description": "Add a cache or CDN to reduce API pressure on repeated reads.",
+      "requiredAnyOf": ["cache", "cdn"],
+      "preferredConnections": [
+        { "from": "api", "to": "cache" }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Persistent Source of Truth",
+      "description": "Persist requests through API into durable storage.",
+      "requiredAnyOf": ["database", "blobStorage"],
+      "preferredConnections": [
+        { "from": "api", "to": "database" },
+        { "from": "api", "to": "blobStorage" }
+      ]
+    }
+  ]
+}

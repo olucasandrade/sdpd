@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Case } from '../../types/case';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
@@ -14,7 +14,7 @@ interface CaseSuccessProps {
 
 export function CaseSuccess({ caseData }: CaseSuccessProps) {
   const navigate = useNavigate();
-  const { progress } = useGameState();
+  const { progress, pendingRankUp, clearRankUp } = useGameState();
   const { t } = useTranslation();
   const allCases = useAllCases();
   const concepts = useConcepts();
@@ -48,41 +48,67 @@ export function CaseSuccess({ caseData }: CaseSuccessProps) {
         ))}
       </div>
 
+      <AnimatePresence>
+        {pendingRankUp && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-4 inline-block px-4 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/40 neon-border"
+          >
+            <p className="text-xs font-mono text-amber-400 tracking-widest">
+              {t('rankUp.title')} — {t('rankUp.subtitle')} {t(`rank.${pendingRankUp.id}`)}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="mb-4 mt-2">
         <Badge icon={caseData.badge.icon} name={caseData.badge.name} size="lg" />
       </div>
 
       <h2 className="font-display text-3xl text-amber-400 tracking-wider mb-1">{t('success.caseSolved')}</h2>
-      <p className="text-white/40 text-xs font-mono">
+      <p className="text-white/60 text-xs font-mono">
         {t('success.badgeEarned')} <span className="text-amber-300">{caseData.badge.name}</span>
       </p>
 
       {caseProgress && (
-        <div className="flex justify-center gap-6 my-4 text-[11px] font-mono text-white/30">
+        <div className="flex justify-center gap-6 my-4 text-xs font-mono text-white/45">
           <div>
-            {t('success.diagnosis')} <span className="text-white/60">{caseProgress.rootCauseAttempts} {caseProgress.rootCauseAttempts !== 1 ? t('success.attempts') : t('success.attempt')}</span>
+            {t('success.diagnosis')} <span className="text-white/70">{caseProgress.rootCauseAttempts} {caseProgress.rootCauseAttempts !== 1 ? t('success.attempts') : t('success.attempt')}</span>
           </div>
           <div>
-            {t('success.fix')} <span className="text-white/60">{caseProgress.fixAttempts} {caseProgress.fixAttempts !== 1 ? t('success.attempts') : t('success.attempt')}</span>
+            {t('success.fix')} <span className="text-white/70">{caseProgress.fixAttempts} {caseProgress.fixAttempts !== 1 ? t('success.attempts') : t('success.attempt')}</span>
           </div>
         </div>
       )}
 
       {concept && (
         <div className="bg-noir-950/80 rounded-lg p-4 text-left mb-5 border border-noir-700/30">
-          <p className="text-[10px] font-mono text-cyan-400/60 uppercase tracking-widest mb-1">{t('success.conceptUnlocked')}</p>
+          <p className="text-xs font-mono text-cyan-400/60 uppercase tracking-widest mb-1">{t('success.conceptUnlocked')}</p>
           <p className="text-sm font-medium text-white/80 mb-0.5">{concept.title}</p>
-          <p className="text-xs text-white/30">{concept.summary}</p>
+          <p className="text-sm text-white/70">{concept.summary}</p>
         </div>
       )}
 
       <div className="flex justify-center gap-3">
         {hasNext && nextCaseId && (
-          <Button onClick={() => navigate(`/case/${nextCaseId}`)}>
+          <Button
+            onClick={() => {
+              clearRankUp();
+              navigate(`/case/${nextCaseId}`);
+            }}
+          >
             {t('success.nextCase')}
           </Button>
         )}
-        <Button variant="secondary" onClick={() => navigate('/')}>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            clearRankUp();
+            navigate('/');
+          }}
+        >
           {t('success.caseBoard')}
         </Button>
       </div>

@@ -1,0 +1,72 @@
+{
+  "id": "builder-18",
+  "number": 18,
+  "title": "Picos de Upload de Testemunhas",
+  "subtitle": "Vídeos de testemunhas saturam a plataforma",
+  "objective": "Construa arquitetura de ingestão de mídia que escale com picos de upload.",
+  "constraints": [
+    "Use object storage",
+    "Enfileire processamento caro",
+    "Mantenha metadados pesquisáveis"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "blobStorage",
+    "database"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Destino de Upload em Blob",
+      "description": "A API deve escrever objetos de mídia no blob storage.",
+      "requiredAll": [
+        "api",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "blobStorage"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Desacoplamento de Processamento",
+      "description": "Fila e worker desacoplam o processamento de upload.",
+      "requiredAll": [
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Persistência de Metadados",
+      "description": "Armazene metadados de testemunha em banco.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

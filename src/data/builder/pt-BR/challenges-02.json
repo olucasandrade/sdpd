@@ -1,0 +1,45 @@
+{
+  "id": "builder-02",
+  "number": 2,
+  "title": "Serviço de Mídia de Evidências",
+  "subtitle": "Arquivos grandes e metadados defasados quebram a consulta",
+  "objective": "Escolha o tipo de storage correto para arquivos grandes e conecte o fluxo de atualização.",
+  "constraints": [
+    "Use armazenamento adequado para binários grandes",
+    "Propague atualização de metadados com processamento assíncrono",
+    "Minimize leituras desatualizadas"
+  ],
+  "availableComponents": ["client", "cdn", "loadBalancer", "api", "cache", "database", "blobStorage", "queue", "worker"],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Escolha Correta de Storage",
+      "description": "Blob storage é preferível para objetos de mídia.",
+      "requiredAll": ["api", "blobStorage"],
+      "preferredConnections": [
+        { "from": "api", "to": "blobStorage" }
+      ],
+      "discouragedComponents": ["database"]
+    },
+    {
+      "id": "c2",
+      "title": "Pipeline Assíncrono de Metadados",
+      "description": "Fila + worker desacoplam atualizações da rota de requisição.",
+      "requiredAll": ["queue", "worker"],
+      "preferredConnections": [
+        { "from": "api", "to": "queue" },
+        { "from": "queue", "to": "worker" },
+        { "from": "worker", "to": "database" }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Entrega Rápida",
+      "description": "CDN ou cache devem servir evidências acessadas com frequência.",
+      "requiredAnyOf": ["cdn", "cache"],
+      "preferredConnections": [
+        { "from": "client", "to": "cdn" }
+      ]
+    }
+  ]
+}

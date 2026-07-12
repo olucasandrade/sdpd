@@ -1,0 +1,74 @@
+{
+  "id": "builder-09",
+  "number": 9,
+  "title": "Report Fan-Out Storm",
+  "subtitle": "One incident report triggers many downstream updates",
+  "objective": "Create an asynchronous fan-out flow that keeps user-facing APIs fast.",
+  "constraints": [
+    "Decouple fan-out from request path",
+    "Use worker consumers",
+    "Persist shared state"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "blobStorage",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Async Fan-Out",
+      "description": "Queue is required before worker expansion.",
+      "requiredAll": [
+        "api",
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Stable Entry Tier",
+      "description": "Use load balancer in front of API.",
+      "requiredAll": [
+        "client",
+        "loadBalancer"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Durable State",
+      "description": "Processed fan-out state should be persisted.",
+      "requiredAnyOf": [
+        "database",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

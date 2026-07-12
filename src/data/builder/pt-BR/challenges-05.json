@@ -1,0 +1,73 @@
+{
+  "id": "builder-05",
+  "number": 5,
+  "title": "Colapso do Cache Quente",
+  "subtitle": "Picos de leitura estão sobrecarregando o storage primário",
+  "objective": "Projete um caminho de leitura que alivie o storage persistente durante picos.",
+  "constraints": [
+    "Priorize latência de leitura",
+    "Evite tempestade direta no storage",
+    "Mantenha caminho de escrita explícito"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "loadBalancer",
+    "api",
+    "cache",
+    "database",
+    "blobStorage"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Cache na Frente",
+      "description": "Sirva leituras quentes via cache entre API e storage.",
+      "requiredAll": [
+        "api",
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "cache"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Entrada Elástica",
+      "description": "Use load balancer para distribuir picos entre APIs.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Fonte Persistente",
+      "description": "O caminho de escrita deve alcançar storage durável.",
+      "requiredAnyOf": [
+        "database",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

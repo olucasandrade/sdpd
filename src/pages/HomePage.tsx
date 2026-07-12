@@ -1,30 +1,30 @@
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useAllCases } from "../hooks/useCase";
+import { useAllCases, useConcepts } from "../hooks/useCase";
 import { useGameState } from "../hooks/useGameState";
 import { useTranslation } from "../i18n";
 import { Button } from "../components/common/Button";
-
-const categoryKeys = [
-  { key: "category.replication", range: [1, 3], color: "amber" },
-  { key: "category.consistency", range: [4, 8], color: "cyan" },
-  { key: "category.loadBalancing", range: [9, 13], color: "amber" },
-  { key: "category.caching", range: [14, 17], color: "cyan" },
-  { key: "category.messaging", range: [18, 21], color: "amber" },
-  { key: "category.storage", range: [22, 25], color: "cyan" },
-  { key: "category.network", range: [26, 29], color: "amber" },
-  { key: "category.advanced", range: [30, 33], color: "cyan" },
-];
+import { CATEGORIES } from "../data/categories";
 
 export function HomePage() {
   const navigate = useNavigate();
   const cases = useAllCases();
-  const { progress, isCaseUnlocked, completedCases, rank } = useGameState();
+  const concepts = useConcepts();
+  const { progress, isCaseUnlocked, completedCases, rank, currentCaseId } = useGameState();
   const { t } = useTranslation();
 
   const pct =
     cases.length > 0 ? Math.round((completedCases / cases.length) * 100) : 0;
   const rankTitle = t(`rank.${rank.id}`);
+
+  const continueCase = useMemo(() => {
+    const inProgress = currentCaseId ? cases.find((c) => c.id === currentCaseId) : null;
+    if (inProgress && isCaseUnlocked(inProgress.number) && !progress[inProgress.id]?.completed) {
+      return inProgress;
+    }
+    return cases.find((c) => isCaseUnlocked(c.number) && !progress[c.id]?.completed) ?? null;
+  }, [currentCaseId, cases, progress, isCaseUnlocked]);
 
   return (
     <div className="h-full overflow-y-auto">
@@ -95,7 +95,7 @@ export function HomePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="text-white/30 text-sm max-w-md mx-auto mt-4 leading-relaxed"
+            className="text-white/70 text-sm max-w-md mx-auto mt-4 leading-relaxed"
           >
             {t("home.heroSubtitle")}
           </motion.p>
@@ -111,27 +111,63 @@ export function HomePage() {
               <p className="text-amber-400 text-lg font-display tracking-wider">
                 {rankTitle.toUpperCase()}
               </p>
-              <p className="text-white/20">{t("home.rank")}</p>
+              <p className="text-white/45">{t("home.rank")}</p>
             </div>
             <div className="w-px h-8 bg-noir-600" />
             <div className="text-center">
               <p className="text-white/80 text-lg font-display">
                 {completedCases}/{cases.length}
               </p>
-              <p className="text-white/20">{t("home.cases")}</p>
+              <p className="text-white/45">{t("home.cases")}</p>
             </div>
             <div className="w-px h-8 bg-noir-600" />
             <div className="text-center">
               <p className="text-cyan-400 text-lg font-display">{pct}%</p>
-              <p className="text-white/20">{t("home.cleared")}</p>
+              <p className="text-white/45">{t("home.cleared")}</p>
             </div>
           </motion.div>
+
+          {continueCase && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              className="mt-6"
+            >
+              <Button onClick={() => navigate(`/case/${continueCase.id}`)}>
+                {t("home.continue")}: {String(continueCase.number).padStart(2, "0")} — {continueCase.title}
+              </Button>
+            </motion.div>
+          )}
         </motion.div>
       </div>
 
-      {/* Case Board */}
       <div className="max-w-4xl mx-auto px-6 pb-6">
-        {categoryKeys.map((cat, catIdx) => {
+        {/* Chaos Simulator */}
+        <div className="mb-10">
+          <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-noir-900/60 p-6">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.12)_0%,transparent_70%)]" />
+            <div className="relative flex flex-col md:flex-row md:items-center gap-4">
+              <div className="flex-1">
+                <p className="text-xs font-mono text-cyan-400/70 uppercase tracking-widest">
+                  {t("chaos.sectionLabel")}
+                </p>
+                <h2 className="font-display text-2xl text-white/90 mt-1">
+                  {t("chaos.sectionTitle")}
+                </h2>
+                <p className="text-sm text-white/70 mt-2 max-w-xl">
+                  {t("chaos.sectionSubtitle")}
+                </p>
+              </div>
+              <Button onClick={() => navigate("/chaos")} className="self-start md:self-center">
+                {t("chaos.sectionCta")}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Case Board */}
+        {CATEGORIES.map((cat, catIdx) => {
           const catCases = cases.filter(
             (c) => c.number >= cat.range[0] && c.number <= cat.range[1],
           );
@@ -155,7 +191,7 @@ export function HomePage() {
                   {label}
                 </h2>
                 <div className="flex-1 h-px bg-noir-700/50" />
-                <span className="text-[10px] font-mono text-white/15">
+                <span className="text-xs font-mono text-white/45">
                   {catCases.filter((c) => progress[c.id]?.completed).length}/
                   {catCases.length}
                 </span>
@@ -165,7 +201,9 @@ export function HomePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {catCases.map((c) => {
                   const unlocked = isCaseUnlocked(c.number);
-                  const done = progress[c.id]?.completed;
+                  const caseProgress = progress[c.id];
+                  const done = caseProgress?.completed;
+                  const concept = concepts.find((con) => con.id === c.conceptId);
 
                   return (
                     <motion.div
@@ -212,26 +250,40 @@ export function HomePage() {
                         >
                           {c.title}
                         </p>
-                        <p className="text-[11px] text-white/20 truncate">
+                        <p className="text-xs text-white/50 truncate">
                           {c.subtitle}
                         </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {concept && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-noir-700/50 text-white/45 truncate">
+                              {concept.title}
+                            </span>
+                          )}
+                          {done && caseProgress && (
+                            <span className="text-[10px] font-mono text-status-healthy/50 shrink-0">
+                              {caseProgress.rootCauseAttempts + caseProgress.fixAttempts === 2
+                                ? t("home.solvedFirstTry")
+                                : `${t("home.solvedIn")} ${caseProgress.rootCauseAttempts + caseProgress.fixAttempts} ${t("home.solvedAttempts")}`}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Status */}
                       <div className="shrink-0">
                         {done ? (
-                          <span className="text-[10px] font-mono text-status-healthy/60">
+                          <span className="text-xs font-mono text-status-healthy/60">
                             {t("home.statusCleared")}
                           </span>
                         ) : unlocked ? (
                           <Button
                             onClick={() => navigate(`/case/${c.id}`)}
-                            className="text-[11px] py-1 px-3"
+                            className="text-xs py-1 px-3"
                           >
                             {t("home.open")}
                           </Button>
                         ) : (
-                          <span className="text-[10px] font-mono text-white/10">
+                          <span className="text-xs font-mono text-white/30">
                             {t("home.statusLocked")}
                           </span>
                         )}

@@ -1,0 +1,72 @@
+{
+  "id": "builder-14",
+  "number": 14,
+  "title": "Bodycam Ingestion Pipeline",
+  "subtitle": "Bodycam uploads block all API threads",
+  "objective": "Move heavy media ingestion to async processing and proper object storage.",
+  "constraints": [
+    "Offload heavy writes",
+    "Use object storage for media",
+    "Keep metadata queryable"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "blobStorage",
+    "database",
+    "cdn"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Media Offload",
+      "description": "Use blob storage as target for bodycam objects.",
+      "requiredAll": [
+        "blobStorage",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "blobStorage"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Async Upload Processing",
+      "description": "Queue + worker should process ingestion post-request.",
+      "requiredAll": [
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Metadata Database",
+      "description": "Store searchable upload metadata in database.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

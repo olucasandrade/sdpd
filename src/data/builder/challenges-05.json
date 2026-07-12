@@ -1,0 +1,73 @@
+{
+  "id": "builder-05",
+  "number": 5,
+  "title": "Hot Cache Meltdown",
+  "subtitle": "Read spikes are hammering primary storage",
+  "objective": "Design a read path that offloads burst traffic from persistent storage.",
+  "constraints": [
+    "Prioritize read latency",
+    "Prevent direct read storms to storage",
+    "Keep write path explicit"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "loadBalancer",
+    "api",
+    "cache",
+    "database",
+    "blobStorage"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Cache Fronting",
+      "description": "Serve hot reads via cache between API and storage.",
+      "requiredAll": [
+        "api",
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "cache"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Elastic Entry",
+      "description": "Use load balancer to spread read bursts across API instances.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Persistent Source",
+      "description": "Write path must still reach durable storage.",
+      "requiredAnyOf": [
+        "database",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

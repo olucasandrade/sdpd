@@ -1,0 +1,70 @@
+{
+  "id": "builder-17",
+  "number": 17,
+  "title": "Traffic Split Rollout",
+  "subtitle": "New API version rollout causes unstable behavior",
+  "objective": "Build a safe rollout topology with controlled entry and resilient fallback storage.",
+  "constraints": [
+    "Control ingress path",
+    "Preserve old-path stability",
+    "Persist state safely"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "cache",
+    "database",
+    "queue"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Controlled Entry",
+      "description": "Load balancer must front API rollout surface.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Stability Cache",
+      "description": "Cache helps absorb repeated reads during rollout.",
+      "requiredAll": [
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "cache"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Durable Backend",
+      "description": "Persist rollout writes in durable database.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

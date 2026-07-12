@@ -1,0 +1,73 @@
+{
+  "id": "builder-12",
+  "number": 12,
+  "title": "Janela de Lote Forense",
+  "subtitle": "Jobs noturnos invadem o horário operacional",
+  "objective": "Separe processamento em lote das APIs online com pipelines assíncronos.",
+  "constraints": [
+    "Mantenha latência da API estável",
+    "Use processamento em lote assíncrono",
+    "Persista saídas processadas"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "blobStorage"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Canal de Lote Assíncrono",
+      "description": "O lote deve entrar na fila sem bloquear thread da API.",
+      "requiredAll": [
+        "api",
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Persistência de Saída",
+      "description": "Workers devem escrever saída em storage.",
+      "requiredAnyOf": [
+        "database",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "blobStorage"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Entrada Protegida da API",
+      "description": "Tráfego do cliente deve entrar via load balancer.",
+      "requiredAll": [
+        "client",
+        "loadBalancer"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        }
+      ]
+    }
+  ]
+}

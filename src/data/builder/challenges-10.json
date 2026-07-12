@@ -1,0 +1,71 @@
+{
+  "id": "builder-10",
+  "number": 10,
+  "title": "Cold Region Boot",
+  "subtitle": "A new region cannot warm up fast enough after failover",
+  "objective": "Design warm path components to reduce cold-start impact after regional failover.",
+  "constraints": [
+    "Accelerate first reads",
+    "Keep durable source separate",
+    "Avoid direct client-to-storage coupling"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "cache",
+    "loadBalancer",
+    "api",
+    "database",
+    "blobStorage"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Edge Warm Path",
+      "description": "CDN or cache should be present for warm-up reads.",
+      "requiredAnyOf": [
+        "cdn",
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "cdn"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "API Mediation",
+      "description": "Clients should reach storage through API layer.",
+      "requiredAll": [
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        },
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Regional Durability",
+      "description": "Persist source data in durable backing storage.",
+      "requiredAnyOf": [
+        "database",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "blobStorage"
+        }
+      ]
+    }
+  ]
+}

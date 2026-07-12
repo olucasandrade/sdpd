@@ -39,9 +39,9 @@ export function ClientNode({ data }: { data: ClientNodeData }) {
             <circle cx="10" cy="7" r="4" className="stroke-current" strokeWidth="1.5" fill="none" />
             <path d="M2 19c0-4.4 3.6-8 8-8s8 3.6 8 8" className="stroke-current" strokeWidth="1.5" fill="none" />
           </svg>
-          <span className="text-[11px] font-mono font-bold text-white/90">{data.label}</span>
+          <span className="text-xs font-mono font-bold text-white/90">{data.label}</span>
         </div>
-        <div className={`text-[9px] font-mono uppercase tracking-wider flex items-center gap-1.5 ${statusText[data.status]}`}>
+        <div className={`text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 ${statusText[data.status]}`}>
           <div className={`w-1.5 h-1.5 rounded-full ${data.status === 'healthy' ? 'bg-status-healthy' : data.status === 'degraded' ? 'bg-status-degraded' : 'bg-status-failed'} ${data.status === 'healthy' ? 'animate-pulse' : ''}`} />
           {data.status === 'failed' ? 'NO CONN' : data.status === 'degraded' ? 'STALE' : 'ONLINE'}
         </div>

@@ -1,0 +1,70 @@
+{
+  "id": "builder-21",
+  "number": 21,
+  "title": "Evidence API Cost Spike",
+  "subtitle": "Serving identical evidence reads drives compute costs up",
+  "objective": "Restructure read path to maximize cache/CDN hit rate and reduce API burden.",
+  "constraints": [
+    "Prefer cacheable response paths",
+    "Retain durable source of truth",
+    "Avoid unnecessary async components"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "cache",
+    "loadBalancer",
+    "api",
+    "database",
+    "queue"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Read Path Caching",
+      "description": "Use CDN or cache to reduce API round-trips.",
+      "requiredAnyOf": [
+        "cdn",
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "cdn"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "API as Gatekeeper",
+      "description": "Persistent data access should stay behind API.",
+      "requiredAll": [
+        "api",
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Ingress Stability",
+      "description": "Use load balancer to protect API from spikes.",
+      "requiredAll": [
+        "loadBalancer"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        }
+      ],
+      "discouragedComponents": [
+        "queue"
+      ]
+    }
+  ]
+}

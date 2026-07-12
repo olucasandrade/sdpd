@@ -1,0 +1,78 @@
+{
+  "id": "builder-04",
+  "number": 4,
+  "title": "Patrol Feed Failover",
+  "subtitle": "Live patrol feed drops whenever one API node fails",
+  "objective": "Build redundancy in ingress and processing so a single API failure does not break delivery.",
+  "constraints": [
+    "Avoid single ingress points",
+    "Maintain async delivery under API failures",
+    "Persist final events durably"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "blobStorage",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Redundant Ingress",
+      "description": "Route clients through a load balancer in front of APIs.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Buffered Delivery",
+      "description": "Queue and worker absorb temporary API node failures.",
+      "requiredAll": [
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Durable Writes",
+      "description": "Workers should persist processed events into storage.",
+      "requiredAnyOf": [
+        "database",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

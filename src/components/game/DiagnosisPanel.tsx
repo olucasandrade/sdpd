@@ -72,10 +72,10 @@ export function DiagnosisPanel({ caseData, onCaseComplete }: DiagnosisPanelProps
           <span className="font-display">{phase === 'rootCause' ? '01' : '02'}</span>
         </div>
         <div>
-          <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest">
+          <p className="text-xs font-mono text-white/45 uppercase tracking-widest">
             {phase === 'rootCause' ? t('diagnosis.diagnose') : t('diagnosis.prescribe')}
           </p>
-          <h3 className="text-sm font-medium text-white/90">{currentDiagnosis.question}</h3>
+          <h3 className="text-base font-medium text-white/90">{currentDiagnosis.question}</h3>
         </div>
       </div>
 
@@ -101,7 +101,7 @@ export function DiagnosisPanel({ caseData, onCaseComplete }: DiagnosisPanelProps
                   : 'border-noir-600/40 text-white/50 hover:border-noir-500/50 hover:text-white/70 hover:bg-noir-700/30'
               }`}
             >
-              <span className="font-mono text-[10px] text-white/20 mr-2">
+              <span className="font-mono text-xs text-white/45 mr-2">
                 {String.fromCharCode(65 + currentDiagnosis.options.indexOf(opt))}
               </span>
               {opt.text}
@@ -126,7 +126,7 @@ export function DiagnosisPanel({ caseData, onCaseComplete }: DiagnosisPanelProps
             }`}>
               {feedback.correct ? t('diagnosis.correct') : t('diagnosis.incorrect')}
             </p>
-            <p className="text-white/50 text-xs leading-relaxed">{feedback.text}</p>
+            <p className="text-white/70 text-sm leading-relaxed">{feedback.text}</p>
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import type { GameState, CaseProgress } from '../types/game';
+import type { GameState, CaseProgress, Rank } from '../types/game';
 import { RANKS } from '../types/game';
 import { loadState, saveState } from '../utils/storage';
+import { CATEGORIES } from '../data/categories';
 import type { Locale } from '../i18n';
 
 interface GameStore extends GameState {
@@ -12,6 +13,8 @@ interface GameStore extends GameState {
   toggleGuide: () => void;
   setLocale: (locale: Locale) => void;
   resetProgress: () => void;
+  clearRankUp: () => void;
+  dismissTutorial: () => void;
 }
 
 const defaultState: GameState = {
@@ -21,6 +24,8 @@ const defaultState: GameState = {
   completedCases: 0,
   guideOpen: false,
   locale: 'en',
+  pendingRankUp: null,
+  tutorialSeen: false,
 };
 
 const persisted = loadState<GameState>(defaultState);
@@ -69,14 +74,18 @@ export const useGameState = create<GameStore>((set, get) => ({
     progress[caseId] = current;
 
     const completedCases = Object.values(progress).filter((p) => p.completed).length;
+    const oldRank = get().rank;
     const rank = [...RANKS].reverse().find((r) => completedCases >= r.requiredCases) ?? RANKS[0];
+    const pendingRankUp: Rank | null = rank.id !== oldRank.id ? rank : get().pendingRankUp;
 
-    set({ progress, completedCases, rank });
-    saveState(get());
+    set({ progress, completedCases, rank, pendingRankUp });
+    saveState({ ...get(), pendingRankUp: null });
   },
 
   isCaseUnlocked: (caseNumber) => {
     if (caseNumber === 1) return true;
+    const category = CATEGORIES.find((cat) => caseNumber >= cat.range[0] && caseNumber <= cat.range[1]);
+    if (category && caseNumber === category.range[0]) return true;
     const prevId = `case-${String(caseNumber - 1).padStart(2, '0')}`;
     return get().progress[prevId]?.completed ?? false;
   },
@@ -95,5 +104,14 @@ export const useGameState = create<GameStore>((set, get) => ({
   resetProgress: () => {
     set(defaultState);
     saveState(defaultState);
+  },
+
+  clearRankUp: () => {
+    set({ pendingRankUp: null });
+  },
+
+  dismissTutorial: () => {
+    set({ tutorialSeen: true });
+    saveState({ ...get(), tutorialSeen: true });
   },
 }));

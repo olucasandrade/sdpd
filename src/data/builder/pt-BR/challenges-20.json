@@ -1,0 +1,72 @@
+{
+  "id": "builder-20",
+  "number": 20,
+  "title": "Reconstrução de Linha do Tempo",
+  "subtitle": "Reconstruções sobrecarregam sistemas transacionais",
+  "objective": "Roteie geração de timeline por workers assíncronos e caminhos de storage de arquivo.",
+  "constraints": [
+    "Não bloqueie APIs na reconstrução",
+    "Use caminho assíncrono de processamento",
+    "Armazene artefatos com durabilidade"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "blobStorage",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Geração Assíncrona de Timeline",
+      "description": "Jobs devem fluir API -> fila -> worker.",
+      "requiredAll": [
+        "api",
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Storage de Artefatos",
+      "description": "Timelines geradas devem ir para blob storage.",
+      "requiredAll": [
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "blobStorage"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Índice de Metadados",
+      "description": "Indexe metadados em banco para busca.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

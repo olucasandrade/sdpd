@@ -1,0 +1,78 @@
+{
+  "id": "builder-04",
+  "number": 4,
+  "title": "Failover do Feed de Patrulha",
+  "subtitle": "O feed ao vivo cai sempre que um nó de API falha",
+  "objective": "Monte redundância na entrada e no processamento para evitar quebra por falha única de API.",
+  "constraints": [
+    "Evite ponto único na entrada",
+    "Mantenha entrega assíncrona sob falhas de API",
+    "Persista eventos finais com durabilidade"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "blobStorage",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Entrada Redundante",
+      "description": "Roteie clientes por load balancer antes das APIs.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Entrega com Buffer",
+      "description": "Fila e worker absorvem falhas temporárias de API.",
+      "requiredAll": [
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Escritas Duráveis",
+      "description": "Workers devem persistir eventos processados em storage.",
+      "requiredAnyOf": [
+        "database",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

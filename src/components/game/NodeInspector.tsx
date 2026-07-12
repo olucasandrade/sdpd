@@ -40,7 +40,7 @@ export function NodeInspector({ node, onClose }: NodeInspectorProps) {
                 <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
                 <h3 className="font-display text-cyan-400 text-lg tracking-wide">{node.inspectData.title}</h3>
               </div>
-              <button onClick={onClose} className="text-white/20 hover:text-white/60 transition-colors text-lg w-6 h-6 flex items-center justify-center">
+              <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors text-lg w-11 h-11 flex items-center justify-center -mr-2">
                 &times;
               </button>
             </div>
@@ -48,7 +48,7 @@ export function NodeInspector({ node, onClose }: NodeInspectorProps) {
             <div className="p-4 space-y-4">
               {/* Status */}
               <div>
-                <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest mb-1">{t('inspector.status')}</p>
+                <p className="text-xs font-mono text-white/45 uppercase tracking-widest mb-1">{t('inspector.status')}</p>
                 <p className={`text-xs font-mono ${statusColor[node.status]}`}>
                   {node.inspectData.status}
                 </p>
@@ -57,17 +57,17 @@ export function NodeInspector({ node, onClose }: NodeInspectorProps) {
               {/* Logs */}
               {node.inspectData.logs && (
                 <div>
-                  <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest mb-1.5">{t('inspector.systemLogs')}</p>
+                  <p className="text-xs font-mono text-white/45 uppercase tracking-widest mb-1.5">{t('inspector.systemLogs')}</p>
                   <div className="bg-noir-950 rounded-lg p-3 space-y-0.5 max-h-48 overflow-y-auto border border-noir-700/50">
                     {node.inspectData.logs.map((log, i) => (
                       <p
                         key={i}
-                        className={`text-[11px] font-mono leading-relaxed ${
+                        className={`text-xs font-mono leading-relaxed ${
                           log.includes('ERROR') || log.includes('FATAL')
                             ? 'text-status-failed'
                             : log.includes('WARN')
                             ? 'text-status-degraded'
-                            : 'text-white/30'
+                            : 'text-white/60'
                         }`}
                       >
                         {log}
@@ -80,11 +80,11 @@ export function NodeInspector({ node, onClose }: NodeInspectorProps) {
               {/* Data */}
               {node.inspectData.data && (
                 <div>
-                  <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest mb-1.5">{t('inspector.nodeData')}</p>
+                  <p className="text-xs font-mono text-white/45 uppercase tracking-widest mb-1.5">{t('inspector.nodeData')}</p>
                   <div className="bg-noir-950 rounded-lg p-3 space-y-1.5 border border-noir-700/50">
                     {Object.entries(node.inspectData.data).map(([key, val]) => (
-                      <div key={key} className="flex justify-between text-[11px] font-mono gap-4">
-                        <span className="text-white/20 shrink-0">{key}</span>
+                      <div key={key} className="flex justify-between text-xs font-mono gap-4">
+                        <span className="text-white/45 shrink-0">{key}</span>
                         <span className="text-cyan-300/80 text-right">{val}</span>
                       </div>
                     ))}

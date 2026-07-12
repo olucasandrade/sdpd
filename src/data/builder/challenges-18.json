@@ -1,0 +1,72 @@
+{
+  "id": "builder-18",
+  "number": 18,
+  "title": "Witness Upload Spikes",
+  "subtitle": "Crowdsourced witness videos saturate the platform",
+  "objective": "Construct a media-heavy ingestion architecture that scales under burst uploads.",
+  "constraints": [
+    "Use object storage",
+    "Queue expensive processing",
+    "Keep metadata searchable"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "blobStorage",
+    "database"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Blob Upload Target",
+      "description": "API should write media objects to blob storage.",
+      "requiredAll": [
+        "api",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "blobStorage"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Processing Decoupling",
+      "description": "Queue and worker decouple upload processing.",
+      "requiredAll": [
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Metadata Persistence",
+      "description": "Store witness metadata in database.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

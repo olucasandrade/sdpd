@@ -1,0 +1,67 @@
+{
+  "id": "builder-19",
+  "number": 19,
+  "title": "Cache Regional de Despacho",
+  "subtitle": "Consoles regionais consultam os mesmos registros repetidamente",
+  "objective": "Otimize leituras repetidas com cache de borda e cache de serviço.",
+  "constraints": [
+    "Use ao menos uma camada de cache de leitura",
+    "Proteja API com load balancer",
+    "Mantenha origem persistente"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "cache",
+    "loadBalancer",
+    "api",
+    "database",
+    "blobStorage"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Camada de Leitura na Borda",
+      "description": "CDN ou cache devem servir leituras regionais repetidas.",
+      "requiredAnyOf": [
+        "cdn",
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "cdn"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Entrada Protegida da API",
+      "description": "Requisições devem passar por load balancer para API.",
+      "requiredAll": [
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Durabilidade da Origem",
+      "description": "Estado de origem deve permanecer em banco.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

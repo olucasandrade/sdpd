@@ -1,0 +1,71 @@
+{
+  "id": "builder-10",
+  "number": 10,
+  "title": "Inicialização de Região Fria",
+  "subtitle": "Uma nova região não aquece rápido após failover",
+  "objective": "Projete componentes de aquecimento para reduzir impacto de cold start após failover regional.",
+  "constraints": [
+    "Acelere primeiras leituras",
+    "Mantenha fonte durável separada",
+    "Evite acoplamento direto cliente-storage"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "cache",
+    "loadBalancer",
+    "api",
+    "database",
+    "blobStorage"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Caminho de Borda Aquecido",
+      "description": "CDN ou cache devem existir para leituras iniciais.",
+      "requiredAnyOf": [
+        "cdn",
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "cdn"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Mediação por API",
+      "description": "Clientes devem alcançar storage através da API.",
+      "requiredAll": [
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        },
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Durabilidade Regional",
+      "description": "Persista dados de origem em storage durável.",
+      "requiredAnyOf": [
+        "database",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "blobStorage"
+        }
+      ]
+    }
+  ]
+}

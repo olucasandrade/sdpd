@@ -1,0 +1,72 @@
+{
+  "id": "builder-14",
+  "number": 14,
+  "title": "Pipeline de Ingestão de Bodycam",
+  "subtitle": "Uploads de bodycam bloqueiam threads da API",
+  "objective": "Leve ingestão pesada de mídia para processamento assíncrono e object storage correto.",
+  "constraints": [
+    "Descarregue escritas pesadas",
+    "Use object storage para mídia",
+    "Mantenha metadados consultáveis"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "blobStorage",
+    "database",
+    "cdn"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Offload de Mídia",
+      "description": "Use blob storage como destino de objetos de bodycam.",
+      "requiredAll": [
+        "blobStorage",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "blobStorage"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Processamento Assíncrono de Upload",
+      "description": "Fila + worker devem processar ingestão após requisição.",
+      "requiredAll": [
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Banco de Metadados",
+      "description": "Armazene metadados pesquisáveis em banco.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

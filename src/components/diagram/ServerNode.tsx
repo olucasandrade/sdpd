@@ -40,9 +40,9 @@ export function ServerNode({ data }: { data: ServerNodeData }) {
             <circle cx="10" cy="10" r="3" className="stroke-current" strokeWidth="1.5" fill="none" />
             <path d="M10 7v6M7 10h6" className="stroke-current" strokeWidth="0.75" opacity="0.5" />
           </svg>
-          <span className="text-[11px] font-mono font-bold text-white/90">{data.label}</span>
+          <span className="text-xs font-mono font-bold text-white/90">{data.label}</span>
         </div>
-        <div className={`text-[9px] font-mono uppercase tracking-wider flex items-center gap-1.5 ${statusText[data.status]}`}>
+        <div className={`text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 ${statusText[data.status]}`}>
           <div className={`w-1.5 h-1.5 rounded-full ${data.status === 'healthy' ? 'bg-status-healthy' : data.status === 'degraded' ? 'bg-status-degraded' : 'bg-status-failed'} ${data.status === 'healthy' ? 'animate-pulse' : ''}`} />
           {data.status === 'failed' ? 'OFFLINE' : data.status === 'degraded' ? 'DEGRADED' : 'ONLINE'}
         </div>

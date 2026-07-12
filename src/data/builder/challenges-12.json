@@ -1,0 +1,73 @@
+{
+  "id": "builder-12",
+  "number": 12,
+  "title": "Forensics Batch Window",
+  "subtitle": "Nightly forensic jobs spill into daytime operations",
+  "objective": "Separate bulk processing from online APIs using queued worker pipelines.",
+  "constraints": [
+    "Keep API latency stable",
+    "Use async batch processing",
+    "Persist processed outputs"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "blobStorage"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Async Batch Channel",
+      "description": "Batch work should enter queue, not block API thread.",
+      "requiredAll": [
+        "api",
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Output Persistence",
+      "description": "Workers should write outputs to storage.",
+      "requiredAnyOf": [
+        "database",
+        "blobStorage"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "blobStorage"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Protected API Entry",
+      "description": "Client traffic should still enter via load balancer.",
+      "requiredAll": [
+        "client",
+        "loadBalancer"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        }
+      ]
+    }
+  ]
+}

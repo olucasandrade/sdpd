@@ -1,0 +1,67 @@
+{
+  "id": "builder-19",
+  "number": 19,
+  "title": "Regional Dispatch Cache",
+  "subtitle": "Regional dispatch consoles query the same records repeatedly",
+  "objective": "Optimize repeat regional reads with edge and service-level caching.",
+  "constraints": [
+    "Use at least one edge/read cache layer",
+    "Protect API with load balancer",
+    "Keep persistent origin"
+  ],
+  "availableComponents": [
+    "client",
+    "cdn",
+    "cache",
+    "loadBalancer",
+    "api",
+    "database",
+    "blobStorage"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Edge Read Layer",
+      "description": "CDN or cache should serve repeated regional reads.",
+      "requiredAnyOf": [
+        "cdn",
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "cdn"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Protected API Entry",
+      "description": "Requests should pass through load balancer to API.",
+      "requiredAll": [
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Origin Durability",
+      "description": "Origin state must be retained in database.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

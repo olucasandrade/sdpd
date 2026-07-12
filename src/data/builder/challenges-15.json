@@ -1,0 +1,76 @@
+{
+  "id": "builder-15",
+  "number": 15,
+  "title": "Panic Alert Broadcast",
+  "subtitle": "Citywide panic alerts must reach channels in seconds",
+  "objective": "Build a low-latency alert architecture with buffered delivery guarantees.",
+  "constraints": [
+    "Fast ingress",
+    "Queue-backed fan-out",
+    "Durable status tracking"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "queue",
+    "worker",
+    "database",
+    "cache"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Fast Intake",
+      "description": "Ingress should include client -> load balancer -> API.",
+      "requiredAll": [
+        "client",
+        "loadBalancer",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        },
+        {
+          "from": "loadBalancer",
+          "to": "api"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Delivery Buffering",
+      "description": "Queue and worker fan-out alerts asynchronously.",
+      "requiredAll": [
+        "queue",
+        "worker"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "queue"
+        },
+        {
+          "from": "queue",
+          "to": "worker"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Alert State Persistence",
+      "description": "Track final dispatch status in database.",
+      "requiredAll": [
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "worker",
+          "to": "database"
+        }
+      ]
+    }
+  ]
+}

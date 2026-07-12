@@ -1,0 +1,71 @@
+{
+  "id": "builder-16",
+  "number": 16,
+  "title": "Recuperação de Arquivo Frio",
+  "subtitle": "Busca de evidência histórica leva minutos",
+  "objective": "Projete caminho híbrido para blob frio e índices quentes de metadados.",
+  "constraints": [
+    "Use storage correto por tipo de dado",
+    "Cacheie consultas repetitivas",
+    "Preserve índice de metadados"
+  ],
+  "availableComponents": [
+    "client",
+    "loadBalancer",
+    "api",
+    "cache",
+    "database",
+    "blobStorage",
+    "cdn"
+  ],
+  "concepts": [
+    {
+      "id": "c1",
+      "title": "Storage Híbrido",
+      "description": "Combine blob storage para arquivos e banco para metadados.",
+      "requiredAll": [
+        "blobStorage",
+        "database"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "blobStorage"
+        },
+        {
+          "from": "api",
+          "to": "database"
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Aceleração de Consulta",
+      "description": "Use cache para pesquisas repetidas de metadados.",
+      "requiredAll": [
+        "cache"
+      ],
+      "preferredConnections": [
+        {
+          "from": "api",
+          "to": "cache"
+        }
+      ]
+    },
+    {
+      "id": "c3",
+      "title": "Camada de Acesso do Cliente",
+      "description": "Requisições devem passar pelo limite da API.",
+      "requiredAll": [
+        "client",
+        "api"
+      ],
+      "preferredConnections": [
+        {
+          "from": "client",
+          "to": "loadBalancer"
+        }
+      ]
+    }
+  ]
+}

@@ -182,19 +182,19 @@
       "options": [
         {
           "id": "rc-4",
-          "text": "The failover timeout was set too low, causing premature leader promotion",
+          "text": "The automatic failover timeout was configured too low, causing premature leader promotion before confirming the original leader had failed",
           "correct": false,
           "feedback": "While a longer timeout might delay the split-brain, it wouldn't prevent it. The core issue is the lack of a proper consensus mechanism or quorum requirement. Without these, any timeout value eventually leads to the same problem during a sustained partition."
         },
         {
           "id": "rc-3",
-          "text": "East Precinct's officer made an unauthorized change to the suspect's status",
+          "text": "An East Precinct officer made an unauthorized update to the suspect's status without following proper case management procedures",
           "correct": false,
           "feedback": "The East Precinct officer followed proper procedure — the DA's office cleared the suspect. The problem is that West Precinct simultaneously filed an arrest warrant, and the two databases weren't communicating due to the network partition. Both writes were legitimate but conflicting."
         },
         {
           "id": "rc-1",
-          "text": "A software bug caused the databases to corrupt suspect #4412's record",
+          "text": "A software bug inside one of the database nodes corrupted suspect #4412's record after receiving a partial replication packet",
           "correct": false,
           "feedback": "The databases are functioning correctly individually. The problem is that a network partition caused both replicas to independently promote themselves to leader, creating a split-brain scenario where each accepts conflicting writes."
         },
@@ -217,19 +217,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Add a second network link between data centers for redundancy",
+          "text": "Add a redundant backup network link between both data centers so a single cable failure can't cause a partition",
           "correct": false,
           "feedback": "A redundant network link reduces the chance of a partition but doesn't eliminate it. Both links could fail (same cable trench, same ISP). You still need a proper consensus mechanism for when partitions inevitably occur — network redundancy is a complement, not a replacement."
         },
         {
           "id": "fix-3",
-          "text": "Set one database as the permanent primary and never allow automatic failover",
+          "text": "Permanently designate one database as the primary leader and disable all automatic failover to avoid promoting multiple leaders",
           "correct": false,
           "feedback": "This prevents split-brain but sacrifices availability entirely — if the permanent primary fails, the whole system goes down (back to single point of failure). A quorum-based approach gives you both safety and availability."
         },
         {
           "id": "fix-4",
-          "text": "Use timestamps to automatically resolve conflicts by keeping the latest write",
+          "text": "Use wall-clock timestamps to automatically resolve write conflicts by always keeping the record with the most recent timestamp",
           "correct": false,
           "feedback": "Last-write-wins (LWW) is a conflict resolution strategy, but it doesn't prevent the split-brain. It silently discards one write, which could mean silently dropping an arrest warrant. For critical data like criminal records, you want to prevent conflicting writes in the first place, not resolve them after the fact."
         }

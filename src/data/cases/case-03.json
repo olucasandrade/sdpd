@@ -160,19 +160,19 @@
         },
         {
           "id": "rc-1",
-          "text": "The forensics team's upload was interrupted before all photos were sent",
+          "text": "The forensics team's upload was interrupted midway and not all of the 47 photos were fully transmitted to the server before the session ended",
           "correct": false,
           "feedback": "The upload logs clearly show all 47 photos were uploaded and acknowledged by the leader. The uploads completed successfully at 22:03."
         },
         {
           "id": "rc-4",
-          "text": "A network partition between leader and follower blocked replication",
+          "text": "A network partition severed connectivity between the leader and follower, blocking all replication traffic until the partition resolved itself",
           "correct": false,
           "feedback": "The replication logs show photos 1-31 were successfully replicated. The remaining photos were queued — the leader simply hadn't sent them yet before crashing. This is the nature of async replication, not a network issue."
         },
         {
           "id": "rc-2",
-          "text": "The follower database rejected the photos due to storage limits",
+          "text": "The follower database ran out of allocated storage space and began rejecting incoming photo data due to disk capacity limits",
           "correct": false,
           "feedback": "The follower successfully stored the 31 photos it received. The issue is that 16 photos were never sent to it — they were still queued for replication on the leader when it crashed."
         }
@@ -183,19 +183,19 @@
       "options": [
         {
           "id": "fix-2",
-          "text": "Add a second follower to increase the chances of replication",
+          "text": "Add a second follower to increase the number of replication targets and improve the odds that at least one copy survives a crash",
           "correct": false,
           "feedback": "If both followers use async replication, a second follower doesn't guarantee the data gets replicated before a crash. You might just have two followers missing the same data. The solution is synchronous replication, not more async followers."
         },
         {
           "id": "fix-3",
-          "text": "Increase the replication speed so it happens faster",
+          "text": "Increase the replication throughput speed so data is sent to the follower faster and the unreplicated window is as small as possible",
           "correct": false,
           "feedback": "Faster async replication reduces the window of potential data loss but doesn't eliminate it. Even with a 1-second lag, if the leader crashes at the wrong moment, you lose data. For critical data, you need a guarantee — that's what synchronous replication provides."
         },
         {
           "id": "fix-4",
-          "text": "Don't allow automatic failover — wait for the leader to come back online",
+          "text": "Disable automatic failover entirely — keep the system offline and wait for the leader to come back online before resuming operations",
           "correct": false,
           "feedback": "This would recover the data (if the disk survived), but at the cost of availability. The system would be offline until the leader is repaired, which could take hours or days. The better approach is sync replication, which ensures the follower always has the data AND can take over immediately."
         },

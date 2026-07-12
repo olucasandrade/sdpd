@@ -139,7 +139,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O load balancer falhou em redistribuir as sessões para servidores saudáveis após a queda",
+          "text": "O load balancer falhou em redistribuir as sessões para outros servidores saudáveis após a queda",
           "correct": false,
           "feedback": "O load balancer redirecionou novas requisições, mas os dados de sessão existiam apenas na memória do Servidor 2. Não há nada para redistribuir — os dados se foram. O problema é onde as sessões são armazenadas, não como o tráfego é roteado."
         },
@@ -151,13 +151,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O Servidor 2 ficou sem memória porque estava lidando com sessões demais comparado aos outros",
+          "text": "O Servidor 2 ficou sem memória porque estava lidando com sessões demais em relação aos demais servidores",
           "correct": false,
           "feedback": "Embora o OOM kill tenha disparado a queda, o verdadeiro problema arquitetural é que sessões são armazenadas na memória do servidor. Mesmo com sessões perfeitamente balanceadas, qualquer queda de servidor destruiria todas as sessões armazenadas localmente."
         },
         {
           "id": "rc-4",
-          "text": "Os servidores não tinham um mecanismo adequado de backup e recuperação para dados de sessão",
+          "text": "Os servidores não tinham mecanismo adequado de backup e recuperação para preservar os dados de sessão",
           "correct": false,
           "feedback": "Fazer backup de sessões em memória é impraticável e não resolve o problema central. O problema é o padrão de design com estado (stateful) — sessões devem ser externalizadas para que os servidores não guardem estado crítico em primeiro lugar."
         }
@@ -168,7 +168,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Adicionar mais servidores para que cada um lide com menos sessões, reduzindo o impacto de uma queda",
+          "text": "Adicionar mais servidores para que cada um gerencie menos sessões, reduzindo o impacto de uma eventual queda",
           "correct": false,
           "feedback": "Mais servidores com sticky sessions apenas significa que cada queda afeta menos usuários — mas quedas ainda destroem sessões. O problema não é quantos servidores você tem; é que o estado da sessão vive dentro de servidores individuais."
         },
@@ -180,13 +180,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Replicar dados de sessão entre os três servidores em tempo real",
+          "text": "Replicar dados de sessão entre os três servidores em tempo real para garantir redundância",
           "correct": false,
           "feedback": "Replicação de sessão entre servidores é complexa e cara. Não escala bem — cada novo servidor aumenta o tráfego de replicação. Um store externo de sessões é mais simples e escalável."
         },
         {
           "id": "fix-4",
-          "text": "Implementar reinício automático de servidor para que servidores que caíram voltem rapidamente",
+          "text": "Implementar reinicialização automática do servidor para que processos que falharam reiniciem rapidamente",
           "correct": false,
           "feedback": "Reinícios rápidos ajudam a disponibilidade, mas sessões em memória ainda são perdidas quando um processo morre. O servidor volta vazio. A verdadeira solução é não armazenar sessões na memória do servidor."
         }

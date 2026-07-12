@@ -128,7 +128,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O atraso de replicação de 45 segundos é muito alto e deveria ser reduzido a zero",
+          "text": "O atraso de replicação de 45 segundos é excessivo e deveria ser reduzido o máximo possível, para que dessa forma os dados fossem sincronizados mais rapidamente, evitando conflitos entre escritas concorrentes",
           "correct": false,
           "feedback": "Reduzir o atraso de replicação ajuda, mas com replicação multi-líder, qualquer atraso diferente de zero pode gerar conflitos. Mesmo com 1ms de atraso, duas escritas acontecendo dentro dessa janela vão conflitar. O problema fundamental é que a replicação multi-líder inerentemente permite escritas concorrentes conflitantes."
         },
@@ -140,13 +140,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O Det. Reyes e o Sgt. Okonkwo deveriam ter se coordenado antes de fazer as designações",
+          "text": "O Det. Reyes e o Sgt. Okonkwo deveriam ter estabelecido um protocolo de comunicação coordenada por telefone antes de fazer quaisquer designações de caso simultâneas, para evitar conflitos de escrita",
           "correct": false,
           "feedback": "Coordenação humana não é uma solução confiável em escala. O sistema deveria prevenir ou tratar adequadamente escritas concorrentes. Se o sistema permitiu escritas conflitantes silenciosamente, é um problema de design do sistema, não erro humano."
         },
         {
           "id": "rc-4",
-          "text": "A estratégia de resolução de conflito last-write-wins tem um bug na comparação de timestamps",
+          "text": "A estratégia de resolução de conflitos last-write-wins implementada no banco de dados tem um bug de software crítico na sua lógica de comparação de timestamps durante o processo de replicação",
           "correct": false,
           "feedback": "O LWW funcionou como projetado — escolheu a escrita com o timestamp mais recente. O problema é que o LWW em si é uma estratégia com perdas: ele descarta silenciosamente uma escrita sem alertar ninguém. Para designações de caso, perder uma escrita significa perder a designação de um policial sem notificação."
         }
@@ -157,7 +157,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Mudar para replicação de líder único para designações de caso, para que apenas uma delegacia possa escrever por vez",
+          "text": "Mudar para replicação de líder único para designações de caso, garantindo que apenas uma delegacia escreva por vez",
           "correct": false,
           "feedback": "Líder único elimina conflitos de escrita mas sacrifica a disponibilidade que o multi-líder oferece. Se a rede do líder cair, nenhuma delegacia pode designar casos. Uma abordagem melhor preserva o benefício do multi-líder enquanto trata conflitos adequadamente."
         },
@@ -169,13 +169,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Usar last-write-wins mas com timestamps mais precisos de um servidor NTP",
+          "text": "Usar last-write-wins com timestamps mais precisos obtidos de um servidor NTP dedicado",
           "correct": false,
           "feedback": "Timestamps melhores tornam o LWW mais determinístico, mas o problema central permanece: uma escrita é silenciosamente descartada. Para dados críticos como designações de caso, descartar silenciosamente uma escrita é inaceitável independentemente de qual escrita vença."
         },
         {
           "id": "fix-4",
-          "text": "Adicionar um lock global para que apenas uma delegacia possa modificar um registro de caso por vez",
+          "text": "Adicionar um lock global distribuído para que apenas uma delegacia possa modificar um registro de caso de cada vez",
           "correct": false,
           "feedback": "Um lock global entre data centers anula o propósito da replicação multi-líder — reintroduz os problemas de latência e disponibilidade que você estava tentando evitar. Se o serviço de lock cair, ninguém pode escrever. Detecção e resolução de conflitos é uma abordagem melhor que preserva os benefícios do multi-líder."
         }

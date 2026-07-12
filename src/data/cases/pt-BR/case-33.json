@@ -134,13 +134,13 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "O job em lote da 3a Delegacia é malicioso e não deveria ter sido deployado sem aprovação",
+          "text": "O job em lote da 3a Delegacia é malicioso e não deveria ter sido deployado sem a aprovação prévia da equipe de segurança de API",
           "correct": false,
           "feedback": "O job em lote da 3a Delegacia é um caso de uso legítimo — checagem de antecedentes contra mandados federais. O job não é malicioso; está simplesmente consumindo um recurso ilimitado sem restrições. Sem rate limits, qualquer cliente pode monopolizar a API sem querer. O sistema deveria se proteger disso, não depender de clientes bem-comportados."
         },
         {
           "id": "rc-2",
-          "text": "O Banco de Dados Federal de Mandados é lento demais para lidar com o volume de requisições",
+          "text": "O Banco de Dados Federal de Mandados é lento demais para lidar com o volume elevado de requisições simultâneas enviadas pelas delegacias, impedindo que o relatório mostre dados precisos. ",
           "correct": false,
           "feedback": "O banco de dados lidaria com a carga normal de 20 requisições/segundo tranquilamente. Até os 500 req/seg da 3a Delegacia poderiam ser gerenciáveis se propriamente enfileirados e throttled. O problema é que o API gateway não tem mecanismo para controlar o fluxo, então o volume bruto sem throttling esmaga tanto o gateway quanto o banco de dados."
         },
@@ -163,7 +163,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Bloquear o job em lote da 3a Delegacia e exigir que todas as verificações de mandados sejam manuais, uma por vez",
+          "text": "Bloquear completamente o job em lote da 3a Delegacia e exigir que todas as verificações de mandados federais sejam feitas manualmente, uma a uma",
           "correct": false,
           "feedback": "Bloquear casos de uso legítimos não é a resposta. Verificações de mandados em lote são valiosas — você só precisa limitá-las. Uma boa estratégia de rate limiting permite que jobs em lote rodem a uma taxa controlada sem impactar operações em tempo real."
         },
@@ -175,13 +175,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Escalar o Warrant Gateway horizontalmente para lidar com qualquer volume de requisições de qualquer cliente",
+          "text": "Escalar o Warrant Gateway horizontalmente adicionando mais instâncias para absorver qualquer volume de requisições de qualquer cliente sem limites",
           "correct": false,
           "feedback": "Escalar ajuda com capacidade, mas sem rate limiting, um único cliente sempre poderia escalar suas requisições para acompanhar. Além disso, o Banco de Dados Federal de Mandados tem seus próprios limites que você não controla. Rate limiting é essencial independentemente de quanto você escale — é sobre justiça e proteção, não apenas capacidade."
         },
         {
           "id": "fix-4",
-          "text": "Adicionar uma fila na frente do Warrant Gateway que processa requisições em ordem FIFO",
+          "text": "Adicionar uma fila global na frente do Warrant Gateway que processa todas as requisições em ordem FIFO estrita, sem qualquer priorização por cliente",
           "correct": false,
           "feedback": "Uma fila FIFO sem rate limiting ainda deixa a 3a Delegacia encher a fila com 500 req/seg, empurrando as requisições das outras delegacias para o final. A profundidade da fila cresceria ilimitadamente, e oficiais de campo esperariam atrás de dezenas de milhares de requisições em lote. Você precisa de cotas por cliente para garantir acesso justo."
         }

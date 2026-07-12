@@ -182,7 +182,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "The load balancer failed to redistribute sessions to healthy servers after the crash",
+          "text": "The load balancer failed to properly redistribute active sessions to the remaining healthy servers after the crash",
           "correct": false,
           "feedback": "The load balancer did redirect new requests, but the session data only existed in Server 2's memory. There's nothing to redistribute — the data is gone. The problem is where sessions are stored, not how traffic is routed."
         },
@@ -194,13 +194,13 @@
         },
         {
           "id": "rc-3",
-          "text": "Server 2 ran out of memory because it was handling too many sessions compared to the others",
+          "text": "Server 2 ran out of memory because it was assigned too many sticky sessions compared to the other servers",
           "correct": false,
           "feedback": "While the OOM kill triggered the crash, the real architectural problem is that sessions are stored in server memory at all. Even with perfectly balanced sessions, any server crash would destroy all its locally-stored sessions."
         },
         {
           "id": "rc-4",
-          "text": "The servers lacked a proper backup and recovery mechanism for session data",
+          "text": "The application servers lacked a proper backup and recovery mechanism to persist session data through restarts",
           "correct": false,
           "feedback": "Backing up in-memory sessions is impractical and doesn't address the core issue. The problem is the stateful design pattern — sessions should be externalized so servers don't hold critical state in the first place."
         }
@@ -211,13 +211,13 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Implement automatic server restart so crashed servers come back quickly",
+          "text": "Implement an automatic server restart policy so crashed servers come back online before sessions expire",
           "correct": false,
           "feedback": "Fast restarts help availability, but in-memory sessions are still lost when a process dies. The server comes back empty. The real fix is to not store sessions in server memory at all."
         },
         {
           "id": "fix-1",
-          "text": "Add more servers so each one handles fewer sessions, reducing crash impact",
+          "text": "Add more server instances so each individual server handles fewer sticky sessions, reducing the blast radius of any single crash",
           "correct": false,
           "feedback": "More servers with sticky sessions just means each crash affects fewer users — but crashes still destroy sessions. The problem isn't how many servers you have; it's that session state lives inside individual servers."
         },
@@ -229,7 +229,7 @@
         },
         {
           "id": "fix-3",
-          "text": "Replicate session data between all three servers in real-time",
+          "text": "Replicate all in-memory session data between all three servers in real-time using server-side session synchronization",
           "correct": false,
           "feedback": "Server-to-server session replication is complex and expensive. It doesn't scale well — every new server increases replication traffic. An external session store is simpler and more scalable."
         }

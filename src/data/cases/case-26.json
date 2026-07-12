@@ -201,19 +201,19 @@
         },
         {
           "id": "rc-3",
-          "text": "A network partition is preventing services from communicating",
+          "text": "A network partition is physically preventing the microservices from connecting and communicating with each other",
           "correct": false,
           "feedback": "The services can connect and send requests — they're just waiting a very long time for responses. This is a latency issue, not a connectivity issue."
         },
         {
           "id": "rc-1",
-          "text": "The forensics database is overloaded and slowing down all queries",
+          "text": "The forensics database is severely overloaded and causing all of ServiceC's queries to return slowly",
           "correct": false,
           "feedback": "The forensics database is operating normally with 5ms query latency. The bottleneck is the Forensics service's CPU being consumed by the batch job."
         },
         {
           "id": "rc-4",
-          "text": "The mobile app's 30-second timeout is too short",
+          "text": "The mobile app's 30-second timeout value is too short and is cutting off legitimate slow requests",
           "correct": false,
           "feedback": "30 seconds is already extremely long for a user-facing request. The problem isn't the timeout value — it's that services block indefinitely on downstream calls instead of failing fast when a dependency is slow."
         }
@@ -224,13 +224,13 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Make all service calls asynchronous so nothing ever blocks",
+          "text": "Make all inter-service HTTP calls fully asynchronous using event queues so services never block on downstream responses",
           "correct": false,
           "feedback": "Async calls help with thread utilization but don't solve the timeout cascade by themselves. You still need circuit breakers to stop sending requests to a slow service and timeouts to bound how long you wait for a response."
         },
         {
           "id": "fix-1",
-          "text": "Increase all timeout values so services have more time to wait for responses",
+          "text": "Increase all downstream timeout values so services have more time to wait patiently for slow dependency responses",
           "correct": false,
           "feedback": "Longer timeouts make the problem worse — threads stay blocked even longer, and users wait even more. The system needs to fail fast, not wait longer."
         },
@@ -242,7 +242,7 @@
         },
         {
           "id": "fix-3",
-          "text": "Prevent batch jobs from running on the forensics service",
+          "text": "Prevent the forensics batch job from ever running on the same server as the forensics service API",
           "correct": false,
           "feedback": "Batch jobs are a valid use case. The problem isn't that the forensics service is slow sometimes — it's that the upstream services have no way to handle a slow dependency gracefully. Any service can become slow for any reason."
         }

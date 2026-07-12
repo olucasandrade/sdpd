@@ -160,13 +160,13 @@
       "options": [
         {
           "id": "rc-4",
-          "text": "Network packet loss during the transfer between gateway and transcoder corrupted the file",
+          "text": "Network packet loss during the TCP transfer between the upload gateway and transcoding service corrupted the file",
           "correct": false,
           "feedback": "TCP guarantees in-order delivery and retransmits lost packets. Network transfers over TCP don't silently corrupt data. The transcoder logs show the actual cause: memory pressure and buffer overflow during processing."
         },
         {
           "id": "rc-1",
-          "text": "The file was already corrupted when the officer uploaded it",
+          "text": "The evidence file was already corrupted when the officer posted it from the body cam to the upload portal",
           "correct": false,
           "feedback": "The officer verified the file was working before upload, and the upload completed without errors. The corruption happened downstream in the pipeline."
         },
@@ -178,7 +178,7 @@
         },
         {
           "id": "rc-3",
-          "text": "The evidence vault's storage disk has bad sectors that corrupted the file on write",
+          "text": "The evidence vault's physical storage disk has bad sectors that silently corrupted the video file during the write operation",
           "correct": false,
           "feedback": "The vault logs show a successful write. The file was already corrupted when it arrived — note the suspiciously smaller file size (2.1 GB vs 2.4 GB original). The transcoder lost data before the vault even received it."
         }
@@ -189,13 +189,13 @@
       "options": [
         {
           "id": "fix-3",
-          "text": "Add more memory to the transcoding service so it doesn't overflow",
+          "text": "Provision significantly more RAM for the transcoding service so it no longer experiences memory pressure or buffer overflows",
           "correct": false,
           "feedback": "More memory helps this specific failure but doesn't protect against future bugs, disk errors, or other corruption sources. Integrity checksums protect against all forms of corruption regardless of cause."
         },
         {
           "id": "fix-4",
-          "text": "Have two officers independently upload the same file and compare the results",
+          "text": "Require two officers to independently upload the same evidence file and manually compare the resulting video outputs",
           "correct": false,
           "feedback": "This is manual, error-prone, and doubles the work. Automated checksums achieve the same goal (detecting corruption) reliably and at every stage without human intervention."
         },
@@ -207,7 +207,7 @@
         },
         {
           "id": "fix-2",
-          "text": "Skip the transcoding step and store the original file directly",
+          "text": "Remove the transcoding step entirely and store the original raw body camera video file without any processing",
           "correct": false,
           "feedback": "This avoids the specific transcoder bug but doesn't solve the general problem. Any service can corrupt data — you need integrity checks at every stage, not just removing stages."
         }

@@ -118,7 +118,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "A exclusão do banco de dados falhou silenciosamente e o registro ainda existe",
+          "text": "A exclusão do banco de dados falhou silenciosamente e o registro ainda existe no sistema",
           "correct": false,
           "feedback": "Os logs do banco de dados confirmam que o registro foi deletado com sucesso — consultar o banco diretamente retorna 'NENHUM REGISTRO ENCONTRADO'. Os dados desatualizados estão vindo de outro lugar do sistema."
         },
@@ -130,13 +130,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O terminal do policial tem um cache local que não foi atualizado",
+          "text": "O terminal do policial tem um cache local próprio que não foi devidamente atualizado após a exclusão",
           "correct": false,
           "feedback": "O terminal busca dados da API em tempo real. Os dados desatualizados estão sendo servidos pela camada de cache Redis, não por um cache local do terminal. O terminal está exibindo exatamente o que a API retorna."
         },
         {
           "id": "rc-4",
-          "text": "Um atraso na replicação do banco de dados está impedindo a propagação da exclusão",
+          "text": "Um atraso na replicação do banco de dados está impedindo que a exclusão seja propagada para todos os nós",
           "correct": false,
           "feedback": "A exclusão aconteceu há 3 semanas — o atraso de replicação seria resolvido em segundos ou minutos, não semanas. O próprio banco de dados mostra corretamente o registro como deletado. O problema está na camada de cache."
         }
@@ -147,7 +147,7 @@
       "options": [
         {
           "id": "fix-1",
-          "text": "Reduzir o TTL do cache de 30 dias para 5 minutos para que dados desatualizados sejam limpos rapidamente",
+          "text": "Reduzir o TTL do cache de 30 dias para apenas 5 minutos para que dados desatualizados sejam limpos rapidamente",
           "correct": false,
           "feedback": "Um TTL mais curto reduz a janela de dados desatualizados, mas não a elimina. Por 5 minutos após qualquer exclusão, policiais ainda veriam registros fantasmas. Para registros legalmente apagados, até 5 minutos de dados desatualizados é inaceitável. Invalidação ativa é necessária."
         },
@@ -159,13 +159,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Desabilitar o cache completamente para registros criminais para sempre obter dados atualizados",
+          "text": "Desabilitar o cache completamente para registros criminais a fim de sempre obter os dados mais recentes",
           "correct": false,
           "feedback": "Desabilitar o cache resolveria o problema de dados desatualizados, mas aumentaria dramaticamente a carga no banco de dados. Com uma taxa de acerto de cache de 94%, remover o cache significa 16x mais consultas ao banco. A abordagem correta é cache mais inteligente, não ausência de cache."
         },
         {
           "id": "fix-4",
-          "text": "Adicionar um botão manual de 'limpar cache' para administradores usarem após exclusões",
+          "text": "Adicionar um botão manual de 'limpar cache' para administradores usarem imediatamente após exclusões",
           "correct": false,
           "feedback": "Limpeza manual de cache é propensa a erros e não escala. Humanos vão esquecer. A invalidação de cache deve ser automatizada e acionada por operações de escrita no banco de dados, não por processos manuais."
         }

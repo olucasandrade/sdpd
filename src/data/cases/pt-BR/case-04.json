@@ -154,7 +154,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "Um bug de software fez os bancos de dados corromperem o registro do suspeito #4412",
+          "text": "Um bug de software fez os bancos de dados corromperem e gravarem dados incorretos no registro do suspeito #4412",
           "correct": false,
           "feedback": "Os bancos de dados estão funcionando corretamente individualmente. O problema é que uma partição de rede fez ambas as réplicas se autopromoverem a líder, criando um cenário de split-brain onde cada uma aceita escritas conflitantes."
         },
@@ -166,13 +166,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O policial da Delegacia Leste fez uma alteração não autorizada no status do suspeito",
+          "text": "O policial da Delegacia Leste realizou uma alteração não autorizada no status do suspeito sem aprovação, por isso o sistema não conseguiu sincronizar os dados entre os dois bancos de dados",
           "correct": false,
           "feedback": "O policial da Delegacia Leste seguiu o procedimento correto — o Ministério Público liberou o suspeito. O problema é que a Delegacia Oeste simultaneamente emitiu um mandado de prisão, e os dois bancos de dados não estavam se comunicando devido à partição de rede. Ambas as escritas eram legítimas, porém conflitantes."
         },
         {
           "id": "rc-4",
-          "text": "O timeout de failover estava configurado muito baixo, causando promoção prematura a líder",
+          "text": "O timeout de failover estava configurado muito baixo, causando a promoção prematura e incorreta a líder, da qual não foi possível reverter",
           "correct": false,
           "feedback": "Embora um timeout maior possa atrasar o split-brain, não o preveniria. A questão central é a falta de um mecanismo adequado de consenso ou requisito de quórum. Sem isso, qualquer valor de timeout eventualmente leva ao mesmo problema durante uma partição prolongada."
         }
@@ -189,19 +189,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Adicionar um segundo link de rede entre os data centers para redundância",
+          "text": "Adicionar um segundo link de rede físico redundante entre os data centers para evitar partições",
           "correct": false,
           "feedback": "Um link de rede redundante reduz a chance de uma partição mas não a elimina. Ambos os links podem falhar (mesma canaleta de cabos, mesmo provedor). Você ainda precisa de um mecanismo adequado de consenso para quando partições inevitavelmente ocorrerem — redundância de rede é complemento, não substituto."
         },
         {
           "id": "fix-3",
-          "text": "Definir um banco de dados como primário permanente e nunca permitir failover automático",
+          "text": "Definir um banco de dados como primário permanente e nunca permitir nenhum tipo de failover automático",
           "correct": false,
           "feedback": "Isso previne split-brain mas sacrifica a disponibilidade completamente — se o primário permanente falhar, o sistema inteiro fica fora do ar (voltando ao ponto único de falha). Uma abordagem baseada em quórum oferece tanto segurança quanto disponibilidade."
         },
         {
           "id": "fix-4",
-          "text": "Usar timestamps para resolver conflitos automaticamente mantendo a escrita mais recente",
+          "text": "Usar timestamps para resolver conflitos automaticamente, mantendo sempre a escrita com o horário mais recente",
           "correct": false,
           "feedback": "Last-write-wins (LWW) é uma estratégia de resolução de conflitos, mas não previne o split-brain. Ela descarta silenciosamente uma escrita, o que pode significar descartar silenciosamente um mandado de prisão. Para dados críticos como registros criminais, o ideal é prevenir escritas conflitantes em primeiro lugar, não resolvê-las depois."
         }

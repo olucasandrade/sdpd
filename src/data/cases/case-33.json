@@ -173,19 +173,19 @@
         },
         {
           "id": "rc-1",
-          "text": "Precinct 3's batch job is malicious and should not have been deployed without approval",
+          "text": "Precinct 3's batch warrant check job is malicious and should not have been deployed without prior change management approval, causing the system to fail",
           "correct": false,
           "feedback": "Precinct 3's batch job is a legitimate use case — background checks against federal warrants. The job isn't malicious; it's simply consuming an unlimited resource without constraints. Without rate limits, any client can unintentionally monopolize the API. The system should protect itself from this, not rely on clients being well-behaved."
         },
         {
           "id": "rc-2",
-          "text": "The Federal Warrant Database is too slow to handle the request volume",
+          "text": "The Federal Warrant Database infrastructure is too slow and underpowered to handle the current request volume from precincts",
           "correct": false,
           "feedback": "The database would handle the normal load of 20 requests/second just fine. Even Precinct 3's 500 req/sec might be manageable if properly queued and throttled. The issue is that the API gateway has no mechanism to control the flow, so the raw unthrottled volume crushes both the gateway and the database."
         },
         {
           "id": "rc-4",
-          "text": "The Warrant Gateway thread pool is too small and should be increased to handle peak load",
+          "text": "The Warrant Gateway's thread pool is too small and should be significantly scaled up to handle peak load from all precincts",
           "correct": false,
           "feedback": "A larger thread pool would increase raw capacity, but without rate limiting, Precinct 3 would simply consume the extra capacity too. If you add 1000 threads, the batch job would happily use all 1000. Rate limiting is essential to ensure fair distribution of whatever capacity exists."
         }
@@ -196,13 +196,13 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Add a queue in front of the Warrant Gateway that processes requests in FIFO order",
+          "text": "Place a FIFO message queue in front of the Warrant Gateway so all precinct requests are processed in arrival order",
           "correct": false,
           "feedback": "A FIFO queue without rate limiting still lets Precinct 3 fill the queue with 500 req/sec, pushing other precincts' requests to the back. Queue depth would grow unboundedly, and field officers would wait behind tens of thousands of batch requests. You need per-client quotas to ensure fair access."
         },
         {
           "id": "fix-1",
-          "text": "Block Precinct 3's batch job and require all warrant checks to be manual, one at a time",
+          "text": "Permanently block and reject all automated batch warrant check jobs, requiring officers to manually submit each check one at a time",
           "correct": false,
           "feedback": "Blocking legitimate use cases isn't the answer. Batch warrant checks are valuable — you just need to throttle them. A good rate limiting strategy allows batch jobs to run at a controlled rate without impacting real-time operations."
         },
@@ -214,7 +214,7 @@
         },
         {
           "id": "fix-3",
-          "text": "Scale the Warrant Gateway horizontally to handle any request volume from any client",
+          "text": "Scale the Warrant Gateway horizontally by adding more instances to handle any request volume from any precinct client",
           "correct": false,
           "feedback": "Scaling helps with capacity, but without rate limiting, a single client could always scale their requests to match. Plus, the Federal Warrant Database has its own limits you can't control. Rate limiting is essential regardless of how much you scale — it's about fairness and protection, not just capacity."
         }

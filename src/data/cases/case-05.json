@@ -178,13 +178,13 @@
       "options": [
         {
           "id": "rc-4",
-          "text": "The network between Node 1 and Node 2 is partitioned, so they can't see each other's leadership claim",
+          "text": "The network between Node 1 and Node 2 is partitioned, causing each to be unaware of the other's leadership claim",
           "correct": false,
           "feedback": "The logs show both nodes are aware of each other's leadership claim (they log warnings about it). The nodes can communicate — they just don't have a rule preventing multiple leaders. The fix is requiring a majority quorum, which mathematically prevents two leaders."
         },
         {
           "id": "rc-1",
-          "text": "The old leader (Node 0) crashed and sent corrupted data that confused the other nodes",
+          "text": "The old leader Node 0 crashed unexpectedly and sent corrupted heartbeat data that confused the other cluster nodes",
           "correct": false,
           "feedback": "Node 0 crashed cleanly due to an OOM kill — it didn't send corrupted data. The issue is that the surviving nodes started an election but didn't require a proper majority (quorum) before declaring themselves leader."
         },
@@ -196,7 +196,7 @@
         },
         {
           "id": "rc-3",
-          "text": "Both nodes started their elections at the exact same time, causing a race condition",
+          "text": "Both Node 1 and Node 2 started their elections at the exact same millisecond, causing a simultaneous split-vote race condition",
           "correct": false,
           "feedback": "Simultaneous election starts are expected in distributed systems — that's why protocols like Raft use randomized election timeouts to reduce the chance of split votes. But the real problem is that the nodes accepted leadership with only 2/5 votes instead of requiring the majority (3/5)."
         }
@@ -207,13 +207,13 @@
       "options": [
         {
           "id": "fix-4",
-          "text": "Add a delay after the old leader crashes before allowing elections to start",
+          "text": "Add a configurable delay following a leader crash before allowing any new election candidate to begin soliciting votes",
           "correct": false,
           "feedback": "A delay reduces the chance of simultaneous elections but doesn't prevent the fundamental problem — multiple leaders due to lack of quorum. You'd still need the quorum rule. Plus, longer delays mean longer outages when a real failover is needed."
         },
         {
           "id": "fix-2",
-          "text": "Use timestamps to pick whichever node started its election first as the leader",
+          "text": "Use wall-clock timestamps to determine which node started its election campaign first and automatically award it leadership",
           "correct": false,
           "feedback": "Clock synchronization in distributed systems is unreliable — nodes may disagree on what time it is (this is covered in a future case!). Leader election must not depend on synchronized clocks. Quorum-based voting doesn't need clocks at all."
         },
@@ -225,7 +225,7 @@
         },
         {
           "id": "fix-3",
-          "text": "Designate a fixed backup leader so there's no need for an election",
+          "text": "Pre-designate a fixed backup node as the leader so no election is ever needed when the primary crashes",
           "correct": false,
           "feedback": "A fixed backup introduces a new single point of failure — what happens when both the primary and the designated backup are down? Quorum-based elections allow any node to become leader, providing flexibility and fault tolerance."
         }

@@ -200,13 +200,13 @@
       "options": [
         {
           "id": "rc-4",
-          "text": "The earthquake caused physical damage to the gateway server",
+          "text": "The earthquake caused direct physical hardware damage to the API gateway server infrastructure",
           "correct": false,
           "feedback": "The gateway server is physically fine — it's running at 98% CPU, actively processing requests and returning 503 errors. It's not damaged; it's simply overwhelmed by the volume of traffic it was never designed to handle alone."
         },
         {
           "id": "rc-1",
-          "text": "The backend services can't handle the earthquake traffic volume",
+          "text": "The backend services themselves cannot handle the sudden surge in earthquake-related traffic across all precincts",
           "correct": false,
           "feedback": "The backend services are actually healthy and underutilized at only 25% CPU and 40% capacity. The requests are never reaching the backend because the single API gateway is the bottleneck, dropping 60% of requests before they get through."
         },
@@ -218,7 +218,7 @@
         },
         {
           "id": "rc-3",
-          "text": "The precincts' retry storms are causing the failure",
+          "text": "Massive retry storms from all precincts failing simultaneously are amplifying the load and causing the gateway to collapse",
           "correct": false,
           "feedback": "Retry storms are making the situation worse (amplifying the load), but they're a symptom, not the root cause. The gateway was already overwhelmed before retries kicked in. Even without retries, 15,000 requests/sec exceeds the gateway's 10,000 connection limit."
         }
@@ -229,13 +229,13 @@
       "options": [
         {
           "id": "fix-3",
-          "text": "Implement rate limiting to reject excess requests and protect the gateway",
+          "text": "Implement rate limiting on the gateway to reject excess requests at the edge and protect backend services during traffic spikes",
           "correct": false,
           "feedback": "Rate limiting protects the gateway from overload but doesn't increase capacity — it still rejects requests, just in a more controlled way. During an earthquake, you need MORE capacity, not better ways to reject traffic. Rate limiting should complement load balancing, not replace it."
         },
         {
           "id": "fix-4",
-          "text": "Have each precinct connect directly to backend services, removing the gateway entirely",
+          "text": "Remove the API gateway entirely and have each precinct connect directly to the backend services without any intermediate layer",
           "correct": false,
           "feedback": "Removing the gateway eliminates the bottleneck but loses all the benefits gateways provide: authentication, rate limiting, routing, monitoring, and protocol translation. The correct approach is to scale the gateway layer horizontally, not remove it."
         },
@@ -247,7 +247,7 @@
         },
         {
           "id": "fix-2",
-          "text": "Upgrade the single gateway server to a more powerful machine with higher connection limits",
+          "text": "Upgrade the single API gateway to a much more powerful machine with significantly higher CPU and connection limits",
           "correct": false,
           "feedback": "Vertical scaling (bigger machine) has limits — you'll eventually hit the ceiling again with the next big event. It also doesn't solve the single point of failure problem. Horizontal scaling (multiple instances) is more resilient and can scale much further."
         }

@@ -127,7 +127,7 @@
       "options": [
         {
           "id": "rc-1",
-          "text": "A central de atendimento está produzindo mensagens rápido demais para o sistema processar",
+          "text": "A central de atendimento está produzindo mensagens rápido demais para o broker e os consumidores conseguirem processar",
           "correct": false,
           "feedback": "A taxa de produção de 12 msgs/seg é normal. O problema é que zero consumidores estão drenando a fila — o serviço consumidor falhou e nunca reiniciou."
         },
@@ -139,13 +139,13 @@
         },
         {
           "id": "rc-3",
-          "text": "O broker da fila ficou sem memória e parou de aceitar mensagens",
+          "text": "O broker da fila ficou sem memória e parou de aceitar novas mensagens dos produtores",
           "correct": false,
           "feedback": "O broker está em 91% de memória, mas ainda não parou — continua aceitando mensagens. O problema real é que nenhum consumidor está drenando a fila. O problema de memória é um sintoma da falha de backpressure, não a causa."
         },
         {
           "id": "rc-4",
-          "text": "Uma partição de rede separou o broker das unidades de patrulha",
+          "text": "Uma partição de rede separou o broker da fila das unidades de patrulha no campo",
           "correct": false,
           "feedback": "As unidades de patrulha não se conectam diretamente ao broker — o serviço consumidor faz isso. Os logs do consumidor mostram que ele falhou por um OutOfMemoryError, não por um problema de rede."
         }
@@ -162,19 +162,19 @@
         },
         {
           "id": "fix-2",
-          "text": "Aumentar a memória do broker para 64 GB para comportar mais mensagens",
+          "text": "Aumentar a memória do broker para 64 GB para comportar um volume muito maior de mensagens",
           "correct": false,
           "feedback": "Mais memória apenas adia o problema — se os consumidores estão fora do ar, a fila vai eventualmente encher qualquer quantidade de memória. Você precisa de backpressure para parar o crescimento ilimitado e garantir que os consumidores permaneçam ativos."
         },
         {
           "id": "fix-3",
-          "text": "Fazer a central de atendimento enviar ordens de despacho diretamente para as unidades de patrulha, contornando a fila",
+          "text": "Fazer a central de atendimento enviar ordens de despacho diretamente para as unidades, ignorando a fila",
           "correct": false,
           "feedback": "Remover a fila elimina o buffering que ajuda a lidar com picos de tráfego. A fila é uma boa escolha arquitetural — ela só precisa de controles adequados de backpressure e resiliência de consumidores."
         },
         {
           "id": "fix-4",
-          "text": "Configurar mensagens para expirar após 5 minutos para que as antigas sejam automaticamente deletadas",
+          "text": "Configurar mensagens para expirar após 5 minutos para que as antigas sejam automaticamente deletadas da fila",
           "correct": false,
           "feedback": "Descartar ordens de despacho significa que chamadas de emergência se perdem completamente. Você precisa de backpressure para gerenciar o fluxo, não de expiração de mensagens que silenciosamente descarta atribuições críticas."
         }

@@ -163,13 +163,13 @@
       "options": [
         {
           "id": "rc-4",
-          "text": "The Booking Orchestrator should have checked cell availability before starting the process",
+          "text": "The Booking Orchestrator should have comprehensively pre-checked the cell availability across all facilities before initiating any step of the process",
           "correct": false,
           "feedback": "Pre-checking availability helps but doesn't solve the fundamental problem. A cell could fill up between the check and the assignment (a race condition). Any step in any distributed process can fail at any time. You must plan for failure and have compensating actions ready — that's the Saga pattern."
         },
         {
           "id": "rc-1",
-          "text": "The Cell Assignment Service has a bug that incorrectly reports full capacity",
+          "text": "The Cell Assignment Service has an internal software bug that causes it to incorrectly report the detention capacity as full, even when cells are available",
           "correct": false,
           "feedback": "The capacity issue is a legitimate failure — the cells really are full (with one ghost reservation). The real problem isn't that Step 3 failed. Failures are expected in distributed systems. The problem is that no compensating actions exist to undo Steps 1 and 2 when Step 3 fails."
         },
@@ -181,7 +181,7 @@
         },
         {
           "id": "rc-3",
-          "text": "The three services should share a single database so a traditional transaction could roll everything back",
+          "text": "All three services should share a single centralized database so a standard ACID transaction could roll everything back, automatically preventing any state inconsistencies",
           "correct": false,
           "feedback": "A shared database would allow a single ACID transaction, but it defeats the purpose of microservices (independent deployment, scaling, and ownership). In a microservice architecture, each service owns its data. The Saga pattern is the standard solution for maintaining consistency across service boundaries."
         }
@@ -192,7 +192,7 @@
       "options": [
         {
           "id": "fix-2",
-          "text": "Use a two-phase commit (2PC) protocol so all three services atomically commit or abort together",
+          "text": "Use a two-phase commit (2PC) protocol to ensure all three independent services synchronously commit or abort their changes together",
           "correct": false,
           "feedback": "Two-phase commit provides atomicity but has serious drawbacks in microservices: it requires all participants to be available simultaneously, holds locks across services during the prepare phase (blocking), and a coordinator failure can leave participants stuck in a prepared state. Sagas are preferred in microservice architectures because they're more resilient and don't require cross-service locking."
         },
@@ -204,13 +204,13 @@
         },
         {
           "id": "fix-3",
-          "text": "Add automatic retry logic — if Step 3 fails, keep retrying until a cell becomes available",
+          "text": "Add automatic exponential retry logic so if Step 3 fails, the orchestrator continuously retries until a jail cell becomes available",
           "correct": false,
           "feedback": "Retrying indefinitely is problematic — what if no cell becomes available for hours? Meanwhile, the arrest and booking records are in a limbo state. Retries are useful for transient failures, but for business logic failures (no capacity), you need compensating transactions to cleanly undo the partial work."
         },
         {
           "id": "fix-4",
-          "text": "Reserve all resources (arrest slot, booking number, cell) upfront before executing any step",
+          "text": "Reserve all required resources upfront — arrest slot, booking number, and jail cell — before attempting to execute any further step",
           "correct": false,
           "feedback": "Reservation helps but doesn't eliminate the problem — a reservation can fail, a reserved resource can expire, or the process can fail between reservations. You still need compensating actions for when things go wrong. The Saga pattern handles all failure scenarios systematically."
         }

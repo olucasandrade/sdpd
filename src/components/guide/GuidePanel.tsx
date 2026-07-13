@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useCase, useConcepts } from '../../hooks/useCase';
 import { useGameState } from '../../hooks/useGameState';
+import { useNotebook } from '../../hooks/useNotebook';
+import { termCardId } from '../../utils/reviewScheduler';
 import { useTranslation } from '../../i18n';
 import type { Concept } from '../../types/game';
 
@@ -11,6 +13,9 @@ export function GuidePanel() {
   const { toggleGuide } = useGameState();
   const { t } = useTranslation();
   const concepts = useConcepts();
+  const captureConceptTerm = useNotebook((s) => s.captureConceptTerm);
+  const notebookCards = useNotebook((s) => s.cards);
+  const bookmarkedIds = new Set(notebookCards.map((c) => c.id));
 
   const concept = caseData
     ? (concepts as Concept[]).find((c) => c.id === caseData.conceptId)
@@ -61,12 +66,26 @@ export function GuidePanel() {
           <div>
             <p className="text-xs font-mono text-amber-500/60 uppercase tracking-widest mb-2">{t('guide.keyTerms')}</p>
             <div className="space-y-2">
-              {concept.keyTerms.map((kt) => (
-                <div key={kt.term} className="bg-noir-950/60 rounded-lg p-3 border border-noir-700/30">
-                  <p className="text-xs font-mono text-amber-400/80 mb-0.5">{kt.term}</p>
-                  <p className="text-xs text-white/60">{kt.definition}</p>
-                </div>
-              ))}
+              {concept.keyTerms.map((kt, i) => {
+                const id = termCardId(concept.id, i);
+                const bookmarked = bookmarkedIds.has(id);
+                return (
+                  <div key={kt.term} className="bg-noir-950/60 rounded-lg p-3 border border-noir-700/30">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs font-mono text-amber-400/80 mb-0.5">{kt.term}</p>
+                      <button
+                        onClick={() => captureConceptTerm(concept.id, i)}
+                        disabled={bookmarked}
+                        aria-label={bookmarked ? t('notebook.added') : t('notebook.addBookmark')}
+                        className="shrink-0 text-white/30 hover:text-amber-400 disabled:text-amber-400/70 disabled:hover:text-amber-400/70 transition-colors text-xs"
+                      >
+                        {bookmarked ? '★' : '☆'}
+                      </button>
+                    </div>
+                    <p className="text-xs text-white/60">{kt.definition}</p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

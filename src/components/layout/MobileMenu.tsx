@@ -4,6 +4,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useGameState } from '../../hooks/useGameState';
 import { useInterviewSession } from '../../hooks/useInterviewSession';
+import { useNotebook } from '../../hooks/useNotebook';
+import { isDue } from '../../utils/reviewScheduler';
+import { getUtcDateString } from '../../data/dailyDrill';
 import { useTranslation } from '../../i18n';
 import { CaseList } from './CaseList';
 import { ResetProgressButton } from './ResetProgressButton';
@@ -19,6 +22,8 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
   const { t } = useTranslation();
   const interviewStatus = useInterviewSession((s) => s.status);
   const guideDisabled = interviewStatus === 'round' || interviewStatus === 'postmortem';
+  const notebookCards = useNotebook((s) => s.cards);
+  const dueCount = notebookCards.filter((c) => !c.retired && isDue(c.dueDate, getUtcDateString())).length;
 
   useEffect(() => {
     if (!open) return;
@@ -96,6 +101,18 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                 className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 flex items-center"
               >
                 {t('header.interview')}
+              </Link>
+              <Link
+                to="/notebook"
+                onClick={onClose}
+                className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 flex items-center justify-between"
+              >
+                {t('header.notebook')}
+                {dueCount > 0 && (
+                  <span className="min-w-4 h-4 px-1 rounded-full bg-amber-500 text-noir-950 text-[10px] font-mono font-bold flex items-center justify-center">
+                    {dueCount}
+                  </span>
+                )}
               </Link>
               <button
                 onClick={() => {

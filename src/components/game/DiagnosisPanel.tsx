@@ -6,6 +6,8 @@ import { useGameState } from '../../hooks/useGameState';
 import { useTranslation } from '../../i18n';
 import { Button } from '../common/Button';
 
+export type DiagnosisPanelMode = 'campaign' | 'drill' | 'interview';
+
 interface DiagnosisPanelProps {
   caseData: Case;
   onCaseComplete: () => void;
@@ -13,18 +15,29 @@ interface DiagnosisPanelProps {
    * 'campaign' (default) reads/writes progress via the global game store, so
    * attempts count toward unlocks and rank. 'drill' tracks attempts locally
    * only — Daily Drill scoring must never touch or be touched by campaign
-   * progress (the two progressions are intentionally independent).
+   * progress. 'interview' allows exactly one attempt per question and always
+   * auto-advances, correct or not — the two non-campaign progressions are
+   * intentionally independent of campaign state and of each other.
    */
-  mode?: 'campaign' | 'drill';
+  mode?: DiagnosisPanelMode;
   /** Fires once the fix is solved, only in 'drill' mode. */
   onDrillComplete?: (result: { rootCauseAttempts: number; fixAttempts: number }) => void;
+  /** Fires after each submit, only in 'interview' mode. */
+  onAnswer?: (phase: 'rootCause' | 'fix', correct: boolean) => void;
 }
 
 type Phase = 'rootCause' | 'fix' | 'complete';
 
-export function DiagnosisPanel({ caseData, onCaseComplete, mode = 'campaign', onDrillComplete }: DiagnosisPanelProps) {
+export function DiagnosisPanel({
+  caseData,
+  onCaseComplete,
+  mode = 'campaign',
+  onDrillComplete,
+  onAnswer,
+}: DiagnosisPanelProps) {
   const { progress, submitRootCause, submitFix } = useGameState();
   const { t } = useTranslation();
+  const isInterview = mode === 'interview';
   const caseProgress = mode === 'campaign' ? progress[caseData.id] : undefined;
   const initialPhase: Phase = caseProgress?.fixFound
     ? 'complete'
@@ -53,6 +66,11 @@ export function DiagnosisPanel({ caseData, onCaseComplete, mode = 'campaign', on
     const result = checkAnswer(currentDiagnosis.options, selected);
     setFeedback({ correct: result.correct, text: result.feedback });
 
+    if (isInterview) {
+      onAnswer?.(phase === 'rootCause' ? 'rootCause' : 'fix', result.correct);
+      return;
+    }
+
     if (!result.correct) {
       setEliminated((prev) => new Set(prev).add(selected));
     }
@@ -72,6 +90,19 @@ export function DiagnosisPanel({ caseData, onCaseComplete, mode = 'campaign', on
   }
 
   function handleNext() {
+    if (isInterview) {
+      // Interview mode: single attempt per question, always advance forward.
+      if (phase === 'rootCause') {
+        setPhase('fix');
+        setSelected(null);
+        setFeedback(null);
+      } else {
+        setPhase('complete');
+        onCaseComplete();
+      }
+      return;
+    }
+
     if (phase === 'rootCause' && feedback?.correct) {
       setPhase('fix');
       setSelected(null);
@@ -115,7 +146,7 @@ export function DiagnosisPanel({ caseData, onCaseComplete, mode = 'campaign', on
           <h3 className="text-base font-medium text-white/90">{currentDiagnosis.question}</h3>
         </div>
         <span className="text-xs font-mono text-white/45 ml-auto">
-          {t('diagnosis.attempt')} {attempts + 1}
+          {isInterview ? t('diagnosis.oneAttempt') : `${t('diagnosis.attempt')} ${attempts + 1}`}
         </span>
       </div>
 
@@ -181,7 +212,7 @@ export function DiagnosisPanel({ caseData, onCaseComplete, mode = 'campaign', on
           </Button>
         ) : (
           <Button onClick={handleNext}>
-            {feedback.correct
+            {isInterview || feedback.correct
               ? phase === 'rootCause'
                 ? t('diagnosis.continue')
                 : t('diagnosis.solveCase')

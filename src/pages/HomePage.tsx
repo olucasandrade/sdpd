@@ -211,6 +211,29 @@ export function HomePage() {
           </div>
         </div>
 
+        {/* Mock Interview */}
+        <div className="mb-10">
+          <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-noir-900/60 p-6">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.12)_0%,transparent_70%)]" />
+            <div className="relative flex flex-col md:flex-row md:items-center gap-4">
+              <div className="flex-1">
+                <p className="text-xs font-mono text-cyan-400/70 uppercase tracking-widest">
+                  {t("interview.sectionLabel")}
+                </p>
+                <h2 className="font-display text-2xl text-white/90 mt-1">
+                  {t("interview.sectionTitle")}
+                </h2>
+                <p className="text-sm text-white/70 mt-2 max-w-xl">
+                  {t("interview.sectionSubtitle")}
+                </p>
+              </div>
+              <Button onClick={() => navigate("/interview")} className="self-start md:self-center">
+                {t("interview.sectionCta")}
+              </Button>
+            </div>
+          </div>
+        </div>
+
         {/* Case Board */}
         {CATEGORIES.map((cat, catIdx) => {
           const catCases = cases.filter(

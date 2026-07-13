@@ -119,6 +119,11 @@ export function Header() {
             {t("header.chaos")}
           </Button>
         </Link>
+        <Link to="/builder">
+          <Button variant="ghost" className="text-xs font-mono">
+            {t("header.builder")}
+          </Button>
+        </Link>
         <Button
           variant="ghost"
           onClick={toggleGuide}

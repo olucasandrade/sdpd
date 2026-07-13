@@ -72,6 +72,13 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
               >
                 {t('header.chaos')}
               </Link>
+              <Link
+                to="/builder"
+                onClick={onClose}
+                className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 flex items-center"
+              >
+                {t('header.builder')}
+              </Link>
               <button
                 onClick={() => {
                   toggleGuide();

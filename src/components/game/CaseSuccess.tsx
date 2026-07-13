@@ -7,6 +7,7 @@ import { useGameState } from '../../hooks/useGameState';
 import { useAllCases } from '../../hooks/useCase';
 import { useConcepts } from '../../hooks/useCase';
 import { useTranslation } from '../../i18n';
+import { caseIdForNumber } from '../../utils/caseIds';
 
 interface CaseSuccessProps {
   caseData: Case;
@@ -22,7 +23,7 @@ export function CaseSuccess({ caseData }: CaseSuccessProps) {
   const concept = concepts.find((c) => c.id === caseData.conceptId);
 
   const hasNext = caseData.number < allCases.length;
-  const nextCaseId = hasNext ? `case-${String(caseData.number + 1).padStart(2, '0')}` : null;
+  const nextCaseId = hasNext ? caseIdForNumber(caseData.number + 1) : null;
 
   return (
     <motion.div

@@ -3,6 +3,7 @@ import type { GameState, CaseProgress, Rank } from '../types/game';
 import { RANKS } from '../types/game';
 import { loadState, saveState } from '../utils/storage';
 import { CATEGORIES } from '../data/categories';
+import { caseIdForNumber } from '../utils/caseIds';
 import type { Locale } from '../i18n';
 
 interface GameStore extends GameState {
@@ -28,11 +29,25 @@ const defaultState: GameState = {
   tutorialSeen: false,
 };
 
-const persisted = loadState<GameState>(defaultState);
+export function deriveRank(completedCases: number): Rank {
+  return [...RANKS].reverse().find((r) => completedCases >= r.requiredCases) ?? RANKS[0];
+}
 
-export const useGameState = create<GameStore>((set, get) => ({
+export function deriveCompleted(progress: Record<string, CaseProgress>): number {
+  return Object.values(progress).filter((p) => p.completed).length;
+}
+
+const persisted = loadState<GameState>(defaultState);
+const completedCases = deriveCompleted(persisted.progress ?? {});
+const hydrated: GameState = {
   ...defaultState,
   ...persisted,
+  completedCases,
+  rank: deriveRank(completedCases),
+};
+
+export const useGameState = create<GameStore>((set, get) => ({
+  ...hydrated,
 
   setCurrentCase: (caseId) => {
     set({ currentCaseId: caseId });
@@ -73,9 +88,9 @@ export const useGameState = create<GameStore>((set, get) => ({
     }
     progress[caseId] = current;
 
-    const completedCases = Object.values(progress).filter((p) => p.completed).length;
+    const completedCases = deriveCompleted(progress);
     const oldRank = get().rank;
-    const rank = [...RANKS].reverse().find((r) => completedCases >= r.requiredCases) ?? RANKS[0];
+    const rank = deriveRank(completedCases);
     const pendingRankUp: Rank | null = rank.id !== oldRank.id ? rank : get().pendingRankUp;
 
     set({ progress, completedCases, rank, pendingRankUp });
@@ -86,7 +101,7 @@ export const useGameState = create<GameStore>((set, get) => ({
     if (caseNumber === 1) return true;
     const category = CATEGORIES.find((cat) => caseNumber >= cat.range[0] && caseNumber <= cat.range[1]);
     if (category && caseNumber === category.range[0]) return true;
-    const prevId = `case-${String(caseNumber - 1).padStart(2, '0')}`;
+    const prevId = caseIdForNumber(caseNumber - 1);
     return get().progress[prevId]?.completed ?? false;
   },
 
@@ -102,8 +117,10 @@ export const useGameState = create<GameStore>((set, get) => ({
   },
 
   resetProgress: () => {
-    set(defaultState);
-    saveState(defaultState);
+    const { locale, guideOpen } = get();
+    const next = { ...defaultState, locale, guideOpen };
+    set(next);
+    saveState(next);
   },
 
   clearRankUp: () => {

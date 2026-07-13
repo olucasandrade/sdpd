@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Case, DiagnosisOption } from '../../types/case';
 import { checkAnswer } from '../../engine/validator';
 import { useGameState } from '../../hooks/useGameState';
+import { useConcepts } from '../../hooks/useCase';
+import { useNotebook } from '../../hooks/useNotebook';
 import { useTranslation } from '../../i18n';
 import { Button } from '../common/Button';
 
@@ -36,6 +38,7 @@ export function DiagnosisPanel({
   onAnswer,
 }: DiagnosisPanelProps) {
   const { progress, submitRootCause, submitFix } = useGameState();
+  const concepts = useConcepts();
   const { t } = useTranslation();
   const isInterview = mode === 'interview';
   const caseProgress = mode === 'campaign' ? progress[caseData.id] : undefined;
@@ -115,6 +118,18 @@ export function DiagnosisPanel({
           rootCauseAttempts: drillAttempts.rootCause,
           fixAttempts: drillAttempts.fix,
         });
+      }
+      if (mode === 'campaign') {
+        try {
+          const updated = useGameState.getState().progress[caseData.id];
+          const multiAttempt = (updated?.rootCauseAttempts ?? 0) > 1 || (updated?.fixAttempts ?? 0) > 1;
+          if (multiAttempt) {
+            const concept = concepts.find((c) => c.id === caseData.conceptId);
+            concept?.keyTerms.forEach((_, i) => useNotebook.getState().captureConceptTerm(concept.id, i));
+          }
+        } catch {
+          // capture must never break the game loop
+        }
       }
       onCaseComplete();
     } else {

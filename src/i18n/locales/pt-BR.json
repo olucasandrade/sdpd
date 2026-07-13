@@ -7,6 +7,7 @@
   "header.builder": "[ CONSTRUTOR ]",
   "header.daily": "[ DIÁRIO ]",
   "header.interview": "[ ENTREVISTA ]",
+  "header.notebook": "[ CADERNO ]",
 
   "menu.open": "Abrir menu",
   "menu.title": "Menu",
@@ -378,5 +379,24 @@
   "interview.debrief.verdict.strongHire": "CONTRATAÇÃO FORTE",
   "interview.debrief.verdict.hire": "CONTRATAR",
   "interview.debrief.verdict.leanHire": "CONTRATAÇÃO FRACA",
-  "interview.debrief.verdict.keepTraining": "CONTINUE TREINANDO, DETETIVE"
+  "interview.debrief.verdict.keepTraining": "CONTINUE TREINANDO, DETETIVE",
+
+  "notebook.addBookmark": "+ Caderno",
+  "notebook.added": "Adicionado ✓",
+  "notebook.eyebrow": "Caderno do Detetive",
+  "notebook.title": "Caderno do Detetive",
+  "notebook.subtitle": "Suas perguntas erradas e termos-chave marcados, ressurgindo em um cronograma espaçado para realmente fixar.",
+  "notebook.due": "Pendentes",
+  "notebook.total": "Total",
+  "notebook.retired": "Arquivados",
+  "notebook.emptyNew": "Seu caderno está vazio — erre algumas perguntas primeiro, Detetive.",
+  "notebook.emptyNoneDue": "Nenhum cartão pendente agora. Volte mais tarde.",
+  "notebook.startReview": "Iniciar Revisão",
+  "notebook.sessionDone": "Sessão concluída, Detetive.",
+  "notebook.backToNotebook": "Voltar ao Caderno",
+  "notebook.cardsLeft": "cartões restantes",
+  "notebook.nextCard": "Próximo Cartão",
+  "notebook.reveal": "Revelar",
+  "notebook.gotIt": "Acertei",
+  "notebook.forgot": "Esqueci"
 }

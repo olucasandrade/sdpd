@@ -2,6 +2,9 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useGameState } from "../../hooks/useGameState";
 import { useInterviewSession } from "../../hooks/useInterviewSession";
+import { useNotebook } from "../../hooks/useNotebook";
+import { isDue } from "../../utils/reviewScheduler";
+import { getUtcDateString } from "../../data/dailyDrill";
 import { useTranslation } from "../../i18n";
 import { Button } from "../common/Button";
 import { MobileMenu } from "./MobileMenu";
@@ -76,6 +79,8 @@ export function Header() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const interviewStatus = useInterviewSession((s) => s.status);
   const guideDisabled = interviewStatus === "round" || interviewStatus === "postmortem";
+  const notebookCards = useNotebook((s) => s.cards);
+  const dueCount = notebookCards.filter((c) => !c.retired && isDue(c.dueDate, getUtcDateString())).length;
 
   const rankTitle = t(`rank.${rank.id}`);
 
@@ -138,6 +143,16 @@ export function Header() {
           <Button variant="ghost" className="text-xs font-mono">
             {t("header.interview")}
           </Button>
+        </Link>
+        <Link to="/notebook" className="relative">
+          <Button variant="ghost" className="text-xs font-mono">
+            {t("header.notebook")}
+          </Button>
+          {dueCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-amber-500 text-noir-950 text-[10px] font-mono font-bold flex items-center justify-center">
+              {dueCount}
+            </span>
+          )}
         </Link>
         <Button
           variant="ghost"

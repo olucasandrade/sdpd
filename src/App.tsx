@@ -8,6 +8,7 @@ import { BuilderListPage } from './pages/BuilderListPage';
 import { BuilderPage } from './pages/BuilderPage';
 import { DailyDrillPage } from './pages/DailyDrillPage';
 import { InterviewPage } from './pages/InterviewPage';
+import { NotebookPage } from './pages/NotebookPage';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/builder/:challengeId" element={<BuilderPage />} />
             <Route path="/daily" element={<DailyDrillPage />} />
             <Route path="/interview" element={<InterviewPage />} />
+            <Route path="/notebook" element={<NotebookPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

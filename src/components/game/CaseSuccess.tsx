@@ -3,9 +3,11 @@ import type { Case } from '../../types/case';
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useGameState } from '../../hooks/useGameState';
 import { useAllCases } from '../../hooks/useCase';
 import { useConcepts } from '../../hooks/useCase';
+import { useNotebook } from '../../hooks/useNotebook';
 import { useTranslation } from '../../i18n';
 import { caseIdForNumber } from '../../utils/caseIds';
 
@@ -21,6 +23,8 @@ export function CaseSuccess({ caseData }: CaseSuccessProps) {
   const concepts = useConcepts();
   const caseProgress = progress[caseData.id];
   const concept = concepts.find((c) => c.id === caseData.conceptId);
+  const captureConceptTerm = useNotebook((s) => s.captureConceptTerm);
+  const [bookmarked, setBookmarked] = useState(false);
 
   const hasNext = caseData.number < allCases.length;
   const nextCaseId = hasNext ? caseIdForNumber(caseData.number + 1) : null;
@@ -86,9 +90,22 @@ export function CaseSuccess({ caseData }: CaseSuccessProps) {
 
       {concept && (
         <div className="bg-noir-950/80 rounded-lg p-4 text-left mb-5 border border-noir-700/30">
-          <p className="text-xs font-mono text-cyan-400/60 uppercase tracking-widest mb-1">{t('success.conceptUnlocked')}</p>
-          <p className="text-sm font-medium text-white/80 mb-0.5">{concept.title}</p>
-          <p className="text-sm text-white/70">{concept.summary}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-mono text-cyan-400/60 uppercase tracking-widest mb-1">{t('success.conceptUnlocked')}</p>
+              <p className="text-sm font-medium text-white/80 mb-0.5">{concept.title}</p>
+              <p className="text-sm text-white/70">{concept.summary}</p>
+            </div>
+            <button
+              onClick={() => {
+                concept.keyTerms.forEach((_, i) => captureConceptTerm(concept.id, i));
+                setBookmarked(true);
+              }}
+              className="shrink-0 text-xs font-mono text-amber-400/70 hover:text-amber-400 transition-colors whitespace-nowrap"
+            >
+              {bookmarked ? t('notebook.added') : t('notebook.addBookmark')}
+            </button>
+          </div>
         </div>
       )}
 

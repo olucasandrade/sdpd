@@ -4,6 +4,7 @@ import { RANKS } from '../types/game';
 import { loadState, saveState } from '../utils/storage';
 import { CATEGORIES } from '../data/categories';
 import { caseIdForNumber } from '../utils/caseIds';
+import { useNotebook } from './useNotebook';
 import type { Locale } from '../i18n';
 
 interface GameStore extends GameState {
@@ -69,6 +70,13 @@ export const useGameState = create<GameStore>((set, get) => ({
     progress[caseId] = current;
     set({ progress });
     saveState(get());
+    if (!correct) {
+      try {
+        useNotebook.getState().captureMissedQuestion(caseId, 'rootCause');
+      } catch {
+        // capture must never break the game loop
+      }
+    }
   },
 
   submitFix: (caseId, correct) => {
@@ -95,6 +103,13 @@ export const useGameState = create<GameStore>((set, get) => ({
 
     set({ progress, completedCases, rank, pendingRankUp });
     saveState({ ...get(), pendingRankUp: null });
+    if (!correct) {
+      try {
+        useNotebook.getState().captureMissedQuestion(caseId, 'fix');
+      } catch {
+        // capture must never break the game loop
+      }
+    }
   },
 
   isCaseUnlocked: (caseNumber) => {

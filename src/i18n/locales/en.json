@@ -7,6 +7,7 @@
   "header.builder": "[ BUILDER ]",
   "header.daily": "[ DAILY ]",
   "header.interview": "[ INTERVIEW ]",
+  "header.notebook": "[ NOTEBOOK ]",
 
   "menu.open": "Open menu",
   "menu.title": "Menu",
@@ -378,5 +379,24 @@
   "interview.debrief.verdict.strongHire": "STRONG HIRE",
   "interview.debrief.verdict.hire": "HIRE",
   "interview.debrief.verdict.leanHire": "LEAN HIRE",
-  "interview.debrief.verdict.keepTraining": "KEEP TRAINING, DETECTIVE"
+  "interview.debrief.verdict.keepTraining": "KEEP TRAINING, DETECTIVE",
+
+  "notebook.addBookmark": "+ Notebook",
+  "notebook.added": "Added ✓",
+  "notebook.eyebrow": "Detective's Notebook",
+  "notebook.title": "Detective's Notebook",
+  "notebook.subtitle": "Your missed questions and bookmarked key terms, resurfacing on a spaced schedule so they actually stick.",
+  "notebook.due": "Due",
+  "notebook.total": "Total",
+  "notebook.retired": "Retired",
+  "notebook.emptyNew": "Your notebook is empty — miss a few questions first, Detective.",
+  "notebook.emptyNoneDue": "No cards due right now. Check back later.",
+  "notebook.startReview": "Start Review",
+  "notebook.sessionDone": "Session complete, Detective.",
+  "notebook.backToNotebook": "Back to Notebook",
+  "notebook.cardsLeft": "cards left",
+  "notebook.nextCard": "Next Card",
+  "notebook.reveal": "Reveal",
+  "notebook.gotIt": "Got It",
+  "notebook.forgot": "Forgot"
 }

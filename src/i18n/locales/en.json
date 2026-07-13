@@ -118,6 +118,7 @@
   "chaos.fix.queueAutoscale.name": "Queue Autoscale",
   "chaos.fix.queueAutoscale.desc": "Increase consumers to drain backlog faster.",
 
+  "case.loading": "Loading case file…",
   "case.notFound": "Case not found.",
   "case.locked": "Complete the previous case to unlock this one.",
   "case.backToBoard": "Back to Case Board",

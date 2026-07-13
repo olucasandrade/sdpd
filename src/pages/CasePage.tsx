@@ -14,7 +14,7 @@ import type { DiagramNode } from '../types/case';
 export function CasePage() {
   const { caseId } = useParams();
   const navigate = useNavigate();
-  const caseData = useCase(caseId);
+  const { caseData, loading } = useCase(caseId);
   const { progress, isCaseUnlocked, setCurrentCase, tutorialSeen, dismissTutorial } = useGameState();
   const { t } = useTranslation();
   const [inspectedNode, setInspectedNode] = useState<DiagramNode | null>(null);
@@ -28,6 +28,14 @@ export function CasePage() {
 
   const showTutorial =
     !tutorialSeen && caseId === 'case-01' && Object.keys(progress).length === 0;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-400">
+        <p>{t('case.loading')}</p>
+      </div>
+    );
+  }
 
   if (!caseData) {
     return (

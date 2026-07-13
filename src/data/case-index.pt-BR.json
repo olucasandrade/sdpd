@@ -1,0 +1,233 @@
+[
+  {
+    "id": "case-01",
+    "number": 1,
+    "title": "O Ponto Único de Falha",
+    "subtitle": "Registros criminais ficam inacessíveis em todas as delegacias",
+    "conceptId": "replication-basics"
+  },
+  {
+    "id": "case-02",
+    "number": 2,
+    "title": "A Leitura Desatualizada",
+    "subtitle": "Um policial prende alguém com base em um mandado já revogado",
+    "conceptId": "leader-follower-replication"
+  },
+  {
+    "id": "case-03",
+    "number": 3,
+    "title": "A Evidência Perdida",
+    "subtitle": "16 fotos de cena de crime desaparecem sem deixar rastro",
+    "conceptId": "sync-vs-async-replication"
+  },
+  {
+    "id": "case-04",
+    "number": 4,
+    "title": "O Cérebro Dividido",
+    "subtitle": "Duas delegacias, duas verdades, uma rede partida",
+    "conceptId": "network-partitions"
+  },
+  {
+    "id": "case-05",
+    "number": 5,
+    "title": "O Voto Fantasma",
+    "subtitle": "Bloqueio da sala de evidências falha quando múltiplos nós reivindicam liderança",
+    "conceptId": "leader-election"
+  },
+  {
+    "id": "case-06",
+    "number": 6,
+    "title": "As Ordens Conflitantes",
+    "subtitle": "Dois líderes, duas designações, um policial muito confuso",
+    "conceptId": "multi-leader-replication"
+  },
+  {
+    "id": "case-07",
+    "number": 7,
+    "title": "O Dilema do Viajante do Tempo",
+    "subtitle": "Timestamps de evidências desafiam as leis da física",
+    "conceptId": "clock-synchronization"
+  },
+  {
+    "id": "case-08",
+    "number": 8,
+    "title": "A Testemunha Bizantina",
+    "subtitle": "Um nó forense malicioso mente para todos — de formas diferentes",
+    "conceptId": "byzantine-faults"
+  },
+  {
+    "id": "case-09",
+    "number": 9,
+    "title": "O Gateway Sobrecarregado",
+    "subtitle": "Emergência municipal leva o gateway único ao colapso",
+    "conceptId": "load-balancing"
+  },
+  {
+    "id": "case-10",
+    "number": 10,
+    "title": "A Manada em Disparada",
+    "subtitle": "Todas as delegacias bombardeiam o banco de dados ao mesmo tempo",
+    "conceptId": "cache-stampede"
+  },
+  {
+    "id": "case-11",
+    "number": 11,
+    "title": "A Partição Quente",
+    "subtitle": "Um shard afoga enquanto os outros ficam ociosos",
+    "conceptId": "data-partitioning"
+  },
+  {
+    "id": "case-12",
+    "number": 12,
+    "title": "O Limite Vertical",
+    "subtitle": "O servidor de análise criminal atinge o teto do hardware",
+    "conceptId": "horizontal-scaling"
+  },
+  {
+    "id": "case-13",
+    "number": 13,
+    "title": "A Situação Grudenta",
+    "subtitle": "Queda de servidor apaga centenas de sessões ativas de policiais",
+    "conceptId": "stateless-services"
+  },
+  {
+    "id": "case-14",
+    "number": 14,
+    "title": "O Registro Fantasma",
+    "subtitle": "Um registro criminal deletado continua assombrando o sistema",
+    "conceptId": "cache-invalidation"
+  },
+  {
+    "id": "case-15",
+    "number": 15,
+    "title": "A Avalanche de Cache",
+    "subtitle": "Todas as entradas de cache expiram simultaneamente, esmagando o banco de dados",
+    "conceptId": "cache-expiry-strategies"
+  },
+  {
+    "id": "case-16",
+    "number": 16,
+    "title": "O Empilhamento",
+    "subtitle": "Centenas de requisições se amontoam para reconstruir uma única entrada de cache",
+    "conceptId": "cache-locking"
+  },
+  {
+    "id": "case-17",
+    "number": 17,
+    "title": "O Cardápio Vencido",
+    "subtitle": "CDN serve lista de Mais Procurados desatualizada horas após atualização",
+    "conceptId": "cdn-caching"
+  },
+  {
+    "id": "case-18",
+    "number": 18,
+    "title": "O Despacho Perdido",
+    "subtitle": "Queda do servidor faz todas as chamadas de despacho pendentes desaparecerem da fila",
+    "conceptId": "message-durability"
+  },
+  {
+    "id": "case-19",
+    "number": 19,
+    "title": "A Prisão Duplicada",
+    "subtitle": "Entrega duplicada de mensagens faz o mesmo mandado ser processado duas vezes",
+    "conceptId": "idempotency"
+  },
+  {
+    "id": "case-20",
+    "number": 20,
+    "title": "O Pipeline Congestionado",
+    "subtitle": "Fila de despacho transborda enquanto o serviço consumidor falha silenciosamente",
+    "conceptId": "backpressure"
+  },
+  {
+    "id": "case-21",
+    "number": 21,
+    "title": "A Desordem",
+    "subtitle": "Relatórios de ocorrências chegam embaralhados enquanto consumidores paralelos desorganizam a sequência",
+    "conceptId": "message-ordering"
+  },
+  {
+    "id": "case-22",
+    "number": 22,
+    "title": "O Shard Desaparecido",
+    "subtitle": "Uma faixa inteira de criminosos por letra desaparece do banco de dados",
+    "conceptId": "sharding"
+  },
+  {
+    "id": "case-23",
+    "number": 23,
+    "title": "A Identificação Inconsistente",
+    "subtitle": "Duas delegacias veem versões diferentes do mesmo suspeito ao mesmo tempo",
+    "conceptId": "cap-theorem"
+  },
+  {
+    "id": "case-24",
+    "number": 24,
+    "title": "O Arquivo Corrompido",
+    "subtitle": "Evidência chega corrompida e ninguém sabe onde o dano aconteceu",
+    "conceptId": "data-integrity"
+  },
+  {
+    "id": "case-25",
+    "number": 25,
+    "title": "O Cofre Sobrecarregado",
+    "subtitle": "Registro de evidências com escrita intensiva causa amplificação massiva de armazenamento",
+    "conceptId": "write-amplification"
+  },
+  {
+    "id": "case-26",
+    "number": 26,
+    "title": "A Armadilha do Timeout",
+    "subtitle": "Um serviço downstream lento provoca timeouts em cascata por todo o sistema",
+    "conceptId": "cascading-timeouts"
+  },
+  {
+    "id": "case-27",
+    "number": 27,
+    "title": "A Tempestade de Retries",
+    "subtitle": "Uma requisição falhada se transforma em um milhão batendo na porta",
+    "conceptId": "retry-strategies"
+  },
+  {
+    "id": "case-28",
+    "number": 28,
+    "title": "O Circuit Breaker",
+    "subtitle": "Uma peça de dominó derruba toda a central de despacho",
+    "conceptId": "circuit-breakers"
+  },
+  {
+    "id": "case-29",
+    "number": 29,
+    "title": "O Desastre do DNS",
+    "subtitle": "Quando um servidor muda de endereço e ninguém recebe o novo",
+    "conceptId": "service-discovery"
+  },
+  {
+    "id": "case-30",
+    "number": 30,
+    "title": "O Distrito do Deadlock",
+    "subtitle": "Dois serviços travados em um impasse eterno",
+    "conceptId": "distributed-deadlocks"
+  },
+  {
+    "id": "case-31",
+    "number": 31,
+    "title": "A Leitura Fantasma",
+    "subtitle": "As estatísticas criminais que mudaram no meio da contagem",
+    "conceptId": "isolation-levels"
+  },
+  {
+    "id": "case-32",
+    "number": 32,
+    "title": "A Falha da Saga",
+    "subtitle": "Um processo de registro que esqueceu como desfazer seus erros",
+    "conceptId": "sagas"
+  },
+  {
+    "id": "case-33",
+    "number": 33,
+    "title": "O Rate Limiter",
+    "subtitle": "Uma integração inunda o sistema, afogando todos os outros",
+    "conceptId": "rate-limiting"
+  }
+]

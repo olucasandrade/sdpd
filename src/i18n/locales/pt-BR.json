@@ -118,6 +118,7 @@
   "chaos.fix.queueAutoscale.name": "Autoscale de Fila",
   "chaos.fix.queueAutoscale.desc": "Aumentar consumidores para drenar backlog mais rápido.",
 
+  "case.loading": "Carregando arquivo do caso…",
   "case.notFound": "Caso não encontrado.",
   "case.locked": "Complete o caso anterior para desbloquear este.",
   "case.backToBoard": "Voltar ao Painel de Casos",

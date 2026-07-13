@@ -154,6 +154,11 @@ export function Header() {
             </span>
           )}
         </Link>
+        <Link to="/cheatsheet">
+          <Button variant="ghost" className="text-xs font-mono">
+            {t("header.cheatsheet")}
+          </Button>
+        </Link>
         <Button
           variant="ghost"
           onClick={toggleGuide}

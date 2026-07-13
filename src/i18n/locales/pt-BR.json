@@ -8,6 +8,7 @@
   "header.daily": "[ DIÁRIO ]",
   "header.interview": "[ ENTREVISTA ]",
   "header.notebook": "[ CADERNO ]",
+  "header.cheatsheet": "[ GUIA RÁPIDO ]",
 
   "menu.open": "Abrir menu",
   "menu.title": "Menu",
@@ -398,5 +399,24 @@
   "notebook.nextCard": "Próximo Cartão",
   "notebook.reveal": "Revelar",
   "notebook.gotIt": "Acertei",
-  "notebook.forgot": "Esqueci"
+  "notebook.forgot": "Esqueci",
+
+  "cheatsheet.sectionLabel": "O Manual de Campo",
+  "cheatsheet.sectionTitle": "O Manual de Campo do Detetive",
+  "cheatsheet.sectionSubtitle": "Cada decisão que você vai tomar sob pressão, indexada — uma referência rápida para a noite antes da entrevista.",
+  "cheatsheet.sectionCta": "Abrir Guia Rápido",
+  "cheatsheet.eyebrow": "Manual de Campo",
+  "cheatsheet.title": "Guia Rápido de System Design",
+  "cheatsheet.subtitle": "Decisões recorrentes de entrevista, indexadas por categoria. Quando X acontece, use Y — ou M, e por quê.",
+  "cheatsheet.searchPlaceholder": "Buscar no manual de campo…",
+  "cheatsheet.resultsFound": "pistas encontradas",
+  "cheatsheet.noResults": "Nenhuma pista. Tente outro ângulo, detetive.",
+  "cheatsheet.when": "Quando",
+  "cheatsheet.use": "Use",
+  "cheatsheet.orUse": "Ou use",
+  "cheatsheet.why": "Por quê",
+  "cheatsheet.tradeoff": "Tradeoff",
+  "cheatsheet.interviewerProbe": "O entrevistador vai perguntar",
+  "cheatsheet.investigate": "Investigar no Caso",
+  "cheatsheet.loadError": "Não foi possível carregar o manual de campo — tente atualizar a página."
 }

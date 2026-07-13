@@ -8,6 +8,7 @@
   "header.daily": "[ DAILY ]",
   "header.interview": "[ INTERVIEW ]",
   "header.notebook": "[ NOTEBOOK ]",
+  "header.cheatsheet": "[ CHEATSHEET ]",
 
   "menu.open": "Open menu",
   "menu.title": "Menu",
@@ -398,5 +399,24 @@
   "notebook.nextCard": "Next Card",
   "notebook.reveal": "Reveal",
   "notebook.gotIt": "Got It",
-  "notebook.forgot": "Forgot"
+  "notebook.forgot": "Forgot",
+
+  "cheatsheet.sectionLabel": "The Field Manual",
+  "cheatsheet.sectionTitle": "The Detective's Field Manual",
+  "cheatsheet.sectionSubtitle": "Every call you'll make under pressure, indexed — a scannable reference for interview night.",
+  "cheatsheet.sectionCta": "Open Cheatsheet",
+  "cheatsheet.eyebrow": "Field Manual",
+  "cheatsheet.title": "System Design Cheatsheet",
+  "cheatsheet.subtitle": "Recurring interview decisions, indexed by category. When X happens, use Y — or M, and here's why.",
+  "cheatsheet.searchPlaceholder": "Search the field manual…",
+  "cheatsheet.resultsFound": "leads found",
+  "cheatsheet.noResults": "No leads. Try another angle, detective.",
+  "cheatsheet.when": "When",
+  "cheatsheet.use": "Use",
+  "cheatsheet.orUse": "Or use",
+  "cheatsheet.why": "Why",
+  "cheatsheet.tradeoff": "Tradeoff",
+  "cheatsheet.interviewerProbe": "Interviewer will ask",
+  "cheatsheet.investigate": "Investigate in Case",
+  "cheatsheet.loadError": "Couldn't load the field manual — try refreshing."
 }

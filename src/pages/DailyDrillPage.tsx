@@ -50,11 +50,19 @@ export function DailyDrillPage() {
   const { t } = useTranslation();
   const { toggleGuide, guideOpen } = useGameState();
   const drill = useDailyDrill();
-  const caseData = useCase(drill.caseId);
+  const { caseData, loading } = useCase(drill.caseId);
   const concepts = useConcepts();
   const [inspectedNode, setInspectedNode] = useState<DiagramNode | null>(null);
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const countdown = useCountdownToNextDrill();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full text-white/45">
+        <p>{t('case.loading')}</p>
+      </div>
+    );
+  }
 
   if (!caseData) {
     return (

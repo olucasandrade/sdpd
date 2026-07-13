@@ -1,0 +1,988 @@
+{
+  "schemaVersion": 1,
+  "cards": [
+    {
+      "id": "spof",
+      "category": "replication",
+      "title": "Eliminando um ponto único de falha",
+      "when": "A falha de qualquer componente único derruba o sistema inteiro",
+      "options": [
+        {
+          "use": "Replicação leader-follower",
+          "why": "Uma cópia viva em hardware separado pode ser promovida em caso de falha. O primeiro movimento padrão para bancos de dados."
+        },
+        {
+          "use": "Par ativo-ativo atrás de um load balancer",
+          "why": "Ambos os nós atendem tráfego, então o failover é instantâneo — mas só funciona para cargas stateless ou livres de conflito."
+        }
+      ],
+      "tradeoff": "Velocidade de failover vs complexidade de consistência: ativo-ativo remove o atraso de promoção mas convida conflitos de escrita.",
+      "interviewerProbe": "Como você detecta que o leader está realmente morto e não apenas lento?",
+      "relatedCaseIds": [
+        "case-01"
+      ],
+      "conceptId": null
+    },
+    {
+      "id": "sync-vs-async-replication",
+      "category": "replication",
+      "title": "Replicação síncrona vs assíncrona",
+      "when": "Você precisa decidir se escritas confirmadas podem ser perdidas",
+      "options": [
+        {
+          "use": "Replicação síncrona",
+          "why": "A escrita está em uma réplica antes do cliente receber o ack — perder o leader não perde nada."
+        },
+        {
+          "use": "Replicação assíncrona",
+          "why": "Menor latência de escrita e o leader nunca bloqueia por uma réplica lenta — mas escritas recentes podem sumir no failover."
+        },
+        {
+          "use": "Semi-síncrona (uma réplica síncrona)",
+          "why": "Limita o risco de durabilidade a uma réplica perdida mantendo a latência limitada."
+        }
+      ],
+      "tradeoff": "Durabilidade vs latência de escrita — escolha por classe de dado, não por sistema.",
+      "interviewerProbe": "O que acontece com as escritas que estavam em trânsito quando o failover começou?",
+      "relatedCaseIds": [
+        "case-03"
+      ],
+      "conceptId": "sync-vs-async-replication"
+    },
+    {
+      "id": "failover-strategy",
+      "category": "replication",
+      "title": "Failover automático vs manual",
+      "when": "O primário falha e algo precisa promover uma réplica",
+      "options": [
+        {
+          "use": "Failover automático via consenso",
+          "why": "Recuperação em segundos sem acionar um humano; a eleição evita que dois nós reivindiquem liderança."
+        },
+        {
+          "use": "Failover manual",
+          "why": "Um humano confirma que o primário está realmente morto — mais lento, mas imune a falsos positivos que causam split brain."
+        }
+      ],
+      "tradeoff": "Tempo de recuperação vs risco de split brain: um failover automático ruim é pior que um failover manual lento.",
+      "interviewerProbe": "Depois que uma partição de rede se resolve, como você impede que o leader antigo aceite escritas?",
+      "relatedCaseIds": [
+        "case-04"
+      ],
+      "conceptId": null
+    },
+    {
+      "id": "read-scaling",
+      "category": "replication",
+      "title": "Escalando leituras: réplicas vs cache",
+      "when": "O tráfego de leitura está sobrecarregando o banco primário",
+      "options": [
+        {
+          "use": "Réplicas de leitura",
+          "why": "Atende toda a superfície de consultas (qualquer SQL) com staleness modesta; escala linearmente ao adicionar réplicas."
+        },
+        {
+          "use": "Uma camada de cache",
+          "why": "Ordens de magnitude mais barato por leitura para buscas quentes e repetidas — mas só para padrões de acesso por chave."
+        }
+      ],
+      "tradeoff": "Flexibilidade de consulta vs custo por leitura; ambos introduzem staleness que você precisa orçar explicitamente.",
+      "interviewerProbe": "Quais dos seus caminhos de leitura toleram dados desatualizados, e quão desatualizados exatamente?",
+      "relatedCaseIds": [
+        "case-02"
+      ],
+      "conceptId": null
+    },
+    {
+      "id": "multi-region",
+      "category": "replication",
+      "title": "Multi-região: ativo-ativo vs ativo-passivo",
+      "when": "Usuários em vários continentes precisam de baixa latência e sobrevivência a falha de região",
+      "options": [
+        {
+          "use": "Ativo-passivo (uma única região de escrita)",
+          "why": "Nenhum conflito de escrita jamais; usuários remotos pagam latência de escrita mas as leituras ficam locais via réplicas."
+        },
+        {
+          "use": "Ativo-ativo (multi-leader)",
+          "why": "Latência de escrita local em todo lugar e nenhum evento de failover — ao custo da maquinaria de resolução de conflitos."
+        }
+      ],
+      "tradeoff": "Latência de escrita para usuários remotos vs a complexidade permanente de resolver escritas concorrentes entre regiões.",
+      "interviewerProbe": "Duas regiões atualizam a mesma linha no mesmo segundo — descreva o que acontece.",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "strong-vs-eventual",
+      "category": "consistency",
+      "title": "Consistência forte vs eventual",
+      "when": "Escolhendo a garantia de consistência para uma operação",
+      "options": [
+        {
+          "use": "Consistência forte",
+          "why": "Leituras sempre veem a última escrita — necessário para saldos, estoque, permissões, qualquer coisa com um invariante."
+        },
+        {
+          "use": "Consistência eventual",
+          "why": "Maior disponibilidade e menor latência — ok para feeds, contadores, perfis, onde discordância breve é invisível."
+        }
+      ],
+      "tradeoff": "Garantias de correção vs disponibilidade e latência — decida por operação, nunca por sistema.",
+      "interviewerProbe": "Quais endpoints específicos no seu design realmente precisam de consistência forte, e por quê?",
+      "relatedCaseIds": [
+        "case-23"
+      ],
+      "conceptId": null
+    },
+    {
+      "id": "consensus",
+      "category": "consistency",
+      "title": "Quando você precisa de consenso distribuído",
+      "when": "Um cluster precisa concordar sobre um valor: quem é o leader, uma configuração, um lock",
+      "options": [
+        {
+          "use": "Um serviço de consenso (etcd/ZooKeeper, baseado em Raft)",
+          "why": "Maquinaria de quórum testada em batalha; você herda eleição de leader e fencing corretos em vez de reinventá-los."
+        },
+        {
+          "use": "Delegar ao seu banco de dados",
+          "why": "Um único armazenamento fortemente consistente com escritas condicionais (compare-and-set) cobre locking simples sem nova infraestrutura."
+        }
+      ],
+      "tradeoff": "Superfície operacional vs correção sob partições — coordenação feita à mão é onde nascem as interrupções.",
+      "interviewerProbe": "Com 5 nós, qual é seu tamanho de quórum, e por que um número ímpar é melhor?",
+      "relatedCaseIds": [
+        "case-05"
+      ],
+      "conceptId": "leader-election"
+    },
+    {
+      "id": "conflict-resolution",
+      "category": "consistency",
+      "title": "Resolvendo escritas concorrentes",
+      "when": "Dois escritores podem atualizar o mesmo dado sem se verem (multi-leader, clientes offline)",
+      "options": [
+        {
+          "use": "Last-write-wins (LWW)",
+          "why": "Trivial de implementar — mas descarta silenciosamente uma escrita, e o clock skew decide o vencedor."
+        },
+        {
+          "use": "CRDTs",
+          "why": "Tipos de dados que se fundem automaticamente e de forma determinística — perfeitos para contadores, sets, edição colaborativa."
+        },
+        {
+          "use": "Merge no nível da aplicação",
+          "why": "Exibe ambas as versões e deixa a lógica de domínio (ou o usuário) decidir — a única opção quando perder qualquer escrita é inaceitável."
+        }
+      ],
+      "tradeoff": "Perda silenciosa de dados vs complexidade de merge.",
+      "interviewerProbe": "Os relógios dos seus servidores derivam 200ms — o que o LWW faz com seus dados?",
+      "relatedCaseIds": [
+        "case-06",
+        "case-07"
+      ],
+      "conceptId": "multi-leader-replication"
+    },
+    {
+      "id": "read-your-writes",
+      "category": "consistency",
+      "title": "Ler as próprias escritas",
+      "when": "Um usuário atualiza algo e precisa ver a mudança imediatamente, mas as leituras caem em réplicas desatualizadas",
+      "options": [
+        {
+          "use": "Rotear as leituras do autor para o leader",
+          "why": "Regra de sessão simples: após uma escrita, aquele usuário lê do primário por uma janela curta."
+        },
+        {
+          "use": "Eco no lado do cliente",
+          "why": "Renderiza otimisticamente a mudança enviada localmente — sem mudança no backend, mas a divergência aparece se a escrita realmente falhou."
+        }
+      ],
+      "tradeoff": "Complexidade de roteamento no backend vs confiar que o cliente finge honestamente.",
+      "interviewerProbe": "Sua garantia de sessão se mantém quando o usuário tem duas abas, ou um celular e um laptop?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cap-under-partition",
+      "category": "consistency",
+      "title": "Escolhendo o comportamento durante uma partição",
+      "when": "Uma partição de rede acontece (vai acontecer) e cada lado precisa decidir o que fazer",
+      "options": [
+        {
+          "use": "CP: recusar escritas no lado minoritário",
+          "why": "Nenhuma divergência para reparar depois — correto para dinheiro, estoque, garantias de unicidade."
+        },
+        {
+          "use": "AP: continuar aceitando escritas, reconciliar depois",
+          "why": "Usuários nunca veem uma indisponibilidade — correto para carrinhos, curtidas, telemetria, onde fundir depois é tolerável."
+        }
+      ],
+      "tradeoff": "Indisponibilidade visível agora vs trabalho de reconciliação (e possíveis conflitos) depois.",
+      "interviewerProbe": "Para cada caminho de escrita no seu design, de que lado dessa linha ele está?",
+      "relatedCaseIds": [
+        "case-04"
+      ],
+      "conceptId": "network-partitions"
+    },
+    {
+      "id": "distributed-transactions",
+      "category": "consistency",
+      "title": "Transações entre serviços",
+      "when": "Uma ação de negócio precisa atualizar múltiplos serviços ou bancos atomicamente",
+      "options": [
+        {
+          "use": "Saga com compensações",
+          "why": "Cada etapa commita localmente; falhas disparam ações compensatórias. Sem locks globais, funciona em escala."
+        },
+        {
+          "use": "Two-phase commit (2PC)",
+          "why": "Atomicidade verdadeira — mas o coordenador é um ponto único de falha bloqueante, então reserve para casos raros, curtos e intra-datacenter."
+        }
+      ],
+      "tradeoff": "Projetar lógica de compensação para cada etapa vs bloquear o mundo em um coordenador.",
+      "interviewerProbe": "O que acontece quando uma compensação em si falha?",
+      "relatedCaseIds": [
+        "case-32"
+      ],
+      "conceptId": null
+    },
+    {
+      "id": "lb-algorithm",
+      "category": "loadBalancing",
+      "title": "Escolhendo um algoritmo de load balancing",
+      "when": "Distribuindo requisições entre um pool de servidores",
+      "options": [
+        {
+          "use": "Round robin",
+          "why": "Extremamente simples e ok quando requisições e servidores são homogêneos."
+        },
+        {
+          "use": "Least connections",
+          "why": "Se adapta quando o custo das requisições varia muito — requisições lentas param de atrair mais tráfego."
+        },
+        {
+          "use": "Consistent hashing",
+          "why": "A mesma chave cai no mesmo servidor — necessário quando servidores mantêm estado por chave ou cache local."
+        }
+      ],
+      "tradeoff": "Distribuição uniforme vs afinidade: hashing dá localidade mas faz chaves quentes baterem em um único servidor.",
+      "interviewerProbe": "Um tipo de instância no pool é duas vezes mais lento — qual algoritmo degrada pior?",
+      "relatedCaseIds": [
+        "case-09",
+        "case-11"
+      ],
+      "conceptId": "data-partitioning"
+    },
+    {
+      "id": "l4-vs-l7",
+      "category": "loadBalancing",
+      "title": "Load balancing L4 vs L7",
+      "when": "Escolhendo em qual camada o balanceador opera",
+      "options": [
+        {
+          "use": "L7 (consciente da aplicação)",
+          "why": "Roteia por path, headers, cookies; termina TLS; habilita canaries e políticas por rota."
+        },
+        {
+          "use": "L4 (transporte)",
+          "why": "Maior throughput, menor latência, agnóstico a protocolo — certo para TCP puro ou camadas de escala extrema."
+        }
+      ],
+      "tradeoff": "Inteligência de roteamento vs performance bruta; muitos sistemas reais empilham L4 na frente de L7.",
+      "interviewerProbe": "Onde o TLS termina no seu design, e o que pode inspecionar o tráfego depois desse ponto?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "session-state",
+      "category": "loadBalancing",
+      "title": "Sessões sticky vs servidores stateless",
+      "when": "Servidores mantêm estado de sessão por usuário e qualquer servidor pode receber a próxima requisição",
+      "options": [
+        {
+          "use": "Externalizar o estado, permanecer stateless",
+          "why": "Sessões vivem no Redis ou em um token assinado; qualquer servidor atende qualquer requisição, deploys e scale-in são tranquilos."
+        },
+        {
+          "use": "Sessões sticky",
+          "why": "Zero refatoração — o LB fixa usuários em servidores. Aceitável como ponte, não como destino."
+        }
+      ],
+      "tradeoff": "Mais uma dependência de infraestrutura vs carga desigual e sessões morrendo com seu servidor.",
+      "interviewerProbe": "O que seus usuários vivenciam durante um rolling deploy com sessões sticky?",
+      "relatedCaseIds": [
+        "case-13"
+      ],
+      "conceptId": "stateless-services"
+    },
+    {
+      "id": "health-checks",
+      "category": "loadBalancing",
+      "title": "Health checks ativos vs passivos",
+      "when": "O balanceador precisa parar de rotear para instâncias não saudáveis",
+      "options": [
+        {
+          "use": "Checks ativos",
+          "why": "Sondas dedicadas em um intervalo — tempo de detecção previsível, e um endpoint /health que você controla."
+        },
+        {
+          "use": "Passivo (outlier detection)",
+          "why": "Observa falhas reais de requisições — pega problemas que sondas sintéticas perdem, com zero tráfego de sondagem."
+        }
+      ],
+      "tradeoff": "Latência de detecção vs falsos positivos; setups de produção geralmente rodam os dois.",
+      "interviewerProbe": "Uma instância oscila saudável/não-saudável a cada poucos segundos — como você impede que ela agite o pool?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "rate-limiting",
+      "category": "loadBalancing",
+      "title": "Estratégia de rate limiting",
+      "when": "Protegendo o sistema de clientes abusivos ou em rajada",
+      "options": [
+        {
+          "use": "Token bucket",
+          "why": "Permite rajadas curtas enquanto impõe uma taxa média — combina com como clientes legítimos realmente se comportam."
+        },
+        {
+          "use": "Sliding window counter",
+          "why": "Limites suaves e precisos com custo de memória mínimo — melhor quando as próprias rajadas são o problema."
+        }
+      ],
+      "tradeoff": "Tolerância a rajadas vs rigor; decida também ONDE ele roda — na borda (barato, grosseiro) ou no serviço (contexto rico).",
+      "interviewerProbe": "Seu limiter roda em 20 nós de gateway — como você impõe um limite global por usuário?",
+      "relatedCaseIds": [
+        "case-33"
+      ],
+      "conceptId": "rate-limiting"
+    },
+    {
+      "id": "scaling-direction",
+      "category": "loadBalancing",
+      "title": "Escala horizontal vs vertical",
+      "when": "A capacidade atual está esgotada",
+      "options": [
+        {
+          "use": "Horizontal (mais máquinas)",
+          "why": "Sem teto prático e isolamento de falhas de graça — mas exige serviços stateless ou estado particionado."
+        },
+        {
+          "use": "Vertical (máquina maior)",
+          "why": "Zero mudança de código e nenhuma complexidade de distribuição — ganhe tempo com isso, mas o teto e o SPOF permanecem."
+        }
+      ],
+      "tradeoff": "Trabalho arquitetural agora vs um limite rígido depois.",
+      "interviewerProbe": "Qual é a primeira coisa stateful que quebra quando você vai de 1 servidor para 10?",
+      "relatedCaseIds": [
+        "case-12"
+      ],
+      "conceptId": "horizontal-scaling"
+    },
+    {
+      "id": "cache-read-strategy",
+      "category": "caching",
+      "title": "Cache-aside vs read-through",
+      "when": "Leituras dominam e alguma staleness é tolerável",
+      "options": [
+        {
+          "use": "Cache-aside",
+          "why": "A aplicação checa o cache, cai para o banco, preenche o cache. Simples, falha do cache degrada graciosamente para o banco."
+        },
+        {
+          "use": "Read-through",
+          "why": "O próprio cache carrega os misses — centraliza a lógica de carga e deduplica misses concorrentes, mas adiciona uma dependência de biblioteca/proxy."
+        }
+      ],
+      "tradeoff": "Simplicidade dona da aplicação vs tratamento centralizado de misses.",
+      "interviewerProbe": "O que atinge seu banco de dados no primeiro minuto depois que você limpa o cache em pico de tráfego?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cache-write-strategy",
+      "category": "caching",
+      "title": "Write-through vs write-back",
+      "when": "Escritas precisam interagir com um cache que também atende leituras",
+      "options": [
+        {
+          "use": "Write-through",
+          "why": "Escreve cache e banco juntos — o cache nunca fica desatualizado para chaves escritas, e a durabilidade é do banco."
+        },
+        {
+          "use": "Write-back",
+          "why": "Confirma após escrever só no cache, envia ao banco depois — absorve rajadas de escrita, mas uma queda do cache perde escritas confirmadas."
+        },
+        {
+          "use": "Write-around",
+          "why": "Escreve só no banco, deixa as leituras repopularem — evita poluir o cache com dados de escrita única."
+        }
+      ],
+      "tradeoff": "Durabilidade vs latência de escrita; write-back é o único que pode perder dados.",
+      "interviewerProbe": "Qual das suas classes de dados sobreviveria a perder 30 segundos de escritas confirmadas?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cache-invalidation",
+      "category": "caching",
+      "title": "TTL vs invalidação orientada a eventos",
+      "when": "Dados em cache mudam na fonte e a staleness precisa ser limitada",
+      "options": [
+        {
+          "use": "Expiração por TTL",
+          "why": "Zero encanamento e auto-cura — a staleness é limitada pelo TTL que você escolhe."
+        },
+        {
+          "use": "Invalidação orientada a eventos",
+          "why": "Staleness quase zero — o escritor (ou um stream de CDC) remove as chaves afetadas — ao custo de encanamento real de invalidação."
+        }
+      ],
+      "tradeoff": "Staleness limitada-mas-garantida vs frescor com maquinaria que ela mesma pode falhar.",
+      "interviewerProbe": "Para cada entidade em cache, qual é a staleness máxima que o produto realmente tolera?",
+      "relatedCaseIds": [
+        "case-14"
+      ],
+      "conceptId": "cache-invalidation"
+    },
+    {
+      "id": "cache-stampede",
+      "category": "caching",
+      "title": "Prevenindo stampedes de cache",
+      "when": "Uma chave quente expira e milhares de requisições concorrentes batem na origem de uma vez",
+      "options": [
+        {
+          "use": "Coalescência de requisições (lock single-flight)",
+          "why": "Uma requisição reconstrói o valor; o resto espera por ela — a origem vê um miss em vez de milhares."
+        },
+        {
+          "use": "Stale-while-revalidate / refresh antecipado",
+          "why": "Serve o valor desatualizado enquanto atualiza em background — usuários nunca esperam pela reconstrução."
+        }
+      ],
+      "tradeoff": "Um pico breve de latência para quem espera vs servir dados conscientemente desatualizados durante o refresh.",
+      "interviewerProbe": "Você faz deploy e o cache começa vazio — como isso difere de uma chave quente expirando, e o que quebra?",
+      "relatedCaseIds": [
+        "case-10",
+        "case-16"
+      ],
+      "conceptId": "cache-locking"
+    },
+    {
+      "id": "cache-placement",
+      "category": "caching",
+      "title": "Onde fazer cache: CDN vs cache de aplicação vs banco de dados",
+      "when": "Decidindo em qual camada um problema de cache deve ser resolvido",
+      "options": [
+        {
+          "use": "CDN / cache do navegador",
+          "why": "Mais perto do usuário, absorve tráfego antes de te tocar — para conteúdo estático e compartilhado anonimamente."
+        },
+        {
+          "use": "Cache de aplicação (Redis/Memcached)",
+          "why": "Controle total, dados por usuário, chaves complexas — o cavalo de batalha para resultados computados e personalizados."
+        },
+        {
+          "use": "Cache interno do banco / views materializadas",
+          "why": "Acelera todo consumidor da mesma query sem nova infraestrutura."
+        }
+      ],
+      "tradeoff": "Distância do usuário vs controle sobre invalidação e personalização.",
+      "interviewerProbe": "Quais camadas podem cachear com segurança o feed inicial de um usuário logado, e por quê?",
+      "relatedCaseIds": [
+        "case-17"
+      ],
+      "conceptId": "cdn-caching"
+    },
+    {
+      "id": "cache-eviction",
+      "category": "caching",
+      "title": "Escolhendo uma política de eviction",
+      "when": "O cache é limitado por memória e precisa descartar entradas",
+      "options": [
+        {
+          "use": "LRU",
+          "why": "Recência é o melhor preditor padrão de re-acesso; barato e onipresente."
+        },
+        {
+          "use": "LFU",
+          "why": "Protege itens quentes estáveis de serem removidos por uma rajada pontual — melhor para cargas assimétricas e estáveis."
+        }
+      ],
+      "tradeoff": "Velocidade de adaptação vs resistência a rajadas: LRU acompanha mudanças rápido mas um scan em lote pode esvaziar todo o seu conjunto quente.",
+      "interviewerProbe": "Um job noturno de analytics lê cada registro uma vez — o que isso faz com seu cache LRU, e como você o defende?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "queue-vs-pubsub",
+      "category": "messaging",
+      "title": "Fila de trabalho vs pub/sub",
+      "when": "Desacoplando produtores de consumidores",
+      "options": [
+        {
+          "use": "Fila de trabalho",
+          "why": "Cada mensagem processada por exatamente um worker — para tarefas que devem acontecer uma vez (emails, pagamentos, renders)."
+        },
+        {
+          "use": "Pub/sub fan-out",
+          "why": "Todo assinante recebe todo evento — para transmitir fatos que múltiplos sistemas reagem independentemente."
+        }
+      ],
+      "tradeoff": "Distribuição de tarefas vs transmissão de eventos — misturar os dois é um clássico cheiro de design ruim.",
+      "interviewerProbe": "Um assinante fica fora do ar por uma hora — o que acontece com seus eventos em cada modelo?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "delivery-guarantees",
+      "category": "messaging",
+      "title": "Garantias de entrega e idempotência",
+      "when": "Decidindo como o sistema se comporta quando a entrega de mensagens é incerta",
+      "options": [
+        {
+          "use": "At-least-once + consumidores idempotentes",
+          "why": "A resposta da indústria: aceite duplicatas, torne o processamento seguro para repetir via chaves de idempotência ou dedupe."
+        },
+        {
+          "use": "At-most-once",
+          "why": "Dispara e esquece — aceitável só quando perder uma mensagem é mais barato que qualquer maquinaria de dedupe (métricas, telemetria)."
+        }
+      ],
+      "tradeoff": "\"Entrega exactly-once\" é um mito sobre redes — o que existe é entrega at-least-once mais processamento exactly-once que você constrói.",
+      "interviewerProbe": "Onde vive seu estado de deduplicação, e por quanto tempo você o mantém?",
+      "relatedCaseIds": [
+        "case-19"
+      ],
+      "conceptId": "idempotency"
+    },
+    {
+      "id": "message-ordering",
+      "category": "messaging",
+      "title": "Preservando a ordem dos eventos",
+      "when": "Eventos da mesma entidade precisam ser aplicados em ordem (movimentações de conta, transições de estado)",
+      "options": [
+        {
+          "use": "Log particionado por id da entidade",
+          "why": "A ordem dentro de uma partição é garantida enquanto partições processam em paralelo — ordem onde importa, throughput em todo o resto."
+        },
+        {
+          "use": "Consumidor único / partição única",
+          "why": "Ordem global trivial — e um teto de throughput rígido. Ok para streams de baixo volume."
+        }
+      ],
+      "tradeoff": "Paralelismo vs escopo de ordenação; ordem global e escala horizontal estão fundamentalmente em conflito.",
+      "interviewerProbe": "Um cliente gera 100× os eventos de todos os outros — o que acontece com a partição dele?",
+      "relatedCaseIds": [
+        "case-21"
+      ],
+      "conceptId": "message-ordering"
+    },
+    {
+      "id": "backpressure",
+      "category": "messaging",
+      "title": "Lidando com produtores mais rápidos que consumidores",
+      "when": "A fila está crescendo mais rápido do que os workers a drenam",
+      "options": [
+        {
+          "use": "Fila limitada + rejeitar/descartar na entrada",
+          "why": "Falhe rápido na borda — quem chama recebe um erro honesto agora em vez de um timeout depois de um atraso infinito."
+        },
+        {
+          "use": "Buffer + autoscale de consumidores",
+          "why": "Absorve rajadas e adiciona workers pela profundidade da fila — certo quando o backlog é temporário e o trabalho não pode ser descartado."
+        }
+      ],
+      "tradeoff": "Descartar trabalho visivelmente vs atraso e memória ilimitados silenciosamente.",
+      "interviewerProbe": "Qual é seu atraso máximo aceitável de fila em segundos, e o que impõe isso?",
+      "relatedCaseIds": [
+        "case-20"
+      ],
+      "conceptId": "backpressure"
+    },
+    {
+      "id": "sync-vs-async-processing",
+      "category": "messaging",
+      "title": "Chamada síncrona vs job assíncrono",
+      "when": "Quem chama não precisa estritamente do resultado na mesma requisição",
+      "options": [
+        {
+          "use": "Assíncrono via fila",
+          "why": "Absorve picos, isola falhas downstream, retenta invisivelmente — a resposta só diz \"aceito\"."
+        },
+        {
+          "use": "Chamada síncrona",
+          "why": "A coisa correta mais simples quando quem chama realmente precisa da resposta agora; erros aparecem imediatamente."
+        }
+      ],
+      "tradeoff": "Resiliência e elasticidade vs confirmação imediata e um modelo mental mais simples.",
+      "interviewerProbe": "O job é aceito e falha 5 minutos depois — como o cliente fica sabendo?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "retries-dlq",
+      "category": "messaging",
+      "title": "Retries e dead-letter queues",
+      "when": "O processamento da mensagem falha e pode ter sucesso depois — ou nunca",
+      "options": [
+        {
+          "use": "Retries limitados com backoff, depois DLQ",
+          "why": "Falhas transitórias se auto-curam; falhas permanentes pousam em algum lugar visível em vez de envenenar a fila."
+        },
+        {
+          "use": "Retry infinito",
+          "why": "Só para mensagens que precisam ter sucesso eventualmente e cujo bloqueio você monitora ativamente — do contrário, uma mensagem envenenada para o mundo."
+        }
+      ],
+      "tradeoff": "Desistir visivelmente vs bloquear silenciosamente.",
+      "interviewerProbe": "Quem olha a DLQ, como são alertados, e qual é o procedimento de replay?",
+      "relatedCaseIds": [
+        "case-18",
+        "case-27"
+      ],
+      "conceptId": null
+    },
+    {
+      "id": "sql-vs-nosql",
+      "category": "storage",
+      "title": "Relacional vs NoSQL como armazenamento primário",
+      "when": "Escolhendo o sistema de registro para um novo serviço",
+      "options": [
+        {
+          "use": "Relacional (PostgreSQL/MySQL)",
+          "why": "Transações, joins, constraints, queries ad-hoc — o padrão mais seguro até um limite específico ser atingido."
+        },
+        {
+          "use": "Documento / key-value",
+          "why": "Escala de escrita horizontal e schema flexível — quando o acesso é por chave, o volume é enorme, e joins são raros."
+        }
+      ],
+      "tradeoff": "Poder de consulta e integridade vs escala horizontal sem esforço; o erro é escolher NoSQL para uma escala que você não tem.",
+      "interviewerProbe": "Liste as 3 principais queries que seu produto precisa — quais se tornam impossíveis depois que você faz sharding?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "partition-key",
+      "category": "storage",
+      "title": "Particionamento por hash vs por range",
+      "when": "Os dados crescem além de um nó e precisam ser divididos por uma chave",
+      "options": [
+        {
+          "use": "Particionamento por hash",
+          "why": "Distribuição uniforme por construção — hot spots exigem uma chave quente, não apenas chaves adjacentes."
+        },
+        {
+          "use": "Particionamento por range",
+          "why": "Scans de range eficientes (janelas de tempo, prefixos) — mas chaves sequenciais se empilham no shard mais novo."
+        }
+      ],
+      "tradeoff": "Carga uniforme vs localidade de scan; seu padrão de query dominante decide.",
+      "interviewerProbe": "Sua chave é um timestamp — qual partição recebe 100% das escritas de hoje à noite?",
+      "relatedCaseIds": [
+        "case-22"
+      ],
+      "conceptId": null
+    },
+    {
+      "id": "indexing",
+      "category": "storage",
+      "title": "Índice secundário vs desnormalização",
+      "when": "Um padrão de leitura está lento demais contra o layout atual",
+      "options": [
+        {
+          "use": "Adicionar um índice secundário",
+          "why": "Correção mais barata dentro de um banco — ao custo de amplificação de escrita extra por índice."
+        },
+        {
+          "use": "Desnormalizar / view materializada",
+          "why": "Precomputa o formato de leitura — latência de leitura imbatível, mas agora duas cópias precisam ser mantidas consistentes."
+        }
+      ],
+      "tradeoff": "Custo de escrita na mesma tabela vs responsabilidade de consistência entre cópias.",
+      "interviewerProbe": "Esta tabela recebe escritas pesadas — o que cada índice adicionado faz com seu p99 de latência de escrita?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "lsm-vs-btree",
+      "category": "storage",
+      "title": "Árvores LSM vs B-trees",
+      "when": "Escolhendo um storage engine e sua carga pende fortemente para um lado",
+      "options": [
+        {
+          "use": "Árvore LSM (RocksDB, Cassandra)",
+          "why": "Transforma escritas aleatórias em sequenciais — throughput de escrita excelente; leituras podem checar vários níveis."
+        },
+        {
+          "use": "B-tree (InnoDB, Postgres)",
+          "why": "Latência de leitura pontual previsível e comportamento transacional maduro — o padrão para OLTP read-heavy."
+        }
+      ],
+      "tradeoff": "Amplificação de escrita vs amplificação de leitura — mais a compactação do LSM competindo com seu tráfego por I/O.",
+      "interviewerProbe": "O que acontece com seu p99 de latência de leitura enquanto uma compactação major está rodando?",
+      "relatedCaseIds": [
+        "case-25"
+      ],
+      "conceptId": "write-amplification"
+    },
+    {
+      "id": "blob-storage",
+      "category": "storage",
+      "title": "Arquivos: object storage vs blobs no banco",
+      "when": "Armazenando imagens, vídeos ou documentos junto com dados estruturados",
+      "options": [
+        {
+          "use": "Object storage + URL/chave no banco",
+          "why": "Durabilidade e throughput feitos para o propósito, amigável a CDN, mantém o banco pequeno e rápido."
+        },
+        {
+          "use": "Blobs no banco de dados",
+          "why": "Uma transação cobre dado e arquivo — defensável só para arquivos pequenos e raramente lidos onde a atomicidade importa mais."
+        }
+      ],
+      "tradeoff": "Dois sistemas para manter consistentes vs um sistema fazendo um trabalho para o qual é ruim.",
+      "interviewerProbe": "Uma linha é deletada mas seu objeto no S3 sobrevive — como você previne, detecta ou limpa órfãos?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "hot-partition",
+      "category": "storage",
+      "title": "Sobrevivendo a uma partição quente",
+      "when": "Um shard recebe tráfego desproporcional (uma celebridade, um item viral)",
+      "options": [
+        {
+          "use": "Salgar ou compor a chave",
+          "why": "Espalha uma chave lógica sobre N partições físicas (chave#1..chave#N) e funde na leitura."
+        },
+        {
+          "use": "Isolar + cachear a entidade quente",
+          "why": "Detecta outliers e os atende de um cache dedicado ou capacidade própria — deixa o esquema geral intocado."
+        }
+      ],
+      "tradeoff": "Complexidade permanente de merge no lado da leitura vs maquinaria de caso especial que precisa detectar o calor rapidamente.",
+      "interviewerProbe": "Como você detecta uma partição esquentando antes que vire um incidente?",
+      "relatedCaseIds": [
+        "case-11"
+      ],
+      "conceptId": null
+    },
+    {
+      "id": "realtime-transport",
+      "category": "network",
+      "title": "WebSockets vs SSE vs polling",
+      "when": "O servidor precisa enviar atualizações para clientes conectados",
+      "options": [
+        {
+          "use": "WebSockets",
+          "why": "Full duplex — a resposta quando clientes também enviam com frequência (chat, jogos, edição colaborativa)."
+        },
+        {
+          "use": "Server-sent events (SSE)",
+          "why": "Push unidirecional sobre HTTP puro com reconexão automática embutida — operação mais simples para feeds, tickers, notificações."
+        },
+        {
+          "use": "Polling curto/longo",
+          "why": "Funciona através de todo proxy e firewall sem infraestrutura stateful — ok quando segundos de atraso são aceitáveis."
+        }
+      ],
+      "tradeoff": "Poder bidirecional vs simplicidade operacional — e em escala, um milhão de sockets ociosos é seu próprio problema de arquitetura.",
+      "interviewerProbe": "Um cliente reconecta depois de 30 segundos offline — como ele recebe os eventos que perdeu?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "timeouts-retries",
+      "category": "network",
+      "title": "Timeouts, retries e backoff",
+      "when": "Chamando uma dependência que às vezes falha ou trava",
+      "options": [
+        {
+          "use": "Timeout + retries com backoff exponencial e jitter",
+          "why": "Falhas transitórias desaparecem; o jitter evita que ondas sincronizadas de retry martelem um serviço se recuperando."
+        },
+        {
+          "use": "Falhar rápido, sem retry",
+          "why": "Obrigatório para operações não-idempotentes (pagamentos!) a menos que exista uma chave de idempotência — uma cobrança retentada é um incidente."
+        }
+      ],
+      "tradeoff": "Disponibilidade através de persistência vs amplificar carga em algo já sofrendo.",
+      "interviewerProbe": "Todo serviço retenta 3×, cinco camadas de profundidade — quantas requisições atingem o serviço do fundo por clique do usuário?",
+      "relatedCaseIds": [
+        "case-26",
+        "case-27"
+      ],
+      "conceptId": "retry-strategies"
+    },
+    {
+      "id": "grpc-vs-rest",
+      "category": "network",
+      "title": "gRPC vs REST entre serviços",
+      "when": "Escolhendo o protocolo para comunicação serviço-a-serviço",
+      "options": [
+        {
+          "use": "gRPC",
+          "why": "Contratos tipados, streaming, multiplexação HTTP/2, menos banda — forte para chamadas internas de alto volume."
+        },
+        {
+          "use": "REST/JSON",
+          "why": "Ferramental universal, depurável por humanos, amigável a cache e navegador — o padrão para APIs públicas e times pequenos."
+        }
+      ],
+      "tradeoff": "Performance e rigor de contrato vs ubiquidade e depurabilidade.",
+      "interviewerProbe": "Um navegador precisa chamar esta API — o que isso força na sua escolha de gRPC?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cdn-when",
+      "category": "network",
+      "title": "Quando um CDN vale a pena",
+      "when": "Servindo conteúdo estático ou cacheável para uma audiência geograficamente espalhada",
+      "options": [
+        {
+          "use": "CDN na frente da origem",
+          "why": "Latência de borda, descarga massiva da origem, e absorção gratuita de DDoS — uma vitória quase automática para assets e páginas públicas."
+        },
+        {
+          "use": "Servir só de origens regionais",
+          "why": "Defensável quando a audiência é de uma única região ou toda resposta é personalizada e não-cacheável."
+        }
+      ],
+      "tradeoff": "Mais uma camada de cache para invalidar vs pagar latência e egress em toda requisição.",
+      "interviewerProbe": "Você faz deploy de novos bundles JS — como os usuários param de receber a versão antiga da borda?",
+      "relatedCaseIds": [
+        "case-17"
+      ],
+      "conceptId": null
+    },
+    {
+      "id": "connection-management",
+      "category": "network",
+      "title": "Connection pooling e keep-alive",
+      "when": "Alto volume de requisições para a mesma dependência cria churn de conexões",
+      "options": [
+        {
+          "use": "Conexões persistentes em pool",
+          "why": "Amortiza handshakes de TCP/TLS entre requisições — economia de latência e CPU em ordem de magnitude em volume."
+        },
+        {
+          "use": "Uma conexão por requisição",
+          "why": "Zero estado compartilhado e nenhum tuning de pool — tolerável só em baixo volume ou em runtimes serverless que proíbem pooling de qualquer forma."
+        }
+      ],
+      "tradeoff": "Bugs de dimensionamento e ciclo de vida do pool vs o imposto de handshake em toda chamada.",
+      "interviewerProbe": "O pool se esgota e requisições enfileiram — que falha os usuários veem, e o que limita a fila?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "distributed-tracing",
+      "category": "advanced",
+      "title": "Quando você precisa de distributed tracing",
+      "when": "Uma requisição atravessa muitos serviços e nenhum log sozinho explica sua latência",
+      "options": [
+        {
+          "use": "Distributed tracing (OpenTelemetry)",
+          "why": "Um trace mostra toda a árvore da requisição com timing por hop — a única ferramenta que localiza latência entre serviços."
+        },
+        {
+          "use": "Logs estruturados + IDs de correlação",
+          "why": "80% do valor com ferramental familiar: propague um ID e faça grep — o primeiro passo pragmático."
+        }
+      ],
+      "tradeoff": "Investimento em instrumentação e armazenamento vs cruzamento manual de referências durante incidentes.",
+      "interviewerProbe": "A 100 mil requisições por segundo você não pode tracear tudo — qual é sua estratégia de amostragem para as requisições que importam?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "cascading-failure",
+      "category": "advanced",
+      "title": "Parando falhas em cascata",
+      "when": "Uma dependência lenta está arrastando cada serviço upstream junto com ela",
+      "options": [
+        {
+          "use": "Circuit breaker + fallback",
+          "why": "Depois de falhas suficientes, pare de chamar e degrade graciosamente — a dependência ganha ar para se recuperar."
+        },
+        {
+          "use": "Bulkheads (pools isolados)",
+          "why": "Particiona threads/conexões por dependência para que uma callee lenta não possa esgotar recursos compartilhados."
+        }
+      ],
+      "tradeoff": "Servir resultados degradados deliberadamente vs deixar a saturação escolher o que falha por você. Use os dois; timeouts sozinhos só enfileiram a dor.",
+      "interviewerProbe": "O breaker está aberto — o que exatamente os usuários veem, e como ele decide fechar de novo?",
+      "relatedCaseIds": [
+        "case-28"
+      ],
+      "conceptId": "circuit-breakers"
+    },
+    {
+      "id": "orchestration-vs-choreography",
+      "category": "advanced",
+      "title": "Workflow: orquestração vs coreografia",
+      "when": "Um processo de negócio de múltiplas etapas atravessa vários serviços",
+      "options": [
+        {
+          "use": "Orquestrador (motor de workflow central)",
+          "why": "Um lugar dono da máquina de estados — visibilidade, retries e lógica de compensação são centralizados e depuráveis."
+        },
+        {
+          "use": "Coreografia (serviços reagem a eventos)",
+          "why": "Acoplamento fraco, sem dependência central — mas o workflow existe só implicitamente, espalhado entre consumidores."
+        }
+      ],
+      "tradeoff": "Uma dependência de coordenação vs um processo que ninguém consegue ver de ponta a ponta.",
+      "interviewerProbe": "Um pedido está travado na etapa 3 de 6 — em cada modelo, como você descobre e retoma?",
+      "relatedCaseIds": [
+        "case-32"
+      ],
+      "conceptId": "sagas"
+    },
+    {
+      "id": "rollout-strategy",
+      "category": "advanced",
+      "title": "Canary vs blue-green deployment",
+      "when": "Enviando uma mudança arriscada para produção",
+      "options": [
+        {
+          "use": "Canary com gates de métricas",
+          "why": "1% → 10% → 100% com rollback automático em regressão de erro ou latência — o raio de impacto permanece pequeno."
+        },
+        {
+          "use": "Blue-green",
+          "why": "Dois ambientes completos, troca atômica instantânea e rollback instantâneo — mais simples, mas exposição tudo-ou-nada."
+        }
+      ],
+      "tradeoff": "Detecção gradual com duas versões vivas (compatibilidade de schema!) vs infraestrutura dobrada e risco binário.",
+      "interviewerProbe": "As duas versões rodam simultaneamente durante o rollout — o que isso força nas suas migrações de banco de dados?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    },
+    {
+      "id": "chaos-testing",
+      "category": "advanced",
+      "title": "Verificando resiliência com chaos",
+      "when": "Seu design alega sobreviver a falhas mas nada jamais provou isso",
+      "options": [
+        {
+          "use": "Injeção de falhas em staging / game days",
+          "why": "Mate nós, adicione latência, derrube pacotes em um ensaio — encontre as surpresas antes que os clientes encontrem."
+        },
+        {
+          "use": "Chaos em produção com limites de raio de impacto",
+          "why": "O único ambiente que diz a verdade — mas só depois que o staging passa, com alvos delimitados e um abort instantâneo."
+        }
+      ],
+      "tradeoff": "Realismo vs risco; chaos sem uma hipótese e um botão de abort é só uma interrupção que você agendou.",
+      "interviewerProbe": "Qual é seu critério de abort, e quem tem autoridade para acioná-lo?",
+      "relatedCaseIds": [],
+      "conceptId": null
+    }
+  ]
+}

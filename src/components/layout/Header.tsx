@@ -110,7 +110,8 @@ export function Header() {
         </div>
         <button
           onClick={() => setLocale(locale === "en" ? "pt-BR" : "en")}
-          className="text-xs font-mono text-noir-400 hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded border border-noir-600/40 hover:border-amber-500/30"
+          aria-label={locale === "en" ? t("header.localeToggle.toPt") : t("header.localeToggle.toEn")}
+          className="text-xs font-mono text-noir-400 hover:text-amber-400 transition-colors px-1.5 py-0.5 rounded border border-noir-600/40 hover:border-amber-500/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
         >
           {locale === "en" ? "PT" : "EN"}
         </button>

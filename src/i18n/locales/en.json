@@ -28,6 +28,18 @@
   "inspector.status": "Status",
   "inspector.systemLogs": "System Logs",
   "inspector.nodeData": "Node Data",
+  "inspector.close": "Close inspector",
+
+  "a11y.caseCard.prefix": "Case",
+  "a11y.caseCard.cleared": "cleared",
+  "a11y.caseCard.open": "open",
+  "a11y.caseCard.locked": "locked",
+  "a11y.diagram.inspect": "Inspect",
+
+  "header.localeToggle.toPt": "Mudar para Português",
+  "header.localeToggle.toEn": "Switch to English",
+
+  "guide.close": "Close guide",
 
   "success.caseSolved": "CASE SOLVED",
   "success.badgeEarned": "Badge earned:",

@@ -36,7 +36,13 @@ export function GuidePanel() {
           <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
           <h2 className="text-xs font-mono text-cyan-400 uppercase tracking-widest">{t('guide.title')}</h2>
         </div>
-        <button onClick={toggleGuide} className="text-white/40 hover:text-white/70 transition-colors w-11 h-11 flex items-center justify-center -mr-2">&times;</button>
+        <button
+          onClick={toggleGuide}
+          aria-label={t('guide.close')}
+          className="text-white/40 hover:text-white/70 transition-colors w-11 h-11 flex items-center justify-center -mr-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 rounded"
+        >
+          &times;
+        </button>
       </div>
 
       {concept ? (

@@ -205,20 +205,29 @@ export function HomePage() {
                   const done = caseProgress?.completed;
                   const concept = concepts.find((con) => con.id === c.conceptId);
 
+                  const stateLabel = done
+                    ? t("a11y.caseCard.cleared")
+                    : unlocked
+                      ? t("a11y.caseCard.open")
+                      : t("a11y.caseCard.locked");
+
                   return (
-                    <motion.div
+                    <motion.button
                       key={c.id}
+                      type="button"
+                      disabled={!unlocked}
                       whileHover={
                         unlocked
                           ? { x: 4, transition: { duration: 0.15 } }
                           : undefined
                       }
-                      className={`group relative flex items-center gap-3 p-3 rounded-lg border transition-all duration-200 ${
+                      aria-label={`${t("a11y.caseCard.prefix")} ${c.number}: ${c.title} — ${stateLabel}`}
+                      className={`group relative flex items-center gap-3 p-3 rounded-lg border transition-all duration-200 text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 ${
                         done
                           ? "border-status-healthy/15 bg-status-healthy/3 hover:bg-status-healthy/5"
                           : unlocked
                             ? "border-noir-600/30 bg-noir-800/30 hover:border-amber-500/20 hover:bg-noir-700/30 cursor-pointer"
-                            : "border-noir-700/20 bg-noir-800/10 opacity-35"
+                            : "border-noir-700/20 bg-noir-800/10 opacity-35 cursor-not-allowed"
                       }`}
                       onClick={() => unlocked && navigate(`/case/${c.id}`)}
                     >
@@ -276,19 +285,16 @@ export function HomePage() {
                             {t("home.statusCleared")}
                           </span>
                         ) : unlocked ? (
-                          <Button
-                            onClick={() => navigate(`/case/${c.id}`)}
-                            className="text-xs py-1 px-3"
-                          >
+                          <span className="text-xs py-1 px-3 rounded-md font-medium bg-amber-500 text-noir-950 font-semibold group-hover:bg-amber-400 transition-all duration-200">
                             {t("home.open")}
-                          </Button>
+                          </span>
                         ) : (
                           <span className="text-xs font-mono text-white/30">
                             {t("home.statusLocked")}
                           </span>
                         )}
                       </div>
-                    </motion.div>
+                    </motion.button>
                   );
                 })}
               </div>

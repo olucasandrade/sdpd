@@ -28,6 +28,18 @@
   "inspector.status": "Status",
   "inspector.systemLogs": "Logs do Sistema",
   "inspector.nodeData": "Dados do Nó",
+  "inspector.close": "Fechar inspetor",
+
+  "a11y.caseCard.prefix": "Caso",
+  "a11y.caseCard.cleared": "concluído",
+  "a11y.caseCard.open": "aberto",
+  "a11y.caseCard.locked": "bloqueado",
+  "a11y.diagram.inspect": "Inspecionar",
+
+  "header.localeToggle.toPt": "Mudar para Português",
+  "header.localeToggle.toEn": "Switch to English",
+
+  "guide.close": "Fechar guia",
 
   "success.caseSolved": "CASO RESOLVIDO",
   "success.badgeEarned": "Distintivo ganho:",

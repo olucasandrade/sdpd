@@ -252,3 +252,14 @@ svg {
     background-size: 24px 24px;
     animation: grid-sweep 4s linear infinite;
 }
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+    .shield-glow,
+    .node-inspectable,
+    .edge-animated path,
+    .bg-dotgrid-animated,
+    .cursor-blink::after {
+        animation: none !important;
+    }
+}

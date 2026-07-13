@@ -1,0 +1,233 @@
+[
+  {
+    "id": "case-01",
+    "number": 1,
+    "title": "The Single Point of Failure",
+    "subtitle": "Criminal records go dark across all precincts",
+    "conceptId": "replication-basics"
+  },
+  {
+    "id": "case-02",
+    "number": 2,
+    "title": "The Stale Read",
+    "subtitle": "An officer arrests someone on a dismissed warrant",
+    "conceptId": "leader-follower-replication"
+  },
+  {
+    "id": "case-03",
+    "number": 3,
+    "title": "The Lost Evidence",
+    "subtitle": "16 crime scene photos vanish into thin air",
+    "conceptId": "sync-vs-async-replication"
+  },
+  {
+    "id": "case-04",
+    "number": 4,
+    "title": "The Split Brain",
+    "subtitle": "Two precincts, two truths, one broken network",
+    "conceptId": "network-partitions"
+  },
+  {
+    "id": "case-05",
+    "number": 5,
+    "title": "The Phantom Vote",
+    "subtitle": "Evidence room lockdown fails as multiple nodes claim leadership",
+    "conceptId": "leader-election"
+  },
+  {
+    "id": "case-06",
+    "number": 6,
+    "title": "The Conflicting Orders",
+    "subtitle": "Two leaders, two assignments, one very confused officer",
+    "conceptId": "multi-leader-replication"
+  },
+  {
+    "id": "case-07",
+    "number": 7,
+    "title": "The Time Traveler's Dilemma",
+    "subtitle": "Evidence timestamps defy the laws of physics",
+    "conceptId": "clock-synchronization"
+  },
+  {
+    "id": "case-08",
+    "number": 8,
+    "title": "The Byzantine Witness",
+    "subtitle": "A rogue forensics node lies to everyone — differently",
+    "conceptId": "byzantine-faults"
+  },
+  {
+    "id": "case-09",
+    "number": 9,
+    "title": "The Overwhelmed Gateway",
+    "subtitle": "City-wide emergency brings the single gateway to its knees",
+    "conceptId": "load-balancing"
+  },
+  {
+    "id": "case-10",
+    "number": 10,
+    "title": "The Thundering Herd",
+    "subtitle": "Every precinct stampedes the database at the same moment",
+    "conceptId": "cache-stampede"
+  },
+  {
+    "id": "case-11",
+    "number": 11,
+    "title": "The Hot Partition",
+    "subtitle": "One shard drowns while the others sit idle",
+    "conceptId": "data-partitioning"
+  },
+  {
+    "id": "case-12",
+    "number": 12,
+    "title": "The Vertical Limit",
+    "subtitle": "Crime analytics server hits its hardware ceiling",
+    "conceptId": "horizontal-scaling"
+  },
+  {
+    "id": "case-13",
+    "number": 13,
+    "title": "The Sticky Situation",
+    "subtitle": "Server crash wipes out hundreds of active officer sessions",
+    "conceptId": "stateless-services"
+  },
+  {
+    "id": "case-14",
+    "number": 14,
+    "title": "The Ghost Record",
+    "subtitle": "A deleted criminal record keeps haunting the system",
+    "conceptId": "cache-invalidation"
+  },
+  {
+    "id": "case-15",
+    "number": 15,
+    "title": "The Cache Avalanche",
+    "subtitle": "All cache entries expire simultaneously, crushing the database",
+    "conceptId": "cache-expiry-strategies"
+  },
+  {
+    "id": "case-16",
+    "number": 16,
+    "title": "The Dog Pile",
+    "subtitle": "Hundreds of requests stampede to rebuild a single cache entry",
+    "conceptId": "cache-locking"
+  },
+  {
+    "id": "case-17",
+    "number": 17,
+    "title": "The Stale Menu",
+    "subtitle": "CDN serves outdated Most Wanted list hours after update",
+    "conceptId": "cdn-caching"
+  },
+  {
+    "id": "case-18",
+    "number": 18,
+    "title": "The Lost Dispatch",
+    "subtitle": "Server crash loses all pending dispatch calls from the queue",
+    "conceptId": "message-durability"
+  },
+  {
+    "id": "case-19",
+    "number": 19,
+    "title": "The Double Arrest",
+    "subtitle": "Duplicate message delivery causes the same warrant to be processed twice",
+    "conceptId": "idempotency"
+  },
+  {
+    "id": "case-20",
+    "number": 20,
+    "title": "The Backed Up Pipeline",
+    "subtitle": "Dispatch queue overflows as consumer service crashes silently",
+    "conceptId": "backpressure"
+  },
+  {
+    "id": "case-21",
+    "number": 21,
+    "title": "The Out of Order",
+    "subtitle": "Crime reports arrive jumbled as parallel consumers scramble the sequence",
+    "conceptId": "message-ordering"
+  },
+  {
+    "id": "case-22",
+    "number": 22,
+    "title": "The Missing Shard",
+    "subtitle": "An entire letter range of criminals vanishes from the database",
+    "conceptId": "sharding"
+  },
+  {
+    "id": "case-23",
+    "number": 23,
+    "title": "The Inconsistent Lineup",
+    "subtitle": "Two precincts see different versions of the same suspect at the same time",
+    "conceptId": "cap-theorem"
+  },
+  {
+    "id": "case-24",
+    "number": 24,
+    "title": "The Corrupted Archive",
+    "subtitle": "Evidence arrives corrupted but nobody knows where the damage happened",
+    "conceptId": "data-integrity"
+  },
+  {
+    "id": "case-25",
+    "number": 25,
+    "title": "The Overloaded Vault",
+    "subtitle": "Write-heavy evidence logging causes massive storage amplification",
+    "conceptId": "write-amplification"
+  },
+  {
+    "id": "case-26",
+    "number": 26,
+    "title": "The Timeout Trap",
+    "subtitle": "A slow downstream service triggers cascading timeouts across the entire system",
+    "conceptId": "cascading-timeouts"
+  },
+  {
+    "id": "case-27",
+    "number": 27,
+    "title": "The Retry Storm",
+    "subtitle": "One failed request becomes a million knocking at the door",
+    "conceptId": "retry-strategies"
+  },
+  {
+    "id": "case-28",
+    "number": 28,
+    "title": "The Circuit Breaker",
+    "subtitle": "One fallen domino topples the entire dispatch center",
+    "conceptId": "circuit-breakers"
+  },
+  {
+    "id": "case-29",
+    "number": 29,
+    "title": "The DNS Disaster",
+    "subtitle": "When a server moves and nobody gets the new address",
+    "conceptId": "service-discovery"
+  },
+  {
+    "id": "case-30",
+    "number": 30,
+    "title": "The Deadlock District",
+    "subtitle": "Two services locked in an eternal standoff",
+    "conceptId": "distributed-deadlocks"
+  },
+  {
+    "id": "case-31",
+    "number": 31,
+    "title": "The Phantom Read",
+    "subtitle": "The crime statistics that changed mid-count",
+    "conceptId": "isolation-levels"
+  },
+  {
+    "id": "case-32",
+    "number": 32,
+    "title": "The Saga Failure",
+    "subtitle": "A booking process that forgot how to undo its mistakes",
+    "conceptId": "sagas"
+  },
+  {
+    "id": "case-33",
+    "number": 33,
+    "title": "The Rate Limiter",
+    "subtitle": "One integration floods the system, drowning everyone else",
+    "conceptId": "rate-limiting"
+  }
+]

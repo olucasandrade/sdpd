@@ -7,7 +7,7 @@ import type { Concept } from '../../types/game';
 
 export function GuidePanel() {
   const { caseId } = useParams();
-  const caseData = useCase(caseId);
+  const { caseData } = useCase(caseId);
   const { toggleGuide } = useGameState();
   const { t } = useTranslation();
   const concepts = useConcepts();

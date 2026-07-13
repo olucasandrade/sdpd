@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useGameState } from '../../hooks/useGameState';
-import { useInterviewSession } from '../../hooks/useInterviewSession';
 import { useNotebook } from '../../hooks/useNotebook';
 import { isDue } from '../../utils/reviewScheduler';
 import { getUtcDateString } from '../../data/dailyDrill';
@@ -20,8 +19,6 @@ interface MobileMenuProps {
 export function MobileMenu({ open, onClose }: MobileMenuProps) {
   const { locale, setLocale, toggleGuide, guideOpen } = useGameState();
   const { t } = useTranslation();
-  const interviewStatus = useInterviewSession((s) => s.status);
-  const guideDisabled = interviewStatus === 'round' || interviewStatus === 'postmortem';
   const notebookCards = useNotebook((s) => s.cards);
   const dueCount = notebookCards.filter((c) => !c.retired && isDue(c.dueDate, getUtcDateString())).length;
 
@@ -89,20 +86,6 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                 {t('header.chaos')}
               </Link>
               <Link
-                to="/builder"
-                onClick={onClose}
-                className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 flex items-center"
-              >
-                {t('header.builder')}
-              </Link>
-              <Link
-                to="/interview"
-                onClick={onClose}
-                className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 flex items-center"
-              >
-                {t('header.interview')}
-              </Link>
-              <Link
                 to="/notebook"
                 onClick={onClose}
                 className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 flex items-center justify-between"
@@ -126,8 +109,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                   toggleGuide();
                   onClose();
                 }}
-                disabled={guideDisabled}
-                className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 text-left flex items-center disabled:opacity-40 disabled:pointer-events-none"
+                className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 text-left flex items-center"
               >
                 {guideOpen ? t('header.guide.close') : t('header.guide.open')}
               </button>

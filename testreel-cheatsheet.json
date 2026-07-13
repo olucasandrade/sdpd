@@ -1,0 +1,37 @@
+{
+  "$schema": "../testreel/recording-definition.schema.json",
+  "url": "http://localhost:4173/",
+  "viewport": { "width": 1280, "height": 720 },
+  "outputSize": { "width": 1920, "height": 1080 },
+  "outputFormat": "mp4",
+  "speed": 1.2,
+  "cursor": {
+    "style": "pointer",
+    "size": 40,
+    "rippleColor": "rgba(251, 191, 36, 0.4)",
+    "rippleSize": 80
+  },
+  "chrome": {
+    "enabled": true,
+    "titleBarColor": "#0a0e1a",
+    "url": "sdpd.vercel.app"
+  },
+  "background": {
+    "gradient": { "from": "#0f172a", "to": "#1e1b4b" },
+    "padding": 50,
+    "borderRadius": 16
+  },
+  "steps": [
+    { "action": "wait", "ms": 2000 },
+    { "action": "click", "selector": "a[href='/cheatsheet']", "pauseAfter": 1000 },
+    { "action": "wait", "ms": 1500 },
+    { "action": "scroll", "y": 700, "pauseAfter": 800 },
+    { "action": "scroll", "y": 700, "pauseAfter": 800 },
+    { "action": "scroll", "y": 700, "pauseAfter": 800 },
+    { "action": "scroll", "y": 700, "pauseAfter": 800 },
+    { "action": "scroll", "y": 700, "pauseAfter": 800 },
+    { "action": "scroll", "y": 700, "pauseAfter": 800 },
+    { "action": "scroll", "y": 700, "pauseAfter": 800 },
+    { "action": "wait", "ms": 2500 }
+  ]
+}

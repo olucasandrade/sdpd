@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useGameState } from "../../hooks/useGameState";
-import { useInterviewSession } from "../../hooks/useInterviewSession";
 import { useNotebook } from "../../hooks/useNotebook";
 import { isDue } from "../../utils/reviewScheduler";
 import { getUtcDateString } from "../../data/dailyDrill";
@@ -77,8 +76,6 @@ export function Header() {
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const interviewStatus = useInterviewSession((s) => s.status);
-  const guideDisabled = interviewStatus === "round" || interviewStatus === "postmortem";
   const notebookCards = useNotebook((s) => s.cards);
   const dueCount = notebookCards.filter((c) => !c.retired && isDue(c.dueDate, getUtcDateString())).length;
 
@@ -134,16 +131,6 @@ export function Header() {
             {t("header.chaos")}
           </Button>
         </Link>
-        <Link to="/builder">
-          <Button variant="ghost" className="text-xs font-mono">
-            {t("header.builder")}
-          </Button>
-        </Link>
-        <Link to="/interview">
-          <Button variant="ghost" className="text-xs font-mono">
-            {t("header.interview")}
-          </Button>
-        </Link>
         <Link to="/notebook" className="relative">
           <Button variant="ghost" className="text-xs font-mono">
             {t("header.notebook")}
@@ -162,7 +149,6 @@ export function Header() {
         <Button
           variant="ghost"
           onClick={toggleGuide}
-          disabled={guideDisabled}
           className="text-xs font-mono"
         >
           {guideOpen ? t("header.guide.close") : t("header.guide.open")}

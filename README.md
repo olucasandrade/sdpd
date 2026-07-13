@@ -68,6 +68,24 @@ npm run preview
 
 ---
 
+## ☁️ Cloud Sync & Leaderboard Setup (optional)
+
+SDPD is fully playable with zero setup — progress is saved to `localStorage`
+and nothing here is required. If you want cross-device sync and the
+daily-drill leaderboard (accounts via GitHub OAuth), wire up a free Supabase
+project:
+
+1. Create a project at [supabase.com](https://supabase.com) (free tier is enough).
+2. In the SQL editor, run `supabase/migrations/0001_accounts_leaderboard.sql`. It creates `profiles`, `progress_sync`, `drill_results`, enables Row Level Security with the policies described inline, and adds the `daily_leaderboard` view.
+3. In **Authentication → Providers**, enable **GitHub** and fill in a GitHub OAuth App's client ID/secret ([GitHub docs](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)). Set the app's callback URL to the one Supabase shows on that page.
+4. In **Authentication → URL Configuration**, add your dev (`http://localhost:5173`) and production URLs to the redirect allow-list.
+5. Copy `.env.example` to `.env.local` and fill in **Project Settings → API → Project URL** and **anon / public key**. Never put the `service_role` key here — the anon key is meant to be public; RLS is the real access boundary.
+6. `npm run dev` (or rebuild for production). The "Sign in" control appears in the header settings popover (gear icon) and the mobile menu once the env vars are present; it's absent entirely when they aren't.
+
+Without those env vars, the app makes zero network calls related to accounts — this is intentional and verified in `src/lib/supabase.ts` (`isSupabaseConfigured`).
+
+---
+
 ## 📚 How It Works
 
 ### Game Flow
@@ -131,7 +149,8 @@ Complete cases to climb the ranks:
 ### State & Data
 - **Zustand 5.0** — Global state management
 - **React Router 6.30** — Client-side routing
-- **localStorage** — Data persistence
+- **localStorage** — Data persistence (source of truth for gameplay)
+- **Supabase** — optional accounts, cross-device sync & leaderboard ([setup](#-cloud-sync--leaderboard-setup-optional))
 
 ### Visualization
 - **XYFlow (React Flow) 12.10** — Interactive system diagrams

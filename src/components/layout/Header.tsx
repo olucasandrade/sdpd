@@ -5,6 +5,7 @@ import { useTranslation } from "../../i18n";
 import { Button } from "../common/Button";
 import { MobileMenu } from "./MobileMenu";
 import { ResetProgressButton } from "./ResetProgressButton";
+import { AccountSection } from "../account/AccountSection";
 
 function ShieldIcon() {
   return (
@@ -145,6 +146,7 @@ export function Header() {
                 <p className="text-xs font-mono text-noir-500 uppercase tracking-widest mb-2">
                   {t("settings.title")}
                 </p>
+                <AccountSection className="w-full mb-2" />
                 <ResetProgressButton className="w-full" />
               </div>
             </>

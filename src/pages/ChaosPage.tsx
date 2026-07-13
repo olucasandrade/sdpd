@@ -36,6 +36,13 @@ export function ChaosPage() {
     saveChaosState(state);
   }, [state]);
 
+  useEffect(() => {
+    document.title = `${t('chaos.title')} — SDPD`;
+    return () => {
+      document.title = 'SDPD — Systems Design Police Department';
+    };
+  }, [t]);
+
   const { metrics, nodes, edges, logs, objectiveMet } = useChaosSimulator(
     preset,
     state.activeFaults,

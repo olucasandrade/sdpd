@@ -1,5 +1,7 @@
+import type { KeyboardEvent } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { NodeStatus } from '../../types/case';
+import { useTranslation } from '../../i18n';
 
 interface ClientNodeData {
   label: string;
@@ -27,10 +29,24 @@ const statusText = {
 };
 
 export function ClientNode({ data }: { data: ClientNodeData }) {
+  const { t } = useTranslation();
+  const statusLabel = data.status === 'failed' ? 'NO CONN' : data.status === 'degraded' ? 'STALE' : 'ONLINE';
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      data.onInspect?.();
+    }
+  };
+
   return (
     <div
       onClick={data.onInspect}
-      className={`${data.inspectable ? 'node-inspectable cursor-pointer' : ''}`}
+      onKeyDown={data.inspectable ? handleKeyDown : undefined}
+      role={data.inspectable ? 'button' : undefined}
+      tabIndex={data.inspectable ? 0 : undefined}
+      aria-label={data.inspectable ? `${t('a11y.diagram.inspect')} ${data.label} (${statusLabel})` : undefined}
+      className={`${data.inspectable ? 'node-inspectable cursor-pointer rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60' : ''}`}
     >
       <Handle type="target" position={Position.Top} className="!bg-amber-500 !w-1.5 !h-1.5 !border-0" />
       <div className={`rounded-lg border ${statusBorder[data.status]} ${statusGlow[data.status]} bg-noir-800/90 backdrop-blur-sm p-3 min-w-[130px]`}>
@@ -43,7 +59,7 @@ export function ClientNode({ data }: { data: ClientNodeData }) {
         </div>
         <div className={`text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 ${statusText[data.status]}`}>
           <div className={`w-1.5 h-1.5 rounded-full ${data.status === 'healthy' ? 'bg-status-healthy' : data.status === 'degraded' ? 'bg-status-degraded' : 'bg-status-failed'} ${data.status === 'healthy' ? 'animate-pulse' : ''}`} />
-          {data.status === 'failed' ? 'NO CONN' : data.status === 'degraded' ? 'STALE' : 'ONLINE'}
+          {statusLabel}
         </div>
       </div>
       <Handle type="source" position={Position.Bottom} className="!bg-amber-500 !w-1.5 !h-1.5 !border-0" />

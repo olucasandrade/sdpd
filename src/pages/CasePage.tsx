@@ -26,6 +26,14 @@ export function CasePage() {
     if (caseData) setCurrentCase(caseData.id);
   }, [caseData, setCurrentCase]);
 
+  useEffect(() => {
+    if (!caseData) return;
+    document.title = `${caseData.title} — SDPD`;
+    return () => {
+      document.title = 'SDPD — Systems Design Police Department';
+    };
+  }, [caseData]);
+
   const showTutorial =
     !tutorialSeen && caseId === 'case-01' && Object.keys(progress).length === 0;
 

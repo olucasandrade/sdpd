@@ -82,6 +82,7 @@ export function SystemDiagram({ caseData, onNodeClick }: SystemDiagramProps) {
         proOptions={{ hideAttribution: true }}
         nodesDraggable={false}
         nodesConnectable={false}
+        nodesFocusable={false}
         elementsSelectable={false}
         panOnDrag
         zoomOnScroll

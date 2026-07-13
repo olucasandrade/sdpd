@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { DiagramNode } from '../../types/case';
 import { useTranslation } from '../../i18n';
@@ -15,6 +16,46 @@ const statusColor = {
 
 export function NodeInspector({ node, onClose }: NodeInspectorProps) {
   const { t } = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  const isOpen = !!node?.inspectData;
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [isOpen, onClose]);
 
   return (
     <AnimatePresence>
@@ -27,6 +68,10 @@ export function NodeInspector({ node, onClose }: NodeInspectorProps) {
           onClick={onClose}
         >
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inspector-title"
             initial={{ scale: 0.92, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.92, opacity: 0, y: 20 }}
@@ -38,9 +83,14 @@ export function NodeInspector({ node, onClose }: NodeInspectorProps) {
             <div className="flex items-center justify-between p-4 border-b border-noir-600/30">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                <h3 className="font-display text-cyan-400 text-lg tracking-wide">{node.inspectData.title}</h3>
+                <h3 id="inspector-title" className="font-display text-cyan-400 text-lg tracking-wide">{node.inspectData.title}</h3>
               </div>
-              <button onClick={onClose} className="text-white/40 hover:text-white/70 transition-colors text-lg w-11 h-11 flex items-center justify-center -mr-2">
+              <button
+                ref={closeButtonRef}
+                onClick={onClose}
+                aria-label={t('inspector.close')}
+                className="text-white/40 hover:text-white/70 transition-colors text-lg w-11 h-11 flex items-center justify-center -mr-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 rounded"
+              >
                 &times;
               </button>
             </div>

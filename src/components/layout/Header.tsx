@@ -115,6 +115,11 @@ export function Header() {
         >
           {locale === "en" ? "PT" : "EN"}
         </button>
+        <Link to="/daily">
+          <Button variant="ghost" className="text-xs font-mono">
+            {t("header.daily")}
+          </Button>
+        </Link>
         <Link to="/chaos">
           <Button variant="ghost" className="text-xs font-mono">
             {t("header.chaos")}

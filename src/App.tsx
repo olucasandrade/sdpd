@@ -6,6 +6,7 @@ import { CasePage } from './pages/CasePage';
 import { ChaosPage } from './pages/ChaosPage';
 import { BuilderListPage } from './pages/BuilderListPage';
 import { BuilderPage } from './pages/BuilderPage';
+import { DailyDrillPage } from './pages/DailyDrillPage';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/chaos" element={<ChaosPage />} />
             <Route path="/builder" element={<BuilderListPage />} />
             <Route path="/builder/:challengeId" element={<BuilderPage />} />
+            <Route path="/daily" element={<DailyDrillPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

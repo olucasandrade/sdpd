@@ -9,14 +9,23 @@ import { Button } from '../common/Button';
 interface DiagnosisPanelProps {
   caseData: Case;
   onCaseComplete: () => void;
+  /**
+   * 'campaign' (default) reads/writes progress via the global game store, so
+   * attempts count toward unlocks and rank. 'drill' tracks attempts locally
+   * only — Daily Drill scoring must never touch or be touched by campaign
+   * progress (the two progressions are intentionally independent).
+   */
+  mode?: 'campaign' | 'drill';
+  /** Fires once the fix is solved, only in 'drill' mode. */
+  onDrillComplete?: (result: { rootCauseAttempts: number; fixAttempts: number }) => void;
 }
 
 type Phase = 'rootCause' | 'fix' | 'complete';
 
-export function DiagnosisPanel({ caseData, onCaseComplete }: DiagnosisPanelProps) {
+export function DiagnosisPanel({ caseData, onCaseComplete, mode = 'campaign', onDrillComplete }: DiagnosisPanelProps) {
   const { progress, submitRootCause, submitFix } = useGameState();
   const { t } = useTranslation();
-  const caseProgress = progress[caseData.id];
+  const caseProgress = mode === 'campaign' ? progress[caseData.id] : undefined;
   const initialPhase: Phase = caseProgress?.fixFound
     ? 'complete'
     : caseProgress?.rootCauseFound
@@ -27,9 +36,17 @@ export function DiagnosisPanel({ caseData, onCaseComplete }: DiagnosisPanelProps
   const [selected, setSelected] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ correct: boolean; text: string } | null>(null);
   const [eliminated, setEliminated] = useState<Set<string>>(new Set());
+  const [drillAttempts, setDrillAttempts] = useState({ rootCause: 0, fix: 0 });
 
   const currentDiagnosis = phase === 'rootCause' ? caseData.diagnosis.rootCause : caseData.diagnosis.fix;
-  const attempts = phase === 'rootCause' ? caseProgress?.rootCauseAttempts ?? 0 : caseProgress?.fixAttempts ?? 0;
+  const attempts =
+    mode === 'campaign'
+      ? phase === 'rootCause'
+        ? caseProgress?.rootCauseAttempts ?? 0
+        : caseProgress?.fixAttempts ?? 0
+      : phase === 'rootCause'
+      ? drillAttempts.rootCause
+      : drillAttempts.fix;
 
   function handleSubmit() {
     if (!selected) return;
@@ -40,10 +57,17 @@ export function DiagnosisPanel({ caseData, onCaseComplete }: DiagnosisPanelProps
       setEliminated((prev) => new Set(prev).add(selected));
     }
 
-    if (phase === 'rootCause') {
-      submitRootCause(caseData.id, result.correct);
-    } else if (phase === 'fix') {
-      submitFix(caseData.id, result.correct);
+    if (mode === 'campaign') {
+      if (phase === 'rootCause') {
+        submitRootCause(caseData.id, result.correct);
+      } else if (phase === 'fix') {
+        submitFix(caseData.id, result.correct);
+      }
+    } else {
+      setDrillAttempts((prev) => ({
+        ...prev,
+        [phase === 'rootCause' ? 'rootCause' : 'fix']: prev[phase === 'rootCause' ? 'rootCause' : 'fix'] + 1,
+      }));
     }
   }
 
@@ -55,6 +79,12 @@ export function DiagnosisPanel({ caseData, onCaseComplete }: DiagnosisPanelProps
       setEliminated(new Set());
     } else if (phase === 'fix' && feedback?.correct) {
       setPhase('complete');
+      if (mode === 'drill') {
+        onDrillComplete?.({
+          rootCauseAttempts: drillAttempts.rootCause,
+          fixAttempts: drillAttempts.fix,
+        });
+      }
       onCaseComplete();
     } else {
       setSelected(null);

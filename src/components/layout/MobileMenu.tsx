@@ -66,6 +66,13 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                 {locale === 'en' ? 'PT-BR' : 'EN'}
               </button>
               <Link
+                to="/daily"
+                onClick={onClose}
+                className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 flex items-center"
+              >
+                {t('header.daily')}
+              </Link>
+              <Link
                 to="/chaos"
                 onClick={onClose}
                 className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 flex items-center"

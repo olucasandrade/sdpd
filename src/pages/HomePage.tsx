@@ -6,6 +6,8 @@ import { useGameState } from "../hooks/useGameState";
 import { useTranslation } from "../i18n";
 import { Button } from "../components/common/Button";
 import { CATEGORIES } from "../data/categories";
+import { getUtcDateString } from "../data/dailyDrill";
+import { loadDrillState } from "../utils/localDrillStore";
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -13,6 +15,9 @@ export function HomePage() {
   const concepts = useConcepts();
   const { progress, isCaseUnlocked, completedCases, rank, currentCaseId } = useGameState();
   const { t } = useTranslation();
+
+  const drillState = useMemo(() => loadDrillState(), []);
+  const todayDrillEntry = drillState.history[getUtcDateString()] ?? null;
 
   const pct =
     cases.length > 0 ? Math.round((completedCases / cases.length) * 100) : 0;
@@ -139,6 +144,23 @@ export function HomePage() {
               </Button>
             </motion.div>
           )}
+
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.9 }}
+            onClick={() => navigate("/daily")}
+            className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-amber-500/20 bg-noir-800/40 hover:border-amber-500/40 hover:bg-noir-700/40 transition-colors text-xs font-mono cursor-pointer"
+          >
+            <span className="text-white/45">{t("daily.heroLabel")}:</span>
+            {todayDrillEntry ? (
+              <span className="text-amber-300">
+                ⭐ {todayDrillEntry.stars}/6 · 🔥 {drillState.streak}
+              </span>
+            ) : (
+              <span className="text-white/70">{t("daily.heroNotPlayed")}</span>
+            )}
+          </motion.button>
         </motion.div>
       </div>
 

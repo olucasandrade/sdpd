@@ -25,3 +25,6 @@ dist-ssr
 
 # Agent worktrees
 .claude/worktrees/
+
+# Playwright MCP session artifacts
+.playwright-mcp/

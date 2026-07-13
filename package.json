@@ -24,6 +24,7 @@
     "@fontsource/bebas-neue": "^5.2.7",
     "@fontsource/dm-sans": "^5.2.8",
     "@fontsource/space-mono": "^5.2.9",
+    "@supabase/supabase-js": "^2.109.0",
     "@xyflow/react": "^12.10.0",
     "framer-motion": "^12.34.0",
     "react": "^19.1.0",

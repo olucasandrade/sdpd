@@ -6,6 +6,7 @@ import { useGameState } from '../../hooks/useGameState';
 import { useTranslation } from '../../i18n';
 import { CaseList } from './CaseList';
 import { ResetProgressButton } from './ResetProgressButton';
+import { AccountSection } from '../account/AccountSection';
 
 interface MobileMenuProps {
   open: boolean;
@@ -103,6 +104,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
               >
                 {t('social.github')}
               </a>
+              <AccountSection />
               <ResetProgressButton />
             </div>
           </motion.div>

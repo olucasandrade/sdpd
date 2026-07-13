@@ -4,6 +4,7 @@
   "header.guide.open": "[ GUIA ]",
   "header.guide.close": "[ FECHAR ]",
   "header.chaos": "[ CAOS ]",
+  "header.daily": "[ DIÁRIO ]",
 
   "menu.open": "Abrir menu",
   "menu.title": "Menu",
@@ -163,5 +164,28 @@
 
   "social.github": "Dar estrela no GitHub",
   "social.linkedin": "Me adicione no LinkedIn",
-  "social.blog": "Apoie meu blog"
+  "social.blog": "Apoie meu blog",
+
+  "daily.heroLabel": "Treino de hoje",
+  "daily.heroNotPlayed": "não jogado",
+  "daily.pageLabel": "Treino Diário",
+  "daily.drillHash": "Treino Diário #",
+  "daily.streakLabel": "Sequência",
+  "daily.bestStreakLabel": "Recorde",
+  "daily.rulesTitle": "Regras",
+  "daily.rule1": "Uma tentativa por dia",
+  "daily.rule2": "Cronometrado — o tempo começa quando você inicia",
+  "daily.rule3": "O caso é revelado quando você inicia",
+  "daily.startButton": "Iniciar investigação",
+  "daily.timerLabel": "Tempo",
+  "daily.resultTitle": "Treino concluído",
+  "daily.diagnosisStars": "Diagnóstico:",
+  "daily.fixStars": "Correção:",
+  "daily.shareButton": "Compartilhar resultado",
+  "daily.shareCopied": "Copiado para a área de transferência",
+  "daily.shareFailed": "Não foi possível copiar — selecione e copie manualmente",
+  "daily.nextDrillIn": "Próximo treino em",
+  "daily.reviewConcept": "Revisar o conceito",
+  "daily.backToBoard": "Painel de Casos",
+  "daily.caseNotFound": "Não foi possível carregar o caso do treino de hoje."
 }

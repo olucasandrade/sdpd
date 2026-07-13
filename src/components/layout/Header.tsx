@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useGameState } from "../../hooks/useGameState";
+import { useInterviewSession } from "../../hooks/useInterviewSession";
 import { useTranslation } from "../../i18n";
 import { Button } from "../common/Button";
 import { MobileMenu } from "./MobileMenu";
@@ -73,6 +74,8 @@ export function Header() {
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const interviewStatus = useInterviewSession((s) => s.status);
+  const guideDisabled = interviewStatus === "round" || interviewStatus === "postmortem";
 
   const rankTitle = t(`rank.${rank.id}`);
 
@@ -131,9 +134,15 @@ export function Header() {
             {t("header.builder")}
           </Button>
         </Link>
+        <Link to="/interview">
+          <Button variant="ghost" className="text-xs font-mono">
+            {t("header.interview")}
+          </Button>
+        </Link>
         <Button
           variant="ghost"
           onClick={toggleGuide}
+          disabled={guideDisabled}
           className="text-xs font-mono"
         >
           {guideOpen ? t("header.guide.close") : t("header.guide.open")}

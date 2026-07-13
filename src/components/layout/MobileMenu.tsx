@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useGameState } from '../../hooks/useGameState';
+import { useInterviewSession } from '../../hooks/useInterviewSession';
 import { useTranslation } from '../../i18n';
 import { CaseList } from './CaseList';
 import { ResetProgressButton } from './ResetProgressButton';
@@ -16,6 +17,8 @@ interface MobileMenuProps {
 export function MobileMenu({ open, onClose }: MobileMenuProps) {
   const { locale, setLocale, toggleGuide, guideOpen } = useGameState();
   const { t } = useTranslation();
+  const interviewStatus = useInterviewSession((s) => s.status);
+  const guideDisabled = interviewStatus === 'round' || interviewStatus === 'postmortem';
 
   useEffect(() => {
     if (!open) return;
@@ -87,12 +90,20 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
               >
                 {t('header.builder')}
               </Link>
+              <Link
+                to="/interview"
+                onClick={onClose}
+                className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 flex items-center"
+              >
+                {t('header.interview')}
+              </Link>
               <button
                 onClick={() => {
                   toggleGuide();
                   onClose();
                 }}
-                className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 text-left flex items-center"
+                disabled={guideDisabled}
+                className="text-xs font-mono text-noir-300 hover:text-amber-400 transition-colors px-3 min-h-11 rounded border border-noir-600/40 hover:border-amber-500/30 text-left flex items-center disabled:opacity-40 disabled:pointer-events-none"
               >
                 {guideOpen ? t('header.guide.close') : t('header.guide.open')}
               </button>

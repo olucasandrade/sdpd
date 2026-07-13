@@ -7,6 +7,7 @@ import { ChaosPage } from './pages/ChaosPage';
 import { BuilderListPage } from './pages/BuilderListPage';
 import { BuilderPage } from './pages/BuilderPage';
 import { DailyDrillPage } from './pages/DailyDrillPage';
+import { InterviewPage } from './pages/InterviewPage';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/builder" element={<BuilderListPage />} />
             <Route path="/builder/:challengeId" element={<BuilderPage />} />
             <Route path="/daily" element={<DailyDrillPage />} />
+            <Route path="/interview" element={<InterviewPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
